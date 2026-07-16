@@ -1,0 +1,239 @@
+""" User Controller Model. """
+
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, FastAPI, Form, Header, Path, Query, Request
+from fastapi_pagination import Page, Params
+from module_admin.entity.dto.user_dto import (
+    RegisterUserRequestByUsernameDto,
+    LoginUserRequestByUsernameDto,
+    TokenDto,
+    LoginUserRequestByPhoneDto,
+    UpdateUserRequestDto,
+    UpdateUserPasswordRequestDto,
+    UserInfoDto,
+    UserInfoUserDto,
+    UserRouteDto,
+    BatchUpdateUserStatusDto,
+    BatchUserIdsDto,
+    BindUserRolesDto,
+)
+from module_admin.entity.dto.response_dto import ApiResponseDto
+from module_admin.service.user_service import UserService
+from typing import Annotated
+from module_admin.auth.authorization import Auth
+from config.env import settings
+from config.rate_limit import limiter
+
+
+class UserController:
+    """User Controller."""
+
+    user = APIRouter(tags=["用户模块"], prefix="/user")
+
+    def __init__(self, app: FastAPI):
+        """Constructor."""
+        self.app = app
+        super().__init__()
+
+    @staticmethod
+    @user.post(
+        "/add",
+        summary="创建用户",
+        dependencies=[Depends(Auth.has_permission("system:user:add"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def create_user(users: RegisterUserRequestByUsernameDto, request: Request):
+        """Create new user."""
+        return await UserService.create_user_by_username_services(users, request)
+
+    @staticmethod
+    @user.post(
+        "/login/username",
+        summary="用户名登录",
+        responses={200: {"model": ApiResponseDto[TokenDto]}},
+    )
+    @limiter.limit(settings.RATE_LIMIT_LOGIN)
+    async def login_user(
+        users: Annotated[LoginUserRequestByUsernameDto, Form()], request: Request
+    ):
+        """Login user by username."""
+        return await UserService.get_user_by_username_services(users, request)
+
+    @staticmethod
+    @user.post(
+        "/login/phone",
+        summary="手机号密码登录",
+        responses={200: {"model": ApiResponseDto[TokenDto]}},
+    )
+    @limiter.limit(settings.RATE_LIMIT_LOGIN)
+    async def login_user_by_phone(
+        users: Annotated[LoginUserRequestByPhoneDto, Form()], request: Request
+    ):
+        """Login user by phone."""
+        return await UserService.get_user_by_phone_services(users, request)
+
+    @staticmethod
+    @user.post(
+        "/logout",
+        summary="退出登录",
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def logout(
+        request: Request,
+        Authorization: str | None = Header(default=None, description="Token"),
+    ):
+        """Revoke the current login token."""
+        return await UserService.logout_services(request, Authorization)
+
+    @staticmethod
+    @user.get(
+        "/info",
+        summary="获取当前用户信息",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[UserInfoDto]}},
+    )
+    async def get_current_user_info(request: Request):
+        """Get current user info."""
+        return await UserService.get_current_user_info_services(request)
+
+    @staticmethod
+    @user.get(
+        "/routes",
+        summary="获取当前用户路由菜单",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[list[UserRouteDto]]}},
+    )
+    async def get_current_user_routes(request: Request):
+        """Get current user frontend routes."""
+        return await UserService.get_current_user_routes_services(request)
+
+    @staticmethod
+    @user.put(
+        "/batch/status",
+        summary="批量启用或禁用用户",
+        dependencies=[Depends(Auth.has_permission("system:user:edit"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def batch_update_user_status(
+        users: BatchUpdateUserStatusDto, request: Request
+    ):
+        """Batch enable or disable users."""
+        return await UserService.batch_update_user_status_services(users, request)
+
+    @staticmethod
+    @user.delete(
+        "/batch",
+        summary="批量删除用户",
+        dependencies=[Depends(Auth.has_permission("system:user:remove"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def batch_delete_users(users: BatchUserIdsDto, request: Request):
+        """Batch delete users."""
+        return await UserService.batch_delete_users_services(users, request)
+
+    @staticmethod
+    @user.put(
+        "/{user_id}/roles",
+        summary="绑定用户角色",
+        dependencies=[
+            Depends(Auth.has_permission("system:user:edit")),
+            Depends(Auth.has_permission("system:role:edit")),
+        ],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def bind_user_roles(
+        roles: BindUserRolesDto,
+        request: Request,
+        user_id: int = Path(description="用户ID"),
+    ):
+        """Replace all role bindings for a user."""
+        return await UserService.bind_user_roles_services(user_id, roles, request)
+
+    @staticmethod
+    @user.get(
+        "/list",
+        summary="查询用户列表",
+        dependencies=[Depends(Auth.has_permission("system:user:list"))],
+        response_model=None,
+        responses={200: {"model": ApiResponseDto[Page[UserInfoUserDto]]}},
+    )
+    async def list_users(
+        request: Request,
+        username: str | None = Query(default=None, description="用户名，支持模糊查询"),
+        phone: str | None = Query(default=None, description="手机号，支持模糊查询"),
+        email: str | None = Query(default=None, description="邮箱，支持模糊查询"),
+        nickname: str | None = Query(default=None, description="昵称，支持模糊查询"),
+        start_time: datetime | None = Query(default=None, description="创建开始时间"),
+        end_time: datetime | None = Query(default=None, description="创建结束时间"),
+        params: Params = Depends(),
+    ):
+        """Query paged users."""
+        return await UserService.list_users_services(
+            request,
+            username,
+            phone,
+            email,
+            nickname,
+            start_time,
+            end_time,
+            params,
+        )
+
+    @staticmethod
+    @user.get(
+        "/{user_id}",
+        summary="获取用户信息",
+        dependencies=[Depends(Auth.has_permission("system:user:query"))],
+        responses={200: {"model": ApiResponseDto[UserInfoDto]}},
+    )
+    async def get_user_by_id(
+        request: Request, user_id: int = Path(description="用户ID")
+    ):
+        """Get user by id."""
+        return await UserService.get_user_by_id_services(user_id, request)
+
+    @staticmethod
+    @user.delete(
+        "/{user_id}",
+        summary="删除用户",
+        dependencies=[Depends(Auth.has_permission("system:user:remove"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def delete_user_by_id(
+        request: Request, user_id: int = Path(description="用户ID")
+    ):
+        """Delete a user by ID."""
+        return await UserService.delete_user_by_id_services(user_id, request)
+
+    @staticmethod
+    @user.put(
+        "/{user_id}",
+        summary="修改用户信息",
+        dependencies=[Depends(Auth.has_permission("system:user:edit"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def update_user_by_id(
+        users: UpdateUserRequestDto,
+        request: Request,
+        user_id: int = Path(description="用户ID"),
+    ):
+        """Update user by id."""
+        return await UserService.update_user_by_id_services(user_id, users, request)
+
+    @staticmethod
+    @user.put(
+        "/{user_id}/password",
+        summary="修改用户密码",
+        dependencies=[Depends(Auth.has_permission("system:user:resetPwd"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def update_user_password_by_id(
+        users: UpdateUserPasswordRequestDto,
+        request: Request,
+        user_id: int = Path(description="用户ID"),
+    ):
+        """Update user password by id."""
+        return await UserService.update_user_password_by_id_services(
+            user_id, users, request
+        )

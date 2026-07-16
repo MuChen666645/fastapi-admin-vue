@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "fastapi-admin-vue"
+version = "0.1.0"
+description = ""
+authors = ["lyj <1434855150@qq.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "2.0.0"
+tag-format = "v$version"
+changelog = "CHANGELOG.md"
+
+[tool.pytest.ini_options]
+addopts = "--ignore=.venv"
+testpaths = ["test"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = { extras = ["all"], version = "^0.115.6" }
+uvicorn = { extras = ["standard"], version = "^0.34.0" }
+python-multipart = "^0.0.17"
+pyjwt = "^2.10.0"
+passlib = "^1.7.4"
+sqlmodel = "^0.0.22"
+httpx = "^0.27.2"
+websockets = "^14.1"
+fastapi-pagination = "^0.12.32"
+oss2 = "^2.19.1"
+redis = "^5.2.0"
+slowapi = "^0.1.9"
+pydantic-settings = "^2.6.1"
+loguru = "^0.7.2"
+aiomysql = "^0.2.0"
+pillow = "^11.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.0.1"
+commitizen = "^3.30.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

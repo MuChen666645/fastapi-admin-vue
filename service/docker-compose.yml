@@ -1,0 +1,68 @@
+services:
+  fastapi-app:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    depends_on:
+      fastapi-mysql:
+        condition: service_healthy
+      fastapi-redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - common-network
+    env_file:
+      - .env
+    volumes:
+      - .:/core
+    develop:
+      watch:
+        - action: rebuild
+          path: ./Dockerfile
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./poetry.lock
+  fastapi-mysql:
+    image: mysql
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: fastapi_admin
+      MYSQL_ROOT_PASSWORD: fastapi
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    ports:
+      - "3306:3306"
+    networks:
+      - common-network
+  fastapi-redis:
+    image: redis
+    volumes:
+      - redis-data:/data
+    command: redis-server --requirepass fastapi
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "fastapi", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "6379:6379"
+    networks:
+      - common-network
+networks:
+  common-network:
+    driver: bridge
+volumes:
+  mysql-data:
+  redis-data:

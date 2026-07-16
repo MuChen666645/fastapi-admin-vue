@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "ms-python.flake8",
+    "ms-azuretools.vscode-docker",
+    "p1c2u.docker-compose",
+    "ms-python.debugpy",
+    "tamasfe.even-better-toml",
+    "donjayamanne.python-environment-manager",
+    "donjayamanne.python-extension-pack",
+    "sum-packer.python-extension-summary",
+    "ms-python.vscode-pylance",
+    "njpwerner.autodocstring"
+  ]
+}
