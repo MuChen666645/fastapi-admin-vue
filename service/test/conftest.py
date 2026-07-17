@@ -1,10 +1,10 @@
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-import os
 import inspect
 import json
 import math
+import os
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Set
 
 import pytest
@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 
 os.environ.update(
     {
+        "APP_ENV": "development",
         "DEBUG": "true",
         "MYSQL_HOST": "127.0.0.1",
         "MYSQL_POST": "3306",
@@ -24,13 +25,15 @@ os.environ.update(
         "REDIS_PASSWORD": "",
         "REDIS_USERNAME": "",
         "REDIS_DB": "0",
+        "SECRET_KEY": "test-only-secret-key-that-is-long-enough",
+        "HOSTS": '["testserver", "localhost", "127.0.0.1"]',
         "ACCESS_KEY_ID": "test",
         "ACCESSKEY_SECRET": "test",
     }
 )
 
-from main import app, limiter
 from config.mysql_serve import bind_request_mysql_session
+from main import app, limiter
 from middleware.logger_middleware import LoggerMiddleware
 
 LoggerMiddleware._logger_configured = True

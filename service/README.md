@@ -134,7 +134,7 @@ CREDENTIALS=false
 
 > 注意：`MYSQL_POST`、`REDIS_POST`、`MEDOTHS`、`ACCESSKEY_SECRET` 是当前代码中的实际配置项名称，请保持一致。
 
-> `SECRET_KEY` 代码内提供了稳定默认值，避免服务重启后因随机密钥变化导致已签发 Token 全部失效。生产环境仍建议通过环境变量配置高强度固定密钥，并妥善保存。
+> `SECRET_KEY`、数据库密码、Redis 密码和 OSS 凭据不再提供代码级生产默认值。请通过选定的环境文件或进程环境注入；更换密钥会使已签发的 JWT 失效。
 
 ## 本地开发
 
@@ -160,7 +160,7 @@ docker compose up -d fastapi-mysql fastapi-redis
 CREATE DATABASE fastapi_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-服务启动时会通过 SQLModel 初始化数据表，并执行 `assets/sql/fastapi-admin.sql` 中的初始数据脚本。
+数据库结构由 Alembic 在服务启动前迁移，初始数据脚本由部署阶段显式执行。开发环境执行 `poetry run alembic upgrade head` 后，再执行 `assets/sql/fastapi-admin.sql`；预发布和正式环境请先复制对应的 `.example` 文件并替换全部占位值。
 
 ### 4. 启动服务
 
@@ -436,9 +436,13 @@ Controller -> Service -> DAO -> Database
 
 ## Environment Variables
 
-The service depends on the following environment variables. Docker Compose reads `.env` from the current directory. If you run the application directly with `uvicorn`, make sure these variables are available in the process environment.
+The service selects one profile with `APP_ENV`: `development`, `staging`, or `production`. Development loads `.env.development`; shared environments load `.env.staging` or `.env.production`, which should be created locally from the matching example file. Environment variables exported by the process always take precedence over files.
 
 ```env
+# Profile selection
+APP_ENV=development
+APP_ENV_FILE=.env.development
+
 # MySQL
 MYSQL_HOST=127.0.0.1
 MYSQL_POST=3306
@@ -458,8 +462,8 @@ REDIS_DB=0
 ACCESS_KEY_ID=your_access_key_id
 ACCESSKEY_SECRET=your_access_key_secret
 
-# Optional
-SECRET_KEY=replace_with_a_stable_random_secret
+# Security and optional settings
+SECRET_KEY=generate_a_random_secret_at_least_32_characters_long
 ACCESS_TOKEN_EXPIRE_MINUTES=3600
 RATE_LIMIT_DEFAULT=300/minute
 RATE_LIMIT_LOGIN=10/minute
@@ -468,16 +472,26 @@ CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
-HOSTS=["*"]
-ORIGINS=["*"]
-MEDOTHS=["*"]
+HOSTS=["localhost","127.0.0.1"]
+ORIGINS=["http://localhost:5173"]
+MEDOTHS=["GET","POST","PUT","DELETE","OPTIONS"]
 HEADERS=["*"]
 CREDENTIALS=false
 ```
 
 > Note: `MYSQL_POST`, `REDIS_POST`, `MEDOTHS`, and `ACCESSKEY_SECRET` are the actual setting names used by the current codebase. Keep them unchanged unless the code is updated.
 
-> The code provides a stable default `SECRET_KEY` so issued tokens are not invalidated by a random key after every restart. For production, still set a strong fixed key through environment variables and keep it safe.
+> `SECRET_KEY`, database passwords, Redis passwords, and OSS credentials have no code-level production defaults. Generate and inject them through the selected environment file or the process environment. A key change invalidates previously issued JWTs.
+
+## Environment Profiles
+
+| Profile | Configuration | Production checks |
+| --- | --- | --- |
+| Development | `.env.development` | Allows local-only defaults and debug logging |
+| Staging | `.env.staging` from `.env.staging.example` | Requires generated secrets, `DEBUG=false`, and restricted hosts/origins |
+| Production | `.env.production` from `.env.production.example` | Requires generated secrets, `DEBUG=false`, and restricted hosts/origins |
+
+For staging or production, copy the example file, replace every `REPLACE_WITH_...` value, then start with the matching `APP_ENV`. The service also supports secret-store injection through process environment variables, so the real environment file does not need to be copied into the image or container. Do not commit it.
 
 ## Local Development
 
@@ -492,7 +506,7 @@ poetry install
 You can use local services or start only the dependency services with Docker Compose:
 
 ```bash
-docker compose up -d fastapi-mysql fastapi-redis
+docker compose --env-file .env.development up -d fastapi-mysql fastapi-redis
 ```
 
 ### 3. Create the database
@@ -528,10 +542,10 @@ After startup, open:
 ### Build and start all services
 
 ```bash
-docker compose up -d --build fastapi-mysql fastapi-redis
-docker compose run --rm fastapi-app alembic upgrade head
-docker compose exec -T fastapi-mysql mysql -uroot -pfastapi fastapi_admin < assets/sql/fastapi-admin.sql
-docker compose up -d --build fastapi-app
+docker compose --env-file .env.development up -d --build fastapi-mysql fastapi-redis
+docker compose --env-file .env.development run --rm fastapi-app alembic upgrade head
+docker compose --env-file .env.development exec -T fastapi-mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fastapi_admin' < assets/sql/fastapi-admin.sql
+docker compose --env-file .env.development up -d --build fastapi-app
 ```
 
 ### View logs
@@ -555,7 +569,7 @@ Default port mapping:
 | MySQL   | 3306           | 3306      |
 | Redis   | 6379           | 6379      |
 
-Before production deployment, change the default MySQL password, Redis password, JWT `SECRET_KEY`, and restrict `HOSTS` and CORS origins.
+Before staging or production deployment, copy the matching `.env.*.example`, replace every placeholder with a secret from the deployment secret store, and start Compose with `--env-file` pointing to the resulting file.
 
 ## API Modules
 
@@ -647,7 +661,7 @@ chore: update dependencies
 
 ### 1. Missing environment variables on local startup
 
-Make sure all required MySQL, Redis, and OSS variables are available in the process environment. Docker Compose reads `.env` from the current directory. For direct `uvicorn` startup, verify the environment file path used by Pydantic based on your actual working directory, or use system environment variables.
+Make sure all required MySQL, Redis, and OSS variables are available in the process environment. Set `APP_ENV` to `development`, `staging`, or `production`; direct `uvicorn` startup can use the matching `.env.<APP_ENV>` file or process environment injection. Docker Compose should be started with `--env-file` pointing to the selected profile.
 
 ### 2. MySQL connection failed
 

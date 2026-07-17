@@ -3,3 +3,6 @@ __pycache__
 *.log
 .pytest_cache
 .idea/
+.env.local
+.env.staging
+.env.production

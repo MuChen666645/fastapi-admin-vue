@@ -13,9 +13,7 @@ services:
     networks:
       - common-network
     env_file:
-      - .env
-    volumes:
-      - .:/core
+      - ${APP_ENV_FILE:-.env.development}
     develop:
       watch:
         - action: rebuild
@@ -29,8 +27,8 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: fastapi_admin
-      MYSQL_ROOT_PASSWORD: fastapi
+      MYSQL_DATABASE: ${MYSQL_DATABASES:-fastapi_admin}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
     healthcheck:
       test:
         [
@@ -49,9 +47,14 @@ services:
     image: redis
     volumes:
       - redis-data:/data
-    command: redis-server --requirepass fastapi
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "fastapi", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 5s
       retries: 10
