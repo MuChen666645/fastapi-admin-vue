@@ -5,8 +5,10 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
-from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
+from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
+                                                    UserPostDo)
 from module_admin.entity.do.user_do import UserDo
+from module_admin.service.data_scope_service import DataScopeService
 from utils.time_utils import now_utc8_naive
 
 
@@ -16,12 +18,21 @@ class OrganizationDao:
     @staticmethod
     async def get_by_id(model, item_id: int, request: Request):
         """根据主键查询部门或岗位。"""
+        if model is DepartmentDo:
+            if not await DataScopeService.can_access_department(item_id, request):
+                return None
+        elif model is PostDo:
+            if not await DataScopeService.can_access_post(item_id, request):
+                return None
         return await request.state.mysql.get(model, item_id)
 
     @staticmethod
     async def list_departments(request: Request, name: str | None, status: str | None):
         """按名称和状态查询部门。"""
-        query = select(DepartmentDo).order_by(DepartmentDo.order_num, DepartmentDo.dept_id)
+        scope = await DataScopeService.resolve(request)
+        query = select(DepartmentDo).where(
+            scope.department_id_clause(DepartmentDo.dept_id)
+        ).order_by(DepartmentDo.order_num, DepartmentDo.dept_id)
         if name:
             query = query.where(DepartmentDo.dept_name.contains(name))
         if status is not None:
@@ -37,9 +48,18 @@ class OrganizationDao:
         parent_id = values.get("parent_id") or None
         parent = None
         if parent_id:
+            if (
+                getattr(request.state, "user_id", None) is not None
+                and not await DataScopeService.can_access_department(parent_id, request)
+            ):
+                return "No data permission"
             parent = await mysql.get(DepartmentDo, parent_id)
             if parent is None:
                 return "父部门不存在"
+        if not parent and getattr(request.state, "user_id", None) is not None:
+            scope = await DataScopeService.resolve(request)
+            if not scope.all_data:
+                return "No data permission"
         ancestors = f"{parent.ancestors},{parent.dept_id}".strip(",") if parent else "0"
         values["parent_id"] = parent_id
         mysql.add(DepartmentDo(**values, ancestors=ancestors))
@@ -49,15 +69,22 @@ class OrganizationDao:
     async def update_department(dept_id: int, data, request: Request):
         """修改部门，并在移动节点时同步更新所有后代的祖级路径。"""
         mysql = request.state.mysql
-        dept = await mysql.get(DepartmentDo, dept_id)
+        dept = await OrganizationDao.get_by_id(DepartmentDo, dept_id, request)
         if dept is None:
             return "部门不存在"
         values = data.model_dump(exclude_unset=True)
         if "parent_id" in values:
             parent_id = values["parent_id"] or None
+            scope = await DataScopeService.resolve(request)
+            if not scope.all_data and parent_id is None:
+                return "No data permission"
             if parent_id == dept_id:
                 return "上级部门不能是自身"
-            parent = await mysql.get(DepartmentDo, parent_id) if parent_id else None
+            parent = (
+                await OrganizationDao.get_by_id(DepartmentDo, parent_id, request)
+                if parent_id
+                else None
+            )
             if parent_id and parent is None:
                 return "父部门不存在"
             if parent and str(dept_id) in parent.ancestors.split(","):
@@ -83,7 +110,7 @@ class OrganizationDao:
     async def delete_department(dept_id: int, request: Request):
         """删除无子部门且未分配用户的部门。"""
         mysql = request.state.mysql
-        dept = await mysql.get(DepartmentDo, dept_id)
+        dept = await OrganizationDao.get_by_id(DepartmentDo, dept_id, request)
         if dept is None:
             return "部门不存在"
         child_result = await mysql.execute(
@@ -104,7 +131,10 @@ class OrganizationDao:
         request: Request, name: str | None, status: str | None, params: Params
     ):
         """按名称和状态查询岗位。"""
-        query = select(PostDo).order_by(PostDo.post_sort, PostDo.post_id)
+        scope = await DataScopeService.resolve(request)
+        query = select(PostDo).where(
+            scope.post_id_clause(PostDo.post_id)
+        ).order_by(PostDo.post_sort, PostDo.post_id)
         if name:
             query = query.where(PostDo.post_name.contains(name))
         if status is not None:
@@ -115,6 +145,10 @@ class OrganizationDao:
     async def create_post(data, request: Request):
         """新增岗位。"""
         mysql = request.state.mysql
+        if getattr(request.state, "user_id", None) is not None:
+            scope = await DataScopeService.resolve(request)
+            if not scope.all_data:
+                return "No data permission"
         mysql.add(PostDo(**data.model_dump()))
         return None
 
@@ -122,7 +156,9 @@ class OrganizationDao:
     async def update_post(post_id: int, data, request: Request):
         """修改岗位。"""
         mysql = request.state.mysql
-        post = await mysql.get(PostDo, post_id)
+        if not await DataScopeService.can_mutate_post(post_id, request):
+            return "No data permission"
+        post = await OrganizationDao.get_by_id(PostDo, post_id, request)
         if post is None:
             return "岗位不存在"
         values = data.model_dump(exclude_unset=True)
@@ -134,7 +170,9 @@ class OrganizationDao:
     async def delete_post(post_id: int, request: Request):
         """删除未分配用户的岗位。"""
         mysql = request.state.mysql
-        post = await mysql.get(PostDo, post_id)
+        if not await DataScopeService.can_mutate_post(post_id, request):
+            return "No data permission"
+        post = await OrganizationDao.get_by_id(PostDo, post_id, request)
         if post is None:
             return "岗位不存在"
         user_result = await mysql.execute(

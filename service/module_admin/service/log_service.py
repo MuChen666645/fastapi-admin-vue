@@ -6,6 +6,7 @@ from fastapi_pagination import create_page
 from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
 from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.service.data_scope_service import DataScopeService
 
 
 class LogService:
@@ -30,6 +31,21 @@ class LogService:
     @staticmethod
     async def list_online_users(query, params, request: Request):
         sessions = await Auth.list_online_tokens(request)
+        state = getattr(request, "state", None)
+        if state is not None and getattr(state, "mysql", None) is not None:
+            session_user_ids = [
+                int(item["user_id"])
+                for item in sessions
+                if item.get("user_id") is not None
+            ]
+            allowed_user_ids = await DataScopeService.filter_user_ids(
+                request, session_user_ids
+            )
+            sessions = [
+                item
+                for item in sessions
+                if item.get("user_id") in allowed_user_ids
+            ]
         if query.username:
             username = query.username.lower()
             sessions = [

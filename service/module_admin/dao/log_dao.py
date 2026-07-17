@@ -5,6 +5,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlmodel import delete, select
 
 from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.service.data_scope_service import DataScopeService
 
 
 class LogDao:
@@ -39,13 +40,21 @@ class LogDao:
             filters.append(time_column <= query.end_time)
 
         mysql = request.state.mysql
+        scope = await DataScopeService.resolve(request)
+        filters.append(scope.user_id_clause(model.user_id))
         query = select(model).where(*filters).order_by(time_column.desc())
         return await paginate(mysql, query, params=params)
 
     @staticmethod
     async def delete_logs(model, ids: list[int], request: Request) -> None:
         mysql = request.state.mysql
-        await mysql.execute(delete(model).where(model.id.in_(set(ids))))
+        scope = await DataScopeService.resolve(request)
+        await mysql.execute(
+            delete(model).where(
+                model.id.in_(set(ids)),
+                scope.user_id_clause(model.user_id),
+            )
+        )
 
     @staticmethod
     async def create_login(log: LoginLogDo, request: Request) -> None:

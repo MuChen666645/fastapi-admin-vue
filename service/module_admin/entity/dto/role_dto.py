@@ -1,4 +1,4 @@
-""" Role DTO. """
+"""Role request and response DTOs."""
 
 from datetime import datetime
 
@@ -6,58 +6,60 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RoleDto(BaseModel):
-    """Role Dto."""
+    """Shared role fields."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    name: str | None = Field(None, max_length=50, description="角色名称")
-    code: str | None = Field(None, max_length=50, description="角色编码")
-    description: str | None = Field(None, max_length=255, description="角色描述")
+    name: str | None = Field(default=None, max_length=50)
+    code: str | None = Field(default=None, max_length=50)
+    description: str | None = Field(default=None, max_length=255)
+    data_scope: str | None = Field(
+        default=None,
+        pattern="^[1-5]$",
+        description="1 all, 2 custom departments, 3 department, 4 descendants, 5 self",
+    )
 
 
 class CreateRoleDto(RoleDto):
-    """Create Role DTO."""
+    """Create role DTO."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    menu_ids: list[int] = Field(default_factory=list, description="绑定的菜单ID列表")
+    data_scope: str = Field(default="5", pattern="^[1-5]$")
+    menu_ids: list[int] = Field(default_factory=list)
+    dept_ids: list[int] = Field(
+        default_factory=list,
+        description="Departments used by custom data scope",
+    )
 
 
 class UpdataRoleDto(RoleDto):
-    """Update Role DTO."""
+    """Update role DTO."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    menu_ids: list[int] | None = Field(default=None, description="绑定的菜单ID列表")
+    menu_ids: list[int] | None = Field(default=None)
+    data_scope: str | None = Field(default=None, pattern="^[1-5]$")
+    dept_ids: list[int] | None = Field(default=None)
 
 
 class BatchUpdateRoleStatusDto(BaseModel):
-    """Batch update role status DTO."""
+    """Batch role status DTO."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    role_ids: list[int] = Field(..., min_length=1, description="角色ID列表")
-    status: str = Field(..., description="状态,0禁用,1正常")
-
-    @field_validator("status")
-    def validator_status(cls, val):
-        if val not in {"0", "1"}:
-            raise ValueError
-        return val
+    role_ids: list[int] = Field(..., min_length=1)
+    status: str = Field(..., pattern="^[01]$")
 
 
 class RoleListDto(RoleDto):
-    model_config = ConfigDict(from_attributes=True)
+    """Role list response DTO."""
 
-    id: int = Field(..., description="角色ID")
-    create_time: datetime = Field(..., description="创建时间")
-    update_time: datetime = Field(..., description="更新时间")
-    status: str = Field(..., description="状态,0禁用,1正常")
+    id: int
+    create_time: datetime
+    update_time: datetime
+    status: str
+    data_scope: str = Field(default="5", pattern="^[1-5]$")
 
 
 class RoleDetailDto(RoleListDto):
-    """Role detail DTO."""
+    """Role detail response DTO."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    menu_ids: list[int] = Field(default_factory=list, description="绑定的菜单ID列表")
+    menu_ids: list[int] = Field(default_factory=list)
+    dept_ids: list[int] = Field(default_factory=list)

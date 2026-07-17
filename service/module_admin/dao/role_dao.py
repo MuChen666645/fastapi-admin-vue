@@ -1,15 +1,38 @@
-from module_admin.entity.do.menu_do import MenuDo
-from module_admin.entity.do.role_do import RoleDo, RoleMenuDo
-from fastapi import Request
-from module_admin.entity.dto.role_dto import CreateRoleDto, UpdataRoleDto, RoleListDto
-from sqlmodel import delete, select
-from fastapi_pagination import Page, Params
 from typing import Union
+
+from fastapi import Request
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
+from sqlmodel import delete, select
+
+from module_admin.entity.do.menu_do import MenuDo
+from module_admin.entity.do.organization_do import DepartmentDo
+from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
+from module_admin.entity.dto.role_dto import (CreateRoleDto, RoleListDto,
+                                              UpdataRoleDto)
 from utils.time_utils import now_utc8_naive
 
 
 class RoleDao:
+    @staticmethod
+    async def _validate_dept_ids(mysql, dept_ids: list[int]) -> list[int]:
+        unique_dept_ids = list(dict.fromkeys(dept_ids))
+        if not unique_dept_ids:
+            return []
+
+        result = await mysql.execute(
+            select(DepartmentDo.dept_id).where(
+                DepartmentDo.dept_id.in_(unique_dept_ids)
+            )
+        )
+        existing_ids = set(result.scalars().all())
+        missing_ids = [
+            dept_id for dept_id in unique_dept_ids if dept_id not in existing_ids
+        ]
+        if missing_ids:
+            raise ValueError(f"Department does not exist: {missing_ids}")
+        return unique_dept_ids
+
     @staticmethod
     async def _validate_menu_ids(mysql, menu_ids: list[int]) -> list[int]:
         """Return unique menu IDs after verifying that every menu exists."""
@@ -40,13 +63,17 @@ class RoleDao:
             RoleDo: 角色对象.
         """
         mysql = request.state.mysql
-        role_data = roles.model_dump(exclude={"menu_ids"})
+        role_data = roles.model_dump(exclude={"menu_ids", "dept_ids"})
         menu_ids = await RoleDao._validate_menu_ids(mysql, roles.menu_ids)
+        dept_ids = await RoleDao._validate_dept_ids(mysql, roles.dept_ids)
         role = RoleDo(**role_data)
         mysql.add(role)
         await mysql.flush()
         mysql.add_all(
             [RoleMenuDo(role_id=role.id, menu_id=menu_id) for menu_id in menu_ids]
+        )
+        mysql.add_all(
+            [RoleDeptDo(role_id=role.id, dept_id=dept_id) for dept_id in dept_ids]
         )
         return None
 
@@ -70,7 +97,16 @@ class RoleDao:
             .where(RoleMenuDo.role_id == role_id)
             .order_by(RoleMenuDo.menu_id)
         )
-        return {**role.model_dump(), "menu_ids": list(result.scalars().all())}
+        dept_result = await mysql.execute(
+            select(RoleDeptDo.dept_id)
+            .where(RoleDeptDo.role_id == role_id)
+            .order_by(RoleDeptDo.dept_id)
+        )
+        return {
+            **role.model_dump(),
+            "menu_ids": list(result.scalars().all()),
+            "dept_ids": list(dept_result.scalars().all()),
+        }
 
     @staticmethod
     async def get_roles_by_ids(role_ids: list[int], request: Request) -> list[RoleDo]:
@@ -112,6 +148,7 @@ class RoleDao:
         if role is None:
             return "角色不存在"
         await mysql.execute(delete(RoleMenuDo).where(RoleMenuDo.role_id == role_id))
+        await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role_id))
         await mysql.delete(role)
         return None
 
@@ -129,6 +166,7 @@ class RoleDao:
         if role is None:
             return "角色不存在"
         await mysql.execute(delete(RoleMenuDo).where(RoleMenuDo.role_id == role.id))
+        await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role.id))
         await mysql.delete(role)
         return None
 
@@ -151,6 +189,9 @@ class RoleDao:
             return "角色不存在"
         role_data = roles.model_dump(exclude_unset=True)
         menu_ids = role_data.pop("menu_ids", None)
+        dept_ids = role_data.pop("dept_ids", None)
+        if role_data.get("data_scope") is None:
+            role_data.pop("data_scope", None)
         if menu_ids is not None:
             menu_ids = await RoleDao._validate_menu_ids(mysql, menu_ids)
             await mysql.execute(
@@ -159,6 +200,14 @@ class RoleDao:
             mysql.add_all(
                 [RoleMenuDo(role_id=role_id, menu_id=menu_id) for menu_id in menu_ids]
             )
+        if dept_ids is not None:
+            dept_ids = await RoleDao._validate_dept_ids(mysql, dept_ids)
+            await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role_id))
+            mysql.add_all(
+                [RoleDeptDo(role_id=role_id, dept_id=dept_id) for dept_id in dept_ids]
+            )
+        elif role_data.get("data_scope") not in (None, "2"):
+            await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role_id))
         role_db.sqlmodel_update(role_data)
         return None
 

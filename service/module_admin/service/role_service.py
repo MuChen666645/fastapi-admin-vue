@@ -21,6 +21,7 @@ class RoleService:
         "Only super administrators can modify role permissions"
     )
     ROLE_SELF_MUTATION_MESSAGE = "Cannot modify a role assigned to the current user"
+    VALID_DATA_SCOPES = {"1", "2", "3", "4", "5"}
 
     @staticmethod
     def _is_admin_code(role_code: str | None) -> bool:
@@ -61,6 +62,23 @@ class RoleService:
         return False
 
     @staticmethod
+    def _validate_data_scope(
+        data_scope: str | None, dept_ids: list[int] | None
+    ) -> None:
+        if data_scope is not None and data_scope not in RoleService.VALID_DATA_SCOPES:
+            raise HTTPException(status_code=400, detail="Invalid data scope")
+        if data_scope == "2" and not dept_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Custom data scope requires at least one department",
+            )
+        if data_scope is not None and data_scope != "2" and dept_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Department IDs are only valid for custom data scope",
+            )
+
+    @staticmethod
     async def create_role_services(roles: CreateRoleDto, request: Request) -> None:
         """Create role.
 
@@ -69,9 +87,12 @@ class RoleService:
             request (Request): 请求对象.
         """
         RoleService._reject_admin_role(roles.code)
+        RoleService._validate_data_scope(roles.data_scope, roles.dept_ids)
         await RoleService._ensure_role_write_scope(
             request,
-            permission_change=bool(roles.menu_ids),
+            permission_change=bool(roles.menu_ids)
+            or roles.data_scope != "5"
+            or bool(roles.dept_ids),
         )
         try:
             await RoleDao.create_role_by_role_name(roles, request)
@@ -164,10 +185,23 @@ class RoleService:
             raise HTTPException(status_code=404, detail="角色不存在")
         RoleService._reject_admin_role(current_role["code"])
         RoleService._reject_admin_role(roles.code)
+        effective_data_scope = (
+            roles.data_scope
+            if roles.data_scope is not None
+            else current_role.get("data_scope", "5")
+        )
+        effective_dept_ids = (
+            roles.dept_ids
+            if roles.dept_ids is not None
+            else current_role.get("dept_ids", [])
+        )
+        RoleService._validate_data_scope(effective_data_scope, effective_dept_ids)
         await RoleService._ensure_role_write_scope(
             request,
             [role_id],
-            permission_change=roles.menu_ids is not None,
+            permission_change=roles.menu_ids is not None
+            or roles.data_scope is not None
+            or roles.dept_ids is not None,
         )
         try:
             role = await RoleDao.upd_role_by_id(roles, request, role_id)

@@ -310,14 +310,32 @@ class Auth:
     async def revoke_token_by_id(request: Request, token_id: str) -> bool:
         cache_key = f"{Auth.TOKEN_REDIS_PREFIX}{token_id}"
         sessions = await Auth.list_online_tokens(request)
-        if not any(session["token_id"] == token_id for session in sessions):
+        target = next(
+            (session for session in sessions if session["token_id"] == token_id),
+            None,
+        )
+        if target is None:
             return False
+        state = getattr(request, "state", None)
+        if state is not None and getattr(state, "mysql", None) is not None:
+            from module_admin.service.data_scope_service import DataScopeService
+
+            if not await DataScopeService.can_access_user(
+                int(target["user_id"]), request
+            ):
+                return False
         await Auth._delete_cache_key(request, cache_key)
         return True
 
     @staticmethod
     async def revoke_user_tokens(request: Request, user_id: int) -> int:
         sessions = await Auth.list_online_tokens(request)
+        state = getattr(request, "state", None)
+        if state is not None and getattr(state, "mysql", None) is not None:
+            from module_admin.service.data_scope_service import DataScopeService
+
+            if not await DataScopeService.can_access_user(user_id, request):
+                return 0
         targets = [item for item in sessions if str(item.get("user_id")) == str(user_id)]
         for session in targets:
             await Auth._delete_cache_key(

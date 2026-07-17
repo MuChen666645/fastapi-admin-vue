@@ -1,3 +1,4 @@
+from test.conftest import app
 from types import SimpleNamespace
 
 import anyio
@@ -5,28 +6,22 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from module_admin.dao.role_dao import RoleDao
 from module_admin.dao.menu_dao import MenuDao
+from module_admin.dao.role_dao import RoleDao
 from module_admin.dao.user_dao import UserDao
-from module_admin.entity.dto.role_dto import (
-    BatchUpdateRoleStatusDto,
-    CreateRoleDto,
-    UpdataRoleDto,
-)
 from module_admin.entity.dto.menu_dto import CreateMenuByButtonDto, UpdMenuDto
-from module_admin.entity.dto.user_dto import (
-    BatchUpdateUserStatusDto,
-    BatchUserIdsDto,
-    BindUserRolesDto,
-    LoginUserRequestByPhoneDto,
-    UpdateUserRequestDto,
-    UpdateUserPasswordRequestDto,
-)
+from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
+                                              CreateRoleDto, UpdataRoleDto)
+from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
+                                              BatchUserIdsDto,
+                                              BindUserRolesDto,
+                                              LoginUserRequestByPhoneDto,
+                                              UpdateUserPasswordRequestDto,
+                                              UpdateUserRequestDto)
 from module_admin.service.code_service import CodeService
-from module_admin.service.role_service import RoleService
 from module_admin.service.menu_service import MenuService
+from module_admin.service.role_service import RoleService
 from module_admin.service.user_service import UserService
-from test.conftest import app
 from utils.fastapi_admin import FastApiAdmin
 
 
@@ -443,6 +438,83 @@ def test_admin_can_change_role_permissions(
 
         await RoleService.upd_role_by_id_services(
             UpdataRoleDto(menu_ids=[11]),
+            make_request(user_id=1),
+            role_id=2,
+        )
+
+        assert update_called is True
+
+    anyio.run(run)
+
+
+def test_non_admin_cannot_change_role_data_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        update_called = False
+
+        async def get_role(*args, **kwargs):
+            return {"id": 2, "code": "operator", "menu_ids": [], "data_scope": "5"}
+
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(2, "operator")]
+
+        async def update_role(*args, **kwargs):
+            nonlocal update_called
+            update_called = True
+
+        monkeypatch.setattr(RoleDao, "get_role_by_id", get_role)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(RoleDao, "upd_role_by_id", update_role)
+
+        with pytest.raises(HTTPException) as exception:
+            await RoleService.upd_role_by_id_services(
+                UpdataRoleDto(data_scope="1"),
+                make_request(user_id=10),
+                role_id=2,
+            )
+
+        assert exception.value.status_code == 403
+        assert exception.value.detail == RoleService.ROLE_PERMISSION_MUTATION_MESSAGE
+        assert update_called is False
+
+    anyio.run(run)
+
+
+def test_custom_role_data_scope_requires_departments() -> None:
+    with pytest.raises(HTTPException) as exception:
+        RoleService._validate_data_scope("2", [])
+    assert exception.value.status_code == 400
+
+
+def test_role_data_scope_partial_update_keeps_existing_departments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        update_called = False
+
+        async def get_role(*args, **kwargs):
+            return {
+                "id": 2,
+                "code": "operator",
+                "menu_ids": [],
+                "data_scope": "2",
+                "dept_ids": [10],
+            }
+
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(1, "admin")]
+
+        async def update_role(*args, **kwargs):
+            nonlocal update_called
+            update_called = True
+
+        monkeypatch.setattr(RoleDao, "get_role_by_id", get_role)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(RoleDao, "upd_role_by_id", update_role)
+
+        await RoleService.upd_role_by_id_services(
+            UpdataRoleDto(dept_ids=[11]),
             make_request(user_id=1),
             role_id=2,
         )

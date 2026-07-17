@@ -6,20 +6,21 @@ from typing import Union
 from fastapi import Request
 from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
+from sqlalchemy import or_
+from sqlmodel import delete, select
+
 from config.env import settings
 from module_admin.entity.do.menu_do import MenuDo
+from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
+                                                    UserPostDo)
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo, RoleMenuDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
-from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
-from module_admin.entity.dto.user_dto import (
-    RegisterUserRequestByUsernameDto,
-    LoginUserRequestByUsernameDto,
-    LoginUserRequestByPhoneDto,
-    UpdateUserRequestDto,
-)
-from sqlalchemy import or_
-from sqlmodel import delete, select
+from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
+                                              LoginUserRequestByUsernameDto,
+                                              RegisterUserRequestByUsernameDto,
+                                              UpdateUserRequestDto)
+from module_admin.service.data_scope_service import DataScopeService
 from utils.time_utils import now_utc8_naive
 
 
@@ -43,14 +44,22 @@ class UserDao:
         """
         mysql = request.state.mysql
         user_data = users.model_dump(exclude={"post_ids"})
+        if getattr(request.state, "user_id", None) is not None:
+            scope = await DataScopeService.resolve(request)
+            if not scope.all_data and (
+                users.dept_id is None
+                or not await DataScopeService.can_access_department(
+                    users.dept_id, request
+                )
+            ):
+                raise ValueError("Department is outside the data scope")
         if users.dept_id is not None and await mysql.get(DepartmentDo, users.dept_id) is None:
             raise ValueError("部门不存在")
         post_ids = list(dict.fromkeys(users.post_ids))
         if post_ids:
-            result = await mysql.execute(
-                select(PostDo.post_id).where(PostDo.post_id.in_(post_ids))
+            existing_post_ids = await DataScopeService.filter_post_ids(
+                request, post_ids
             )
-            existing_post_ids = set(result.scalars().all())
             missing_post_ids = [post_id for post_id in post_ids if post_id not in existing_post_ids]
             if missing_post_ids:
                 raise ValueError(f"岗位不存在: {missing_post_ids}")
@@ -111,8 +120,14 @@ class UserDao:
             UserDo: 用户对象.
         """
         mysql = request.state.mysql
-        user = await mysql.get(UserDo, user_id)
-        return user
+        scope = await DataScopeService.resolve(request)
+        result = await mysql.execute(
+            select(UserDo).where(
+                UserDo.id == user_id,
+                scope.user_id_clause(UserDo.id),
+            )
+        )
+        return result.scalars().first()
 
     @staticmethod
     async def get_user_roles(
@@ -179,7 +194,7 @@ class UserDao:
     async def get_user_info(user_id: int, request: Request) -> Union[dict, None]:
         """Get user, roles and permissions by user id."""
         mysql = request.state.mysql
-        user = await mysql.get(UserDo, user_id)
+        user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
             return None
 
@@ -245,6 +260,7 @@ class UserDao:
         params: Params,
     ):
         """Query users with pagination."""
+        scope = await DataScopeService.resolve(request)
         query = select(
             UserDo.id,
             UserDo.create_time,
@@ -258,7 +274,7 @@ class UserDao:
             UserDo.avatar,
             UserDo.update_time,
             UserDo.status,
-        ).order_by(UserDo.id)
+        ).where(scope.user_id_clause(UserDo.id)).order_by(UserDo.id)
         if username:
             query = query.where(UserDo.username.contains(username))
         if phone:
@@ -282,7 +298,7 @@ class UserDao:
     async def get_user_route_menus(user_id: int, request: Request) -> list[MenuDo]:
         """Get enabled route menus visible to a user."""
         mysql = request.state.mysql
-        user = await mysql.get(UserDo, user_id)
+        user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
             return []
 
@@ -311,22 +327,26 @@ class UserDao:
     ) -> Union[str, None]:
         """根据用户ID修改用户信息."""
         mysql = request.state.mysql
-        user_db = await mysql.get(UserDo, user_id)
+        user_db = await UserDao.get_user_by_id(user_id, request)
         if user_db is None:
             return "用户不存在"
         user_data = users.model_dump(exclude_unset=True)
         user_data.pop("role_id", None)
         post_ids = user_data.pop("post_ids", None)
-        dept_id = user_data.get("dept_id")
-        if dept_id is not None and await mysql.get(DepartmentDo, dept_id) is None:
-            return "部门不存在"
+        if "dept_id" in user_data:
+            dept_id = user_data["dept_id"]
+            scope = await DataScopeService.resolve(request)
+            if not scope.all_data and (
+                dept_id is None
+                or not await DataScopeService.can_access_department(dept_id, request)
+            ):
+                return "部门不在数据权限范围内"
         if post_ids is not None:
             post_ids = list(dict.fromkeys(post_ids))
             if post_ids:
-                result = await mysql.execute(
-                    select(PostDo.post_id).where(PostDo.post_id.in_(post_ids))
+                existing_post_ids = await DataScopeService.filter_post_ids(
+                    request, post_ids
                 )
-                existing_post_ids = set(result.scalars().all())
                 missing_post_ids = [
                     post_id for post_id in post_ids if post_id not in existing_post_ids
                 ]
@@ -344,7 +364,7 @@ class UserDao:
     ) -> Union[str, None]:
         """根据用户ID修改用户密码."""
         mysql = request.state.mysql
-        user_db = await mysql.get(UserDo, user_id)
+        user_db = await UserDao.get_user_by_id(user_id, request)
         if user_db is None:
             return "用户不存在"
         user_db.password = password
@@ -357,7 +377,7 @@ class UserDao:
     ) -> Union[str, None]:
         """Replace all role bindings for a user."""
         mysql = request.state.mysql
-        user = await mysql.get(UserDo, user_id)
+        user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
             return "用户不存在"
 
@@ -393,8 +413,12 @@ class UserDao:
         """Batch enable or disable users."""
         mysql = request.state.mysql
         unique_user_ids = list(dict.fromkeys(user_ids))
+        scope = await DataScopeService.resolve(request)
         result = await mysql.execute(
-            select(UserDo).where(UserDo.id.in_(unique_user_ids))
+            select(UserDo).where(
+                UserDo.id.in_(unique_user_ids),
+                scope.user_id_clause(UserDo.id),
+            )
         )
         users = result.scalars().all()
         existing_user_ids = {user.id for user in users}
@@ -417,8 +441,12 @@ class UserDao:
         """Delete users and their role bindings in one transaction."""
         mysql = request.state.mysql
         unique_user_ids = list(dict.fromkeys(user_ids))
+        scope = await DataScopeService.resolve(request)
         result = await mysql.execute(
-            select(UserDo.id).where(UserDo.id.in_(unique_user_ids))
+            select(UserDo.id).where(
+                UserDo.id.in_(unique_user_ids),
+                scope.user_id_clause(UserDo.id),
+            )
         )
         existing_user_ids = set(result.scalars().all())
         missing_user_ids = [
@@ -442,7 +470,7 @@ class UserDao:
     ) -> Union[str, None]:
         """Delete a user and all role bindings."""
         mysql = request.state.mysql
-        user = await mysql.get(UserDo, user_id)
+        user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
             return "用户不存在"
 
