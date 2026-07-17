@@ -503,7 +503,12 @@ If you are not using the default database from `docker-compose.yml`, create it m
 CREATE DATABASE fastapi_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-During startup, the service initializes tables through SQLModel and executes the seed script at `assets/sql/fastapi-admin.sql`.
+Database schema changes are managed by Alembic before the service starts. Run `poetry run alembic upgrade head` for a new database, then execute `assets/sql/fastapi-admin.sql` once to load seed data. Existing installations should apply `assets/sql/schema-upgrade.sql` manually, verify the schema, and run `poetry run alembic stamp 0001_initial_schema` before future migrations.
+
+```bash
+poetry run alembic upgrade head
+mysql --host 127.0.0.1 --port 3306 --user YOUR_MYSQL_USER --password=YOUR_MYSQL_PASSWORD --database fastapi_admin < assets/sql/fastapi-admin.sql
+```
 
 ### 4. Start the service
 
@@ -523,7 +528,10 @@ After startup, open:
 ### Build and start all services
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build fastapi-mysql fastapi-redis
+docker compose run --rm fastapi-app alembic upgrade head
+docker compose exec -T fastapi-mysql mysql -uroot -pfastapi fastapi_admin < assets/sql/fastapi-admin.sql
+docker compose up -d --build fastapi-app
 ```
 
 ### View logs
@@ -558,6 +566,7 @@ Before production deployment, change the default MySQL password, Redis password,
 | Role         | `/role`      | Role creation, list, detail, update, delete                         |
 | Menu         | `/menu`      | Menu creation, tree/list query, detail, update, delete               |
 | Captcha      | `/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
+| Health       | `/health`    | Liveness and MySQL/Redis readiness probes                         |
 | Static Files | `/static`    | Static file access                                                  |
 
 Use Swagger docs as the source of truth for full request and response schemas.
@@ -632,7 +641,7 @@ chore: update dependencies
 
 ## Seed Data
 
-`assets/sql/fastapi-admin.sql` is executed during the application lifespan startup hook to seed initial users, roles, menus, permission catalog records, and role-menu relations. It uses `INSERT IGNORE`, so repeated startups do not duplicate existing primary-key records.
+`assets/sql/fastapi-admin.sql` is a deployment-time seed script for initial users, roles, menus, permission catalog records, and role-menu relations. It is no longer executed from the application lifespan, which keeps startup read-only with respect to schema and seed data. The script uses `INSERT IGNORE`, so it can be rerun without duplicating existing primary-key records.
 
 ## FAQ
 

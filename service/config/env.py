@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from dataclasses import field
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any
 from pydantic import BaseModel, Field
@@ -71,7 +72,9 @@ class Settings(BaseSettings):
     CREDENTIALS: bool = False
 
     # 读取环境变量
-    model_config = SettingsConfigDict(env_file="../.env")
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[1] / ".env"
+    )
 
 
 @lru_cache

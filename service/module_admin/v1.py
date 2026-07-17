@@ -1,8 +1,10 @@
 """ This module contains the API endpoints for the admin module. """
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from config.env import settings
+from config.mysql_serve import bind_request_mysql_session
+from module_admin.controller.health_controller import HealthController
 from module_admin.controller.user_controller import UserController
 from module_admin.controller.code_controller import CodeController
 from module_admin.controller.role_controller import RoleController
@@ -35,12 +37,16 @@ class AdminAPI:
     @staticmethod
     def init_router(app: FastAPI) -> None:
         """初始化路由."""
-        app.include_router(UserController(app).user)
+        db_dependencies = [Depends(bind_request_mysql_session)]
+        app.include_router(HealthController.health)
+        app.include_router(UserController(app).user, dependencies=db_dependencies)
         app.include_router(CodeController(app).code)
-        app.include_router(RoleController(app).role)
-        app.include_router(MenuController(app).menu)
-        app.include_router(DepartmentController.dept)
-        app.include_router(PostController.post)
-        app.include_router(DictionaryController.dictionary)
-        app.include_router(LogController.log)
-        app.include_router(LogController.online)
+        app.include_router(RoleController(app).role, dependencies=db_dependencies)
+        app.include_router(MenuController(app).menu, dependencies=db_dependencies)
+        app.include_router(DepartmentController.dept, dependencies=db_dependencies)
+        app.include_router(PostController.post, dependencies=db_dependencies)
+        app.include_router(
+            DictionaryController.dictionary, dependencies=db_dependencies
+        )
+        app.include_router(LogController.log, dependencies=db_dependencies)
+        app.include_router(LogController.online, dependencies=db_dependencies)

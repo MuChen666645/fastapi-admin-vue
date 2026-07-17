@@ -1,15 +1,15 @@
-"""MySQL Server Configuration."""
+"""MySQL connection and request-session configuration."""
 
 from collections.abc import AsyncIterator
 from typing import Union
 
 from fastapi import Request
 from loguru import logger
-from config.env import settings
-from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.ext.asyncio.engine import AsyncEngine
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from config.env import settings
 
 
 async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
@@ -28,42 +28,41 @@ async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
 
 
 class MysqlServe:
-    """MySQL Server Configuration."""
+    """MySQL server configuration."""
 
     DB_URL = (
         f"mysql+aiomysql://{settings.MYSQL_USERNAME}:{settings.MYSQL_PASSWORD}@"
-        + f"{settings.MYSQL_HOST}:{settings.MYSQL_POST}/{settings.MYSQL_DATABASES}"
+        f"{settings.MYSQL_HOST}:{settings.MYSQL_POST}/{settings.MYSQL_DATABASES}"
     )
 
     class MysqlError(Exception):
-        """MySQL Server Error."""
+        """MySQL server error."""
 
     @staticmethod
     async def get_mysql_config() -> Union[tuple[AsyncEngine, sessionmaker]]:
-        """Get MySQL Server Configuration."""
-        logger.info("正在启动MySQL连接...")
+        """Create and validate the application engine.
+
+        Schema changes are intentionally excluded from startup. They are managed
+        by Alembic so multiple application instances cannot race on DDL.
+        """
+        logger.info("Starting MySQL connection")
+        engine: AsyncEngine | None = None
         try:
-            engine: AsyncEngine = create_async_engine(
+            engine = create_async_engine(
                 MysqlServe.DB_URL,
-                echo=True,
+                echo=settings.DEBUG,
+                pool_pre_ping=True,
                 connect_args={"init_command": "SET time_zone = '+08:00'"},
             )
-            logger.info("MySQL连接成功!")
-            await MysqlServe.get_mysql_tables(engine)
-            Session: sessionmaker = sessionmaker(
+            async with engine.connect() as connection:
+                await connection.execute(text("SELECT 1"))
+            logger.info("MySQL connection ready")
+            session_factory = sessionmaker(
                 engine, class_=AsyncSession, expire_on_commit=False
             )
-            return engine, Session
-        except MysqlServe.MysqlError as e:
-            logger.error(f"连接MySQL失败:{e}")
-
-    @staticmethod
-    async def get_mysql_tables(engine: AsyncEngine):
-        """MySQL Server Configuration."""
-        logger.info("正在获取MySQL表...")
-        try:
-            async with engine.begin() as conn:
-                await conn.run_sync(SQLModel.metadata.create_all)
-            logger.info("获取MySQL表成功!")
-        except MysqlServe.MysqlError as e:
-            logger.error(f"获取MySQL表失败:{e}")
+            return engine, session_factory
+        except Exception as exc:
+            if engine is not None:
+                await engine.dispose()
+            logger.exception("MySQL connection failed")
+            raise MysqlServe.MysqlError("MySQL connection failed") from exc

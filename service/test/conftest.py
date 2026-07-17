@@ -143,6 +143,9 @@ class FakeRedis:
             if lower <= score <= upper
         }
 
+    async def ping(self) -> bool:
+        return True
+
     async def close(self) -> None:
         self._data.clear()
         self._expires_at.clear()
