@@ -117,7 +117,7 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Apply schema migrations
-        run: poetry run alembic upgrade head
+        run: poetry run python -m scripts.migrate_database
 
       - name: Run integration tests
         run: poetry run python -m pytest -q -m integration

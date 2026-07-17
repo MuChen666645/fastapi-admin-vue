@@ -168,6 +168,13 @@ INSERT IGNORE INTO permissions (
     (204, '在线用户查询', 'monitor:online:list', 'monitor', 'button', '/online/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '在线用户查询权限'),
     (205, '强制下线', 'monitor:online:forceLogout', 'monitor', 'button', '/online/token/{token_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '强制下线权限');
 
+-- Keep existing permission metadata aligned when the endpoint path changes.
+UPDATE permissions
+SET api_path = '/user/{user_id}/reset-password',
+    api_method = 'PUT',
+    update_time = CURRENT_TIMESTAMP
+WHERE code = 'system:user:resetPwd';
+
 -- The built-in administrator role receives every built-in menu and button.
 INSERT IGNORE INTO role_menu (role_id, menu_id)
 SELECT 1, menu_id

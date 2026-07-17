@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from module_admin.dao.user_dao import UserDao
-from module_admin.entity.do.organization_do import PostDo
+from module_admin.entity.do.organization_do import DepartmentDo, PostDo
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.entity.dto.user_dto import RegisterUserRequestByUsernameDto
@@ -40,6 +40,16 @@ def test_post_scope_uses_users_assigned_to_allowed_departments() -> None:
     assert "posts.post_id" in sql
     assert "user_post.post_id" in sql
     assert "users.dept_id" in sql
+
+
+def test_department_descendant_scope_matches_complete_ids() -> None:
+    statement = select(DepartmentDo).where(
+        DataScopeService._department_descendant_clause(DepartmentDo.ancestors, 1)
+    )
+    compiled = statement.compile()
+
+    assert "concat" in str(compiled).lower()
+    assert any(",1," in str(value) for value in compiled.params.values())
 
 
 def test_resolve_uses_custom_role_ids_only() -> None:

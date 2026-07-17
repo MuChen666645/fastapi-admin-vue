@@ -338,6 +338,7 @@ class UserService:
         )
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        await Auth.revoke_user_tokens(request, user_id)
         return None
 
     @staticmethod

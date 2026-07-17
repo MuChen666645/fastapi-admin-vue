@@ -8,6 +8,8 @@ services:
         condition: service_healthy
       fastapi-redis:
         condition: service_healthy
+      fastapi-migrate:
+        condition: service_completed_successfully
     ports:
       - "3000:3000"
     networks:
@@ -22,6 +24,19 @@ services:
           path: ./pyproject.toml
         - action: rebuild
           path: ./poetry.lock
+  fastapi-migrate:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    depends_on:
+      fastapi-mysql:
+        condition: service_healthy
+    env_file:
+      - ${APP_ENV_FILE:-.env.development}
+    networks:
+      - common-network
+    command: ["python", "-m", "scripts.migrate_database"]
+    restart: "no"
   fastapi-mysql:
     image: mysql
     volumes:

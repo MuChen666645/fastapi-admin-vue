@@ -521,10 +521,10 @@ If you are not using the default database from `docker-compose.yml`, create it m
 CREATE DATABASE fastapi_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Database schema changes are managed by Alembic before the service starts. Run `poetry run alembic upgrade head` for a new database, then execute `assets/sql/fastapi-admin.sql` once to load seed data. Existing installations should apply `assets/sql/schema-upgrade.sql` manually, verify the schema, and run `poetry run alembic stamp 0001_initial_schema` before future migrations.
+Database schema changes are managed by the migration service before the application starts. Run `poetry run python -m scripts.migrate_database` for local or direct deployments, then execute `assets/sql/fastapi-admin.sql` once to load seed data. Existing installations without `alembic_version` are detected, stamped at `0001_initial_schema`, and upgraded to the current head. A persistent database volume does not rotate its MySQL password when `.env` changes; rotate the credential explicitly or use a new volume only after taking a backup.
 
 ```bash
-poetry run alembic upgrade head
+poetry run python -m scripts.migrate_database
 mysql --host 127.0.0.1 --port 3306 --user YOUR_MYSQL_USER --password=YOUR_MYSQL_PASSWORD --database fastapi_admin < assets/sql/fastapi-admin.sql
 ```
 
@@ -546,8 +546,7 @@ After startup, open:
 ### Build and start all services
 
 ```bash
-docker compose --env-file .env.development up -d --build fastapi-mysql fastapi-redis
-docker compose --env-file .env.development run --rm fastapi-app alembic upgrade head
+docker compose --env-file .env.development up -d --build
 docker compose --env-file .env.development exec -T fastapi-mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fastapi_admin' < assets/sql/fastapi-admin.sql
 docker compose --env-file .env.development up -d --build fastapi-app
 ```
@@ -621,6 +620,9 @@ Protected APIs check the in-memory cache first and then Redis. If both caches mi
 ```bash
 # Install dependencies
 poetry install
+
+# Apply schema migrations
+poetry run python -m scripts.migrate_database
 
 # Start development server
 poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload

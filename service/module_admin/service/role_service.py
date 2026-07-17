@@ -1,17 +1,14 @@
 """ Role Service. """
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
+from fastapi_pagination import Page, Params
+
 from config.env import settings
-from module_admin.entity.dto.role_dto import (
-    BatchUpdateRoleStatusDto,
-    CreateRoleDto,
-    UpdataRoleDto,
-    RoleListDto,
-)
-from module_admin.dao.role_dao import RoleDao
-from fastapi_pagination import Page
-from fastapi_pagination import Params
 from module_admin.auth.authorization import Auth
+from module_admin.dao.role_dao import RoleDao
+from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
+                                              CreateRoleDto, RoleListDto,
+                                              UpdataRoleDto)
 
 
 class RoleService:
@@ -41,11 +38,18 @@ class RoleService:
         request: Request,
         role_ids: list[int] | None = None,
         permission_change: bool = False,
+        global_mutation: bool = False,
     ) -> bool:
         """Prevent non-admins from changing effective role permissions."""
         actor_roles = await Auth.get_actor_roles(request)
         if Auth.has_admin_role(actor_roles):
             return True
+
+        if global_mutation:
+            raise HTTPException(
+                status_code=403,
+                detail=RoleService.ROLE_PERMISSION_MUTATION_MESSAGE,
+            )
 
         if permission_change:
             raise HTTPException(
@@ -143,7 +147,9 @@ class RoleService:
         if role is None:
             raise HTTPException(status_code=404, detail="角色不存在")
         RoleService._reject_admin_role(role["code"])
-        await RoleService._ensure_role_write_scope(request, [role_id])
+        await RoleService._ensure_role_write_scope(
+            request, [role_id], global_mutation=True
+        )
         result = await RoleDao.del_role_by_id(role_id, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
@@ -161,7 +167,9 @@ class RoleService:
         if role is None:
             raise HTTPException(status_code=404, detail="角色不存在")
         RoleService._reject_admin_role(role.code)
-        await RoleService._ensure_role_write_scope(request, [role.id])
+        await RoleService._ensure_role_write_scope(
+            request, [role.id], global_mutation=True
+        )
         result = await RoleDao.del_role_by_name(role_name, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
@@ -244,7 +252,9 @@ class RoleService:
             )
         if any(RoleService._is_admin_code(role.code) for role in role_models):
             raise HTTPException(status_code=403, detail="超级管理员角色禁止修改")
-        await RoleService._ensure_role_write_scope(request, unique_role_ids)
+        await RoleService._ensure_role_write_scope(
+            request, unique_role_ids, global_mutation=True
+        )
         result = await RoleDao.batch_update_role_status(
             unique_role_ids, roles.status, request
         )

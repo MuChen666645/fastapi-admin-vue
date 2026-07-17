@@ -3,6 +3,8 @@
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import text
 
+from config.env import settings
+
 
 class HealthController:
     """Liveness and dependency readiness probes."""
@@ -34,9 +36,19 @@ class HealthController:
                 raise RuntimeError("MySQL session factory is not initialized")
             async with session_factory() as session:
                 await session.execute(text("SELECT 1"))
-            checks["mysql"] = "ok"
+                checks["mysql"] = "ok"
+                version_result = await session.execute(
+                    text("SELECT version_num FROM alembic_version LIMIT 1")
+                )
+                version = version_result.scalar_one_or_none()
+                checks["schema"] = (
+                    "ok"
+                    if version == settings.DATABASE_SCHEMA_VERSION
+                    else "outdated"
+                )
         except Exception:
-            checks["mysql"] = "unavailable"
+            checks.setdefault("mysql", "unavailable")
+            checks.setdefault("schema", "unavailable")
 
         if any(status != "ok" for status in checks.values()):
             raise HTTPException(

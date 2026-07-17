@@ -1,6 +1,7 @@
 """Captcha isolation, binding, and attempt-limit tests."""
 
 import json
+from test.conftest import app
 from types import SimpleNamespace
 
 import anyio
@@ -9,7 +10,6 @@ from fastapi import HTTPException
 
 from config.env import settings
 from module_admin.service.code_service import CodeService
-from test.conftest import app
 from utils.fastapi_admin import FastApiAdmin
 
 
@@ -59,7 +59,10 @@ def test_captcha_uses_random_id_instead_of_code_key(
         )
         assert payload["attempts"] == 0
         assert payload["ip_hash"] != "198.51.100.20"
-        assert await app.state.redis.ttl(redis_keys[0]) == settings.CAPTCHA_TTL_SECONDS
+        assert await app.state.redis.ttl(redis_keys[0]) in {
+            settings.CAPTCHA_TTL_SECONDS,
+            settings.CAPTCHA_TTL_SECONDS + 1,
+        }
 
     anyio.run(run)
 

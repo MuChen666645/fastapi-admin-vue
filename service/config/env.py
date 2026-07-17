@@ -98,6 +98,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(min_length=32)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=3600, gt=0)
     ADMIN_ROLE_CODE: str = Field(default="admin", min_length=1)
+    DATABASE_SCHEMA_VERSION: str = "0002_role_data_scope"
 
     # Rate limit and verification
     RATE_LIMIT_DEFAULT: str = "300/minute"

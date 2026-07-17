@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from fastapi import HTTPException, Request
-from sqlalchemy import false, or_, select, true
+from sqlalchemy import false, func, or_, select, true
 
 from config.env import settings
 from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
@@ -59,6 +59,12 @@ class DataScopeService:
     CURRENT_DEPARTMENT = "3"
     DEPARTMENT_AND_CHILDREN = "4"
     SELF = "5"
+
+    @staticmethod
+    def _department_descendant_clause(column, department_id: int):
+        """Match a department ID as a complete ancestry segment."""
+        ancestry = func.concat(",", column, ",")
+        return ancestry.contains(f",{department_id},")
 
     @staticmethod
     async def resolve(request: Request) -> DataScope:
@@ -126,7 +132,9 @@ class DataScopeService:
                 select(DepartmentDo.dept_id).where(
                     or_(
                         DepartmentDo.dept_id == current_dept_id,
-                        DepartmentDo.ancestors.contains(f",{current_dept_id}"),
+                        DataScopeService._department_descendant_clause(
+                            DepartmentDo.ancestors, current_dept_id
+                        ),
                     )
                 )
             )

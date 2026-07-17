@@ -632,3 +632,34 @@ def test_existing_admin_role_cannot_be_deleted_or_disabled(
         assert status_exception.value.status_code == 403
 
     anyio.run(run)
+
+
+def test_non_admin_cannot_change_global_role_lifecycle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        async def get_role(*args, **kwargs):
+            return {"id": 2, "code": "operator", "menu_ids": []}
+
+        async def get_roles(*args, **kwargs):
+            return [make_role(2, "operator")]
+
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(3, "auditor")]
+
+        monkeypatch.setattr(RoleDao, "get_role_by_id", get_role)
+        monkeypatch.setattr(RoleDao, "get_roles_by_ids", get_roles)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+
+        with pytest.raises(HTTPException) as delete_exception:
+            await RoleService.del_role_by_id_services(2, make_request(user_id=10))
+        with pytest.raises(HTTPException) as status_exception:
+            await RoleService.batch_update_role_status_services(
+                BatchUpdateRoleStatusDto(role_ids=[2], status="0"),
+                make_request(user_id=10),
+            )
+
+        assert delete_exception.value.status_code == 403
+        assert status_exception.value.status_code == 403
+
+    anyio.run(run)

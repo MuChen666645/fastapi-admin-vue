@@ -1,12 +1,24 @@
+from test.conftest import FakeRedis, create_async_client
+
 import anyio
 import pytest
 import redis.asyncio as aioredis
 
 from config.redis_serve import RedisServe
-from test.conftest import FakeRedis, create_async_client
+
+
+class ReadyResult:
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one_or_none(self):
+        return self.value
 
 
 class ReadySession:
+    def __init__(self, schema_version: str = "0002_role_data_scope"):
+        self.schema_version = schema_version
+
     async def __aenter__(self):
         return self
 
@@ -14,12 +26,17 @@ class ReadySession:
         return None
 
     async def execute(self, statement):
-        return statement
+        if "alembic_version" in str(statement):
+            return ReadyResult(self.schema_version)
+        return ReadyResult(1)
 
 
 class ReadySessionFactory:
+    def __init__(self, schema_version: str = "0002_role_data_scope"):
+        self.schema_version = schema_version
+
     def __call__(self):
-        return ReadySession()
+        return ReadySession(self.schema_version)
 
 
 def test_liveness_does_not_require_database() -> None:
@@ -49,7 +66,7 @@ def test_readiness_checks_redis_and_mysql() -> None:
         assert response.status_code == 200
         assert response.json()["data"] == {
             "status": "ok",
-            "checks": {"redis": "ok", "mysql": "ok"},
+            "checks": {"redis": "ok", "mysql": "ok", "schema": "ok"},
         }
 
     anyio.run(run)
@@ -65,6 +82,22 @@ def test_readiness_returns_503_when_mysql_is_unavailable() -> None:
         assert body["code"] == 503
         assert body["data"] is None
         assert body["message"]["checks"]["mysql"] == "unavailable"
+
+    anyio.run(run)
+
+
+def test_readiness_returns_503_when_schema_is_outdated() -> None:
+    async def run() -> None:
+        from main import app
+
+        app.state.redis = FakeRedis()
+        app.state.mysql_session_factory = ReadySessionFactory("0001_initial_schema")
+        async with create_async_client() as client:
+            response = await client.get("/health/ready")
+
+        assert response.status_code == 503
+        body = response.json()
+        assert body["message"]["checks"]["schema"] == "outdated"
 
     anyio.run(run)
 
