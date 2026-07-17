@@ -92,6 +92,26 @@ class Auth:
         return await Auth.router_auth(request, Authorization)
 
     @staticmethod
+    def has_admin_role(roles: list) -> bool:
+        """Return whether the supplied roles include the reserved admin role."""
+        admin_role_code = settings.ADMIN_ROLE_CODE.strip().casefold()
+        return any(
+            str(role.code).strip().casefold() == admin_role_code
+            for role in roles
+        )
+
+    @staticmethod
+    async def get_actor_roles(request: Request) -> list:
+        """Load the enabled roles for the authenticated request actor."""
+        actor_user_id = getattr(request.state, "user_id", None)
+        if actor_user_id is None:
+            raise HTTPException(status_code=401, detail="Not Log In")
+
+        from module_admin.dao.user_dao import UserDao
+
+        return await UserDao.get_user_roles(actor_user_id, request)
+
+    @staticmethod
     async def revoke_login_token(
         request: Request, Authorization: str | None
     ) -> None:

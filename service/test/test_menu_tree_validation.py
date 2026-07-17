@@ -179,8 +179,12 @@ def test_menu_service_maps_update_errors(
     async def update_menu(*args, **kwargs):
         return dao_result
 
+    async def get_menu(*args, **kwargs):
+        return None
+
     async def run() -> None:
         monkeypatch.setattr(MenuDao, "upd_menu_by_id", update_menu)
+        monkeypatch.setattr(MenuDao, "get_menu_by_id", get_menu)
         with pytest.raises(HTTPException) as exception:
             await MenuService.upd_menu_by_id_services(
                 1,

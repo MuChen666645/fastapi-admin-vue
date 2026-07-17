@@ -13,10 +13,31 @@ from module_admin.entity.dto.menu_dto import (
 from utils.fastapi_admin import FastApiAdmin
 from typing import List
 from module_admin.entity.dto.menu_dto import MenuListDto
+from module_admin.auth.authorization import Auth
 
 
 class MenuService:
     """menu service."""
+
+    BUTTON_PERMISSION_MUTATION_MESSAGE = (
+        "Only super administrators can modify button permissions"
+    )
+
+    @staticmethod
+    async def _ensure_button_permission_scope(
+        request: Request,
+        current_menu_type: str | None = None,
+        requested_menu_type: str | None = None,
+    ) -> None:
+        """Keep button permission definitions under administrator control."""
+        actor_roles = await Auth.get_actor_roles(request)
+        if Auth.has_admin_role(actor_roles):
+            return
+        if current_menu_type == "F" or requested_menu_type == "F":
+            raise HTTPException(
+                status_code=403,
+                detail=MenuService.BUTTON_PERMISSION_MUTATION_MESSAGE,
+            )
 
     @staticmethod
     def _raise_create_error(result: str | None) -> None:
@@ -28,6 +49,10 @@ class MenuService:
         menus: CreateMenuByButtonDto, request: Request
     ) -> None:
         """create menu by button."""
+        await MenuService._ensure_button_permission_scope(
+            request,
+            requested_menu_type=menus.menu_type,
+        )
         MenuService._raise_create_error(
             await MenuDao.create_menu_by_btn(menus, request)
         )
@@ -80,6 +105,13 @@ class MenuService:
         menu_id: int, menu: UpdMenuDto, request: Request
     ) -> None:
         """Update menu by id."""
+        current_menu = await MenuDao.get_menu_by_id(menu_id, request)
+        if current_menu is not None:
+            await MenuService._ensure_button_permission_scope(
+                request,
+                current_menu_type=current_menu.menu_type,
+                requested_menu_type=menu.menu_type,
+            )
         result = await MenuDao.upd_menu_by_id(menu_id, menu, request)
         if result is not None:
             status_code = 404 if result == "菜单不存在" else 400
@@ -89,6 +121,12 @@ class MenuService:
     @staticmethod
     async def del_menu_by_id_services(menu_id: int, request: Request) -> None:
         """Delete menu by id."""
+        current_menu = await MenuDao.get_menu_by_id(menu_id, request)
+        if current_menu is not None:
+            await MenuService._ensure_button_permission_scope(
+                request,
+                current_menu_type=current_menu.menu_type,
+            )
         result = await MenuDao.del_menu_by_id(menu_id, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)

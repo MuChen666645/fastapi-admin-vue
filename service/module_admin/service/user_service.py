@@ -5,7 +5,6 @@ from typing import Union
 
 from fastapi import Request, HTTPException
 from fastapi_pagination import Params
-from config.env import settings
 from module_admin.entity.dto.user_dto import (
     RegisterUserRequestByUsernameDto,
     LoginUserRequestByUsernameDto,
@@ -31,18 +30,11 @@ class UserService:
 
     @staticmethod
     def _has_admin_role(roles: list) -> bool:
-        admin_role_code = settings.ADMIN_ROLE_CODE.strip().casefold()
-        return any(
-            str(role.code).strip().casefold() == admin_role_code
-            for role in roles
-        )
+        return Auth.has_admin_role(roles)
 
     @staticmethod
     async def _get_actor_roles(request: Request) -> list:
-        actor_user_id = getattr(request.state, "user_id", None)
-        if actor_user_id is None:
-            raise HTTPException(status_code=401, detail="Not Log In")
-        return await UserDao.get_user_roles(actor_user_id, request)
+        return await Auth.get_actor_roles(request)
 
     @staticmethod
     async def _ensure_can_manage_users(

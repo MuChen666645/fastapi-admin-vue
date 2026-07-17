@@ -6,12 +6,14 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from module_admin.dao.role_dao import RoleDao
+from module_admin.dao.menu_dao import MenuDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.dto.role_dto import (
     BatchUpdateRoleStatusDto,
     CreateRoleDto,
     UpdataRoleDto,
 )
+from module_admin.entity.dto.menu_dto import CreateMenuByButtonDto, UpdMenuDto
 from module_admin.entity.dto.user_dto import (
     BatchUpdateUserStatusDto,
     BatchUserIdsDto,
@@ -22,6 +24,7 @@ from module_admin.entity.dto.user_dto import (
 )
 from module_admin.service.code_service import CodeService
 from module_admin.service.role_service import RoleService
+from module_admin.service.menu_service import MenuService
 from module_admin.service.user_service import UserService
 from test.conftest import app
 from utils.fastapi_admin import FastApiAdmin
@@ -380,6 +383,119 @@ def test_admin_can_assign_any_enabled_role(
         )
 
         assert assigned_role_ids == [3]
+
+    anyio.run(run)
+
+
+def test_non_admin_cannot_change_role_permissions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        update_called = False
+
+        async def get_role(*args, **kwargs):
+            return {"id": 2, "code": "operator", "menu_ids": [10]}
+
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(2, "operator")]
+
+        async def update_role(*args, **kwargs):
+            nonlocal update_called
+            update_called = True
+
+        monkeypatch.setattr(RoleDao, "get_role_by_id", get_role)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(RoleDao, "upd_role_by_id", update_role)
+
+        with pytest.raises(HTTPException) as exception:
+            await RoleService.upd_role_by_id_services(
+                UpdataRoleDto(menu_ids=[11]),
+                make_request(user_id=10),
+                role_id=2,
+            )
+
+        assert exception.value.status_code == 403
+        assert exception.value.detail == RoleService.ROLE_PERMISSION_MUTATION_MESSAGE
+        assert update_called is False
+
+    anyio.run(run)
+
+
+def test_admin_can_change_role_permissions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        update_called = False
+
+        async def get_role(*args, **kwargs):
+            return {"id": 2, "code": "operator", "menu_ids": [10]}
+
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(1, "admin")]
+
+        async def update_role(*args, **kwargs):
+            nonlocal update_called
+            update_called = True
+
+        monkeypatch.setattr(RoleDao, "get_role_by_id", get_role)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(RoleDao, "upd_role_by_id", update_role)
+
+        await RoleService.upd_role_by_id_services(
+            UpdataRoleDto(menu_ids=[11]),
+            make_request(user_id=1),
+            role_id=2,
+        )
+
+        assert update_called is True
+
+    anyio.run(run)
+
+
+def test_non_admin_cannot_mutate_button_permission_menu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(2, "operator")]
+
+        async def get_menu(*args, **kwargs):
+            return SimpleNamespace(menu_type="F")
+
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(MenuDao, "get_menu_by_id", get_menu)
+
+        request = make_request(user_id=10)
+        with pytest.raises(HTTPException) as update_exception:
+            await MenuService.upd_menu_by_id_services(
+                10,
+                UpdMenuDto(perms="system:user:remove"),
+                request,
+            )
+
+        with pytest.raises(HTTPException) as create_exception:
+            await MenuService.create_menu_by_btn(
+                CreateMenuByButtonDto(
+                    menu_name="new-button",
+                    parent_id=1,
+                    perms="system:user:remove",
+                    menu_type="F",
+                    sort=1,
+                    remark="test",
+                ),
+                request,
+            )
+
+        with pytest.raises(HTTPException) as delete_exception:
+            await MenuService.del_menu_by_id_services(10, request)
+
+        assert update_exception.value.status_code == 403
+        assert create_exception.value.status_code == 403
+        assert delete_exception.value.status_code == 403
+        assert (
+            update_exception.value.detail
+            == MenuService.BUTTON_PERMISSION_MUTATION_MESSAGE
+        )
 
     anyio.run(run)
 
