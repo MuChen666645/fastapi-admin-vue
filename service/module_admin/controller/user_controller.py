@@ -1,29 +1,29 @@
 """ User Controller Model. """
 
 from datetime import datetime
-
-from fastapi import APIRouter, Depends, FastAPI, Form, Header, Path, Query, Request
-from fastapi_pagination import Page, Params
-from module_admin.entity.dto.user_dto import (
-    RegisterUserRequestByUsernameDto,
-    LoginUserRequestByUsernameDto,
-    TokenDto,
-    LoginUserRequestByPhoneDto,
-    UpdateUserRequestDto,
-    UpdateUserPasswordRequestDto,
-    UserInfoDto,
-    UserInfoUserDto,
-    UserRouteDto,
-    BatchUpdateUserStatusDto,
-    BatchUserIdsDto,
-    BindUserRolesDto,
-)
-from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.service.user_service import UserService
 from typing import Annotated
-from module_admin.auth.authorization import Auth
+
+from fastapi import (APIRouter, Depends, FastAPI, Form, Header, Path, Query,
+                     Request)
+from fastapi_pagination import Page, Params
+
 from config.env import settings
 from config.rate_limit import limiter
+from module_admin.auth.authorization import Auth
+from module_admin.entity.dto.response_dto import ApiResponseDto
+from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
+                                              BatchUserIdsDto,
+                                              BindUserRolesDto,
+                                              LoginUserRequestByPhoneDto,
+                                              LoginUserRequestByUsernameDto,
+                                              RegisterUserRequestByUsernameDto,
+                                              ResetUserPasswordRequestDto,
+                                              TokenDto,
+                                              UpdateUserPasswordRequestDto,
+                                              UpdateUserRequestDto,
+                                              UserInfoDto, UserInfoUserDto,
+                                              UserRouteDto)
+from module_admin.service.user_service import UserService
 
 
 class UserController:
@@ -237,3 +237,18 @@ class UserController:
         return await UserService.update_user_password_by_id_services(
             user_id, users, request
         )
+
+    @staticmethod
+    @user.put(
+        "/{user_id}/reset-password",
+        summary="管理员重置用户密码",
+        dependencies=[Depends(Auth.has_permission("system:user:resetPwd"))],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def reset_user_password(
+        users: ResetUserPasswordRequestDto,
+        request: Request,
+        user_id: int = Path(description="用户ID"),
+    ):
+        """Reset a target user's password as an authorized administrator."""
+        return await UserService.reset_user_password_services(user_id, users, request)

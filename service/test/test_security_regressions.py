@@ -16,6 +16,7 @@ from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               BatchUserIdsDto,
                                               BindUserRolesDto,
                                               LoginUserRequestByPhoneDto,
+                                              ResetUserPasswordRequestDto,
                                               UpdateUserPasswordRequestDto,
                                               UpdateUserRequestDto)
 from module_admin.service.code_service import CodeService
@@ -222,6 +223,7 @@ def test_non_admin_cannot_modify_admin_user(
     [
         "update",
         "password",
+        "reset",
         "batch_status",
         "batch_delete",
         "delete",
@@ -272,6 +274,12 @@ def test_non_admin_cannot_mutate_admin_user_through_any_user_write_service(
                         old_password="old-password",
                         new_password="new-password",
                     ),
+                    request,
+                )
+            elif operation == "reset":
+                await UserService.reset_user_password_services(
+                    20,
+                    ResetUserPasswordRequestDto(password="new-password"),
                     request,
                 )
             elif operation == "batch_status":

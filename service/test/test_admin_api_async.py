@@ -1,16 +1,15 @@
+from test.conftest import create_async_client
+
 import anyio
 import pytest
 
 from module_admin.service.code_service import CodeService
+from module_admin.service.dictionary_service import DictionaryService
 from module_admin.service.menu_service import MenuService
+from module_admin.service.organization_service import (DepartmentService,
+                                                       PostService)
 from module_admin.service.role_service import RoleService
 from module_admin.service.user_service import UserService
-from module_admin.service.organization_service import (
-    DepartmentService,
-    PostService,
-)
-from module_admin.service.dictionary_service import DictionaryService
-from test.conftest import create_async_client
 
 
 def run_async(async_fn):
@@ -147,6 +146,7 @@ def mock_services(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(UserService, "get_user_by_id_services", user_info_service)
     monkeypatch.setattr(UserService, "update_user_by_id_services", none_service)
     monkeypatch.setattr(UserService, "update_user_password_by_id_services", none_service)
+    monkeypatch.setattr(UserService, "reset_user_password_services", none_service)
     monkeypatch.setattr(UserService, "bind_user_roles_services", none_service)
     monkeypatch.setattr(UserService, "batch_update_user_status_services", none_service)
     monkeypatch.setattr(UserService, "batch_delete_users_services", none_service)
@@ -315,6 +315,12 @@ def test_user_api_async() -> None:
                 await client.put(
                     "/user/1/password",
                     json={"old_password": "old-password", "new_password": "new-password"},
+                )
+            )
+            ok_response(
+                await client.put(
+                    "/user/1/reset-password",
+                    json={"password": "reset-password"},
                 )
             )
             ok_response(

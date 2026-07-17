@@ -211,7 +211,7 @@ docker compose down
 
 | 模块     | 路由前缀   | 说明                                                     |
 | -------- | ---------- | -------------------------------------------------------- |
-| 用户     | `/user`    | 用户创建、用户名登录、手机号密码登录、当前/指定用户信息查询 |
+| 用户     | `/user`    | 用户创建、登录、自助修改密码、管理员重置密码、用户信息查询 |
 | 角色     | `/role`    | 角色创建、列表查询、详情、更新、删除                     |
 | 菜单     | `/menu`    | 菜单创建、菜单树/列表查询、详情、更新、删除              |
 | 验证码   | `/captcha` | 图片验证码与校验；明文数字验证码接口返回 `410`           |
@@ -240,6 +240,7 @@ Token 使用 `HS256` 算法签名，过期时间由 `ACCESS_TOKEN_EXPIRE_MINUTES
 - 新增或修改按钮菜单时会同步写入/更新权限目录；删除按钮菜单时，如果权限标识未被其他按钮菜单使用，会同步清理对应权限。
 - 角色通过 `role_menu` 关联菜单和按钮权限，接口鉴权时按用户角色、菜单按钮和权限目录共同判断。
 - 超级管理员权限 `*:*:*` 存放在 `permissions` 表中，不作为菜单数据返回；拥有超级权限时，用户信息接口只返回 `*:*:*` 权限标识。
+- `PUT /user/{user_id}/password` 用于输入旧密码的自助修改；`PUT /user/{user_id}/reset-password` 使用 `system:user:resetPwd` 权限执行管理员重置，成功后会使目标用户已有会话失效。
 - 接口运行时统一返回 `{ "code": 200, "message": "success", "data": ... }`。Swagger 中每个接口使用 `ApiResponseDto[T]` 描述实际响应体，避免响应体展示为 `Any`。
 
 ## 常用命令
@@ -253,6 +254,9 @@ poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 # 运行测试
 poetry run pytest
+
+# 运行 MySQL/Redis 集成测试
+RUN_INTEGRATION_TESTS=1 poetry run pytest -m integration
 
 # 代码格式化
 poetry run black .
@@ -576,7 +580,7 @@ Before staging or production deployment, copy the matching `.env.*.example`, rep
 
 | Module       | Route Prefix | Description                                                         |
 | ------------ | ------------ | ------------------------------------------------------------------- |
-| User         | `/user`      | User creation, username login, phone/password login, current/target user info |
+| User         | `/user`      | User creation, login, self-service password change, administrator password reset, user info |
 | Role         | `/role`      | Role creation, list, detail, update, delete                         |
 | Menu         | `/menu`      | Menu creation, tree/list query, detail, update, delete               |
 | Captcha      | `/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
@@ -606,6 +610,7 @@ Protected APIs check the in-memory cache first and then Redis. If both caches mi
 - Creating or updating a button menu syncs the permission catalog. Deleting a button menu removes the permission only when the same code is not used by other button menus.
 - Roles connect to menus and button permissions through `role_menu`; authorization checks the user's roles, menu buttons, and permission catalog together.
 - The super-admin wildcard `*:*:*` is stored in `permissions`, not returned as a menu. Users with the wildcard permission only need `*:*:*` in the returned permission list.
+- `PUT /user/{user_id}/password` is the self-service change-password endpoint and requires the old password. `PUT /user/{user_id}/reset-password` is the administrator reset endpoint, uses `system:user:resetPwd`, and revokes the target user's active sessions after success.
 - Data scope is role-based and uses the union of all enabled roles assigned to the actor. Scope values are `1` all data, `2` selected departments, `3` current department, `4` current department and descendants, and `5` self only.
 - `role_dept` stores selected departments for scope `2`. The service applies scope predicates to user, department, post, log, and online-session queries, and checks the same scope before detail, mutation, deletion, and forced logout operations.
 - Role and menu configuration remains global system configuration. Changing a role's menus or data scope is restricted to super administrators; non-admin writes cannot use data scope as an escalation path.
@@ -622,6 +627,9 @@ poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 # Run tests
 poetry run pytest
+
+# Run MySQL/Redis integration tests
+RUN_INTEGRATION_TESTS=1 poetry run pytest -m integration
 
 # Format code
 poetry run black .

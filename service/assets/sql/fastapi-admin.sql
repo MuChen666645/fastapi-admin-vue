@@ -128,7 +128,7 @@ INSERT IGNORE INTO permissions (
     (1, '用户新增', 'system:user:add', 'system', 'button', '/user/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户新增权限'),
     (2, '用户查询', 'system:user:query', 'system', 'button', '/user/{user_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户查询权限'),
     (3, '用户编辑', 'system:user:edit', 'system', 'button', '/user/{user_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户编辑权限'),
-    (4, '用户重置密码', 'system:user:resetPwd', 'system', 'button', '/user/{user_id}/password', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户重置密码权限'),
+    (4, '用户重置密码', 'system:user:resetPwd', 'system', 'button', '/user/{user_id}/reset-password', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户重置密码权限'),
     (5, '角色列表', 'system:role:list', 'system', 'button', '/role/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '角色列表权限'),
     (6, '角色新增', 'system:role:add', 'system', 'button', '/role/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '角色新增权限'),
     (7, '角色查询', 'system:role:query', 'system', 'button', '/role/{role_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '角色查询权限'),

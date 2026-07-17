@@ -10,27 +10,26 @@ from typing import Set
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-os.environ.update(
-    {
-        "APP_ENV": "development",
-        "DEBUG": "true",
-        "MYSQL_HOST": "127.0.0.1",
-        "MYSQL_POST": "3306",
-        "MYSQL_USERNAME": "test",
-        "MYSQL_PASSWORD": "test",
-        "MYSQL_DATABASES": "test",
-        "TIMEZONE": "Asia/Shanghai",
-        "REDIS_HOST": "127.0.0.1",
-        "REDIS_POST": "6379",
-        "REDIS_PASSWORD": "",
-        "REDIS_USERNAME": "",
-        "REDIS_DB": "0",
-        "SECRET_KEY": "test-only-secret-key-that-is-long-enough",
-        "HOSTS": '["testserver", "localhost", "127.0.0.1"]',
-        "ACCESS_KEY_ID": "test",
-        "ACCESSKEY_SECRET": "test",
-    }
-)
+for key, value in {
+    "APP_ENV": "development",
+    "DEBUG": "true",
+    "MYSQL_HOST": "127.0.0.1",
+    "MYSQL_POST": "3306",
+    "MYSQL_USERNAME": "test",
+    "MYSQL_PASSWORD": "test",
+    "MYSQL_DATABASES": "test",
+    "TIMEZONE": "Asia/Shanghai",
+    "REDIS_HOST": "127.0.0.1",
+    "REDIS_POST": "6379",
+    "REDIS_PASSWORD": "",
+    "REDIS_USERNAME": "",
+    "REDIS_DB": "0",
+    "SECRET_KEY": "test-only-secret-key-that-is-long-enough",
+    "HOSTS": '["testserver", "localhost", "127.0.0.1"]',
+    "ACCESS_KEY_ID": "test",
+    "ACCESSKEY_SECRET": "test",
+}.items():
+    os.environ.setdefault(key, value)
 
 from config.mysql_serve import bind_request_mysql_session
 from main import app, limiter

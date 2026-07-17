@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests and static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry==1.8.5
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: poetry-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Compile Python sources
+        run: poetry run python -m compileall -q module_admin config alembic test
+
+      - name: Validate migrations
+        env:
+          APP_ENV: development
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_USERNAME: ci
+          MYSQL_PASSWORD: ci-password
+          MYSQL_DATABASES: ci
+          REDIS_HOST: 127.0.0.1
+          SECRET_KEY: ci-only-secret-key-that-is-long-enough
+          ACCESS_KEY_ID: ci
+          ACCESSKEY_SECRET: ci
+        run: poetry run alembic upgrade head --sql > migration.sql
+
+      - name: Run unit tests
+        run: poetry run python -m pytest -q -m "not integration"
+
+  integration:
+    name: MySQL and Redis integration tests
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: integration-root-password
+          MYSQL_DATABASE: fastapi_admin
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pintegration-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+          --health-start-period=20s
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    env:
+      APP_ENV: development
+      DEBUG: "false"
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_POST: 3306
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: integration-root-password
+      MYSQL_DATABASES: fastapi_admin
+      REDIS_HOST: 127.0.0.1
+      REDIS_POST: 6379
+      REDIS_USERNAME: ""
+      REDIS_PASSWORD: ""
+      SECRET_KEY: integration-only-secret-key-that-is-long-enough
+      ACCESS_KEY_ID: integration
+      ACCESSKEY_SECRET: integration
+      HOSTS: '["127.0.0.1", "localhost"]'
+      RUN_INTEGRATION_TESTS: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry==1.8.5
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Apply schema migrations
+        run: poetry run alembic upgrade head
+
+      - name: Run integration tests
+        run: poetry run python -m pytest -q -m integration

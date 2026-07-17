@@ -1,9 +1,9 @@
 """ User Dto."""
 
-from datetime import datetime
 import re
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class BaseLoginRequestDto(BaseModel):
@@ -111,6 +111,20 @@ class UpdateUserPasswordRequestDto(BaseModel):
     new_password: str = Field(description="新密码")
 
     @field_validator("old_password", "new_password")
+    def validator_password(cls, val):
+        if not val or not val.strip():
+            raise ValueError
+        return val
+
+
+class ResetUserPasswordRequestDto(BaseModel):
+    """Administrator reset-password request DTO."""
+
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+
+    password: str = Field(description="新密码")
+
+    @field_validator("password")
     def validator_password(cls, val):
         if not val or not val.strip():
             raise ValueError

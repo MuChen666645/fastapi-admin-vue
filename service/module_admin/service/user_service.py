@@ -3,26 +3,26 @@
 from datetime import datetime
 from typing import Union
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from fastapi_pagination import Params
-from module_admin.entity.dto.user_dto import (
-    RegisterUserRequestByUsernameDto,
-    LoginUserRequestByUsernameDto,
-    TokenDto,
-    LoginUserRequestByPhoneDto,
-    UpdateUserRequestDto,
-    UpdateUserPasswordRequestDto,
-    BatchUpdateUserStatusDto,
-    BatchUserIdsDto,
-    BindUserRolesDto,
-)
-from module_admin.dao.user_dao import UserDao
-from utils.fastapi_admin import FastApiAdmin
+
 from module_admin.auth.authorization import Auth
+from module_admin.dao.log_dao import LogDao
+from module_admin.dao.user_dao import UserDao
+from module_admin.entity.do.log_do import LoginLogDo
+from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
+                                              BatchUserIdsDto,
+                                              BindUserRolesDto,
+                                              LoginUserRequestByPhoneDto,
+                                              LoginUserRequestByUsernameDto,
+                                              RegisterUserRequestByUsernameDto,
+                                              ResetUserPasswordRequestDto,
+                                              TokenDto,
+                                              UpdateUserPasswordRequestDto,
+                                              UpdateUserRequestDto)
 from module_admin.service.code_service import CodeService
 from module_admin.service.login_security_service import LoginSecurityService
-from module_admin.dao.log_dao import LogDao
-from module_admin.entity.do.log_do import LoginLogDo
+from utils.fastapi_admin import FastApiAdmin
 
 
 class UserService:
@@ -338,6 +338,26 @@ class UserService:
         )
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        return None
+
+    @staticmethod
+    async def reset_user_password_services(
+        user_id: int, users: ResetUserPasswordRequestDto, request: Request
+    ) -> None:
+        """Reset a visible user's password without requiring the old password."""
+        await UserService._ensure_can_manage_users([user_id], request)
+        user = await UserDao.get_user_by_id(user_id, request)
+        if user is None:
+            raise HTTPException(status_code=404, detail="用户不存在")
+
+        password = FastApiAdmin.password_hash(users.password)
+        result = await UserDao.update_user_password_by_id(user_id, password, request)
+        if result is not None:
+            raise HTTPException(status_code=404, detail=result)
+
+        # A reset invalidates existing sessions so the old credential cannot
+        # remain usable through an already-issued token.
+        await Auth.revoke_user_tokens(request, user_id)
         return None
 
     @staticmethod
