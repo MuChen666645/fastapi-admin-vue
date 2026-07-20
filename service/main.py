@@ -27,6 +27,7 @@ from middleware.observability_middleware import (
 )
 from middleware.response_intercept import ResponseInterceptor
 from module_admin.v1 import AdminAPI
+from module_admin.service.job_scheduler import JobScheduler, TaskHandler
 from utils.fastapi_admin import FastApiAdmin
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application")
     app_settings: Settings = getattr(app.state, "settings", settings)
     engine = None
+    scheduler = None
     redis_factory = getattr(app.state, "redis_factory", None)
     mysql_factory = getattr(app.state, "mysql_factory", None)
     startup_hook = getattr(app.state, "startup_hook", None)
@@ -60,10 +62,22 @@ async def lifespan(app: FastAPI):
             engine, session_factory = await mysql_factory(app_settings)
         app.state.mysql_engine = engine
         app.state.mysql_session_factory = session_factory
+        if app_settings.SCHEDULER_ENABLED:
+            scheduler = JobScheduler(
+                lambda: app.state.mysql_session_factory,
+                timezone=app_settings.SCHEDULER_TIMEZONE,
+            )
+            for task_name, handler in getattr(app.state, "job_tasks", {}).items():
+                scheduler.register_task(task_name, handler)
+            app.state.scheduler = scheduler
+            await scheduler.start()
         (startup_hook or FastApiAdmin.start_serve)()
         logger.info("Application startup complete")
         yield
     finally:
+        if scheduler is not None:
+            await scheduler.stop()
+            app.state.scheduler = None
         app.state.mysql_session_factory = None
         try:
             if engine is not None:
@@ -82,6 +96,7 @@ def create_app(
     mysql_factory: Callable[[Settings], Awaitable[Any]] | None = None,
     startup_hook: Callable[[], None] | None = None,
     app_limiter: Limiter | None = None,
+    job_tasks: dict[str, TaskHandler] | None = None,
 ) -> FastAPI:
     """Create an isolated FastAPI application instance.
 
@@ -103,6 +118,8 @@ def create_app(
     application.state.redis = None
     application.state.mysql_engine = None
     application.state.mysql_session_factory = None
+    application.state.scheduler = None
+    application.state.job_tasks = job_tasks or {}
     application.state.metrics = ApplicationMetrics.create()
     if redis_factory is not None:
         application.state.redis_factory = redis_factory

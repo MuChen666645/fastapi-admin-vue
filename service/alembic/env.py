@@ -12,11 +12,15 @@ from sqlmodel import SQLModel
 from config.mysql_serve import MysqlServe
 from module_admin.entity.do import (
     dictionary_do as _dictionary_do,
+    file_do as _file_do,
+    job_do as _job_do,
     log_do as _log_do,
     menu_do as _menu_do,
+    notice_do as _notice_do,
     organization_do as _organization_do,
     permission_do as _permission_do,
     role_do as _role_do,
+    system_config_do as _system_config_do,
     user_do as _user_do,
 )
 

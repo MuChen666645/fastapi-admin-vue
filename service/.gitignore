@@ -5,6 +5,7 @@ __pycache__
 .coverage
 coverage.xml
 htmlcov/
+uploads/
 .idea/
 .env.local
 .env.staging

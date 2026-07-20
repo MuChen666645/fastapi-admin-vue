@@ -210,3 +210,59 @@ INSERT IGNORE INTO dict_data (
     (1011, 2, '停用', '0', 'sys_normal_disable', '1', '停用状态', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (1020, 1, '是', '1', 'sys_yes_no', '1', '是', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (1021, 2, '否', '0', 'sys_yes_no', '1', '否', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+-- 迁移 0003 也会插入新增管理功能权限。
+-- 保留该种子脚本的直接执行能力。
+INSERT IGNORE INTO permissions (
+    name, code, module, permission_type, api_path, api_method,
+    status, create_time, update_time, remark
+) VALUES
+    ('File upload', 'system:file:upload', 'system', 'button', '/file/upload', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File upload'),
+    ('File download', 'system:file:download', 'system', 'button', '/file/download/{file_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File download'),
+    ('File delete', 'system:file:remove', 'system', 'button', '/file/{file_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File delete'),
+    ('Config list', 'system:config:list', 'system', 'button', '/config/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System config list'),
+    ('Config query', 'system:config:query', 'system', 'button', '/config/{config_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System config query'),
+    ('Config add', 'system:config:add', 'system', 'button', '/config/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System config add'),
+    ('Config edit', 'system:config:edit', 'system', 'button', '/config/{config_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System config edit'),
+    ('Config delete', 'system:config:remove', 'system', 'button', '/config/{config_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System config delete'),
+    ('Notice list', 'system:notice:list', 'system', 'button', '/notice/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice list'),
+    ('Notice query', 'system:notice:query', 'system', 'button', '/notice/{notice_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice query'),
+    ('Notice add', 'system:notice:add', 'system', 'button', '/notice/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice add'),
+    ('Notice edit', 'system:notice:edit', 'system', 'button', '/notice/{notice_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice edit'),
+    ('Notice delete', 'system:notice:remove', 'system', 'button', '/notice/{notice_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice delete'),
+    ('Job list', 'monitor:job:list', 'monitor', 'button', '/job/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job list'),
+    ('Job query', 'monitor:job:query', 'monitor', 'button', '/job/{job_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job query'),
+    ('Job add', 'monitor:job:add', 'monitor', 'button', '/job/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job add'),
+    ('Job edit', 'monitor:job:edit', 'monitor', 'button', '/job/{job_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job edit'),
+    ('Job delete', 'monitor:job:remove', 'monitor', 'button', '/job/{job_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job delete'),
+    ('Job run', 'monitor:job:run', 'monitor', 'button', '/job/{job_id}/run', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job run');
+INSERT IGNORE INTO menu (
+    menu_id, parent_id, menu_name, icon, menu_path, component,
+    is_hidden, is_cache, menu_type, sort, link_url, perms, status,
+    create_time, update_time, remark
+) VALUES
+    (350, 2, 'File Storage', '#', 'file', 'system/file/index', '0', '1', 'C', 7, NULL, 'system:file:upload', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File storage'),
+    (351, 2, 'System Config', '#', 'config', 'system/config/index', '0', '1', 'C', 8, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System config'),
+    (352, 2, 'System Notice', '#', 'notice', 'system/notice/index', '0', '1', 'C', 9, NULL, 'system:notice:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'System notice'),
+    (360, 200, 'Scheduled Jobs', '#', 'job', 'monitor/job/index', '0', '1', 'C', 3, NULL, 'monitor:job:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Scheduled jobs'),
+    (370, 350, 'File Upload', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:file:upload', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File upload'),
+    (371, 350, 'File Download', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:file:download', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File download'),
+    (372, 350, 'File Delete', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:file:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'File delete'),
+    (373, 351, 'Config List', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Config list'),
+    (374, 351, 'Config Query', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:config:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Config query'),
+    (375, 351, 'Config Add', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:config:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Config add'),
+    (376, 351, 'Config Edit', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:config:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Config edit'),
+    (377, 351, 'Config Delete', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:config:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Config delete'),
+    (378, 352, 'Notice List', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:notice:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice list'),
+    (379, 352, 'Notice Query', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:notice:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice query'),
+    (380, 352, 'Notice Add', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:notice:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice add'),
+    (381, 352, 'Notice Edit', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:notice:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice edit'),
+    (382, 352, 'Notice Delete', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:notice:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Notice delete'),
+    (383, 360, 'Job List', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'monitor:job:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job list'),
+    (384, 360, 'Job Query', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'monitor:job:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job query'),
+    (385, 360, 'Job Add', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'monitor:job:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job add'),
+    (386, 360, 'Job Edit', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'monitor:job:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job edit'),
+    (387, 360, 'Job Delete', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'monitor:job:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job delete'),
+    (388, 360, 'Job Run', NULL, NULL, NULL, '0', '0', 'F', 6, NULL, 'monitor:job:run', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job run');
+
+INSERT IGNORE INTO role_menu (role_id, menu_id)
+SELECT 1, menu_id FROM menu WHERE menu_id BETWEEN 350 AND 388;

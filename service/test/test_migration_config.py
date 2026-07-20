@@ -26,6 +26,22 @@ def test_role_data_scope_migration_is_present() -> None:
     assert '"data_scope"' in migration
 
 
+def test_admin_operation_migration_is_present() -> None:
+    migration = (
+        ROOT / "alembic" / "versions" / "0003_admin_operations.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'revision = "0003_admin_operations"' in migration
+    for table_name in (
+        '"file_metadata"',
+        '"system_configs"',
+        '"notices"',
+        '"scheduled_jobs"',
+        '"job_logs"',
+    ):
+        assert table_name in migration
+
+
 def test_application_startup_does_not_execute_legacy_sql_or_create_tables() -> None:
     main_source = (ROOT / "main.py").read_text(encoding="utf-8")
     mysql_source = (ROOT / "config" / "mysql_serve.py").read_text(encoding="utf-8")

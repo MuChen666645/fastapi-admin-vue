@@ -115,9 +115,41 @@ class Settings(BaseSettings):
     LOGIN_IP_LOCK_SECONDS: int = Field(gt=0)
     READINESS_TIMEOUT_SECONDS: float = Field(gt=0)
 
-    # Aliyun OSS
+    # 阿里云 OSS
     ACCESS_KEY_ID: str = Field(min_length=1)
     ACCESSKEY_SECRET: str = Field(min_length=1)
+    OSS_ENDPOINT: str = Field(title="OSS 服务地址", default="")
+    OSS_BUCKET: str = Field(title="OSS 存储桶", default="")
+    OSS_PREFIX: str = Field(title="OSS 对象前缀", default="uploads")
+
+    # 文件存储
+    FILE_STORAGE_BACKEND: Literal["local", "oss"] = Field(
+        title="文件存储后端", default="local"
+    )
+    FILE_UPLOAD_DIR: str = Field(title="本地文件目录", default="uploads")
+    FILE_MAX_SIZE_BYTES: int = Field(
+        title="文件大小上限", default=10 * 1024 * 1024, gt=0
+    )
+    FILE_ALLOWED_EXTENSIONS: list[str] = Field(
+        title="允许的文件扩展名",
+        default=[
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".webp",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
+            ".zip",
+        ],
+    )
+
+    # 定时任务
+    SCHEDULER_ENABLED: bool = Field(title="是否启用定时任务", default=False)
+    SCHEDULER_TIMEZONE: str = Field(title="定时任务时区", default="Asia/Shanghai")
 
     # Network policy
     HOSTS: list[str]
@@ -166,6 +198,10 @@ class Settings(BaseSettings):
             )
         if not self.REDIS_PASSWORD:
             raise ValueError("REDIS_PASSWORD is required outside development")
+        if self.FILE_STORAGE_BACKEND == "oss" and (
+            not self.OSS_ENDPOINT or not self.OSS_BUCKET
+        ):
+            raise ValueError("OSS_ENDPOINT and OSS_BUCKET are required for OSS storage")
         return self
 
 

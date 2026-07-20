@@ -15,6 +15,10 @@ from module_admin.controller.organization_controller import (
 )
 from module_admin.controller.dictionary_controller import DictionaryController
 from module_admin.controller.log_controller import LogController
+from module_admin.controller.file_controller import FileController
+from module_admin.controller.job_controller import JobController
+from module_admin.controller.notice_controller import NoticeController
+from module_admin.controller.system_config_controller import SystemConfigController
 
 
 class AdminAPI:
@@ -57,3 +61,7 @@ class AdminAPI:
         )
         app.include_router(LogController.log, dependencies=db_dependencies)
         app.include_router(LogController.online, dependencies=db_dependencies)
+        app.include_router(FileController.file, dependencies=db_dependencies)
+        app.include_router(SystemConfigController.config, dependencies=db_dependencies)
+        app.include_router(NoticeController.notice, dependencies=db_dependencies)
+        app.include_router(JobController.job, dependencies=db_dependencies)

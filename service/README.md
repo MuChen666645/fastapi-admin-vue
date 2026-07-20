@@ -16,6 +16,7 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 - 图片验证码生成与校验；明文数字验证码接口已停用
 - 统一响应拦截与异常处理，未知错误返回脱敏的 500 响应
 - 请求 ID、W3C traceparent 链路关联和结构化 JSON 日志
+- 本地/阿里云 OSS 文件上传下载、系统参数、通知公告和定时任务
 - Prometheus 指标监控，可通过 `/metrics` 抓取
 - SlowAPI 请求限流
 - Swagger/OpenAPI 在线接口文档，按接口展示完整响应体 DTO
@@ -40,6 +41,8 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 | 限流        | slowapi                |
 | 日志        | loguru                 |
 | 指标        | prometheus-client      |
+| 对象存储    | oss2                   |
+| 定时任务    | APScheduler            |
 | 图片处理    | Pillow                 |
 | 依赖管理    | Poetry                 |
 | 容器化      | Docker, Docker Compose |
@@ -237,6 +240,10 @@ docker compose down
 | 验证码   | `/captcha` | 图片验证码与校验；明文数字验证码接口返回 `410`           |
 | 健康检查 | `/health`  | 存活探针和 MySQL/Redis/schema 就绪探针                   |
 | 指标监控 | `/metrics` | Prometheus HTTP 请求数、状态码和耗时指标                 |
+| 文件存储 | `/file`    | 本地或阿里云 OSS 文件上传、下载和删除                     |
+| 系统参数 | `/config`  | 系统参数键值配置                                         |
+| 通知公告 | `/notice`  | 公告增删改查                                             |
+| 定时任务 | `/job`     | Cron 任务管理、手动执行和执行日志                        |
 | 静态资源 | `/static`  | 静态文件访问                                             |
 
 完整请求参数与响应结构请以 Swagger 文档为准。
@@ -286,6 +293,9 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 # 在测试或多实例部署中创建独立应用
 from main import create_app
 application = create_app()
+
+# Register scheduled task handlers explicitly; task_name in /job must match.
+application = create_app(job_tasks={"example.task": lambda args: "ok"})
 
 # 代码格式化
 poetry run black .
@@ -392,6 +402,7 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - Image captcha generation/verification; the plaintext numeric endpoint is disabled
 - Unified response interception and exception handling with sanitized 500 responses
 - Request IDs, W3C `traceparent` correlation, and structured JSON logs
+- Local/Aliyun OSS file upload and download, system config, notices, and scheduled jobs
 - Prometheus metrics available at `/metrics`
 - SlowAPI rate limiting
 - Swagger/OpenAPI API documentation with concrete per-route response DTOs
@@ -631,6 +642,10 @@ Before staging or production deployment, copy the matching `.env.*.example`, rep
 | Captcha      | `/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
 | Health       | `/health`    | Liveness and MySQL/Redis readiness probes                         |
 | Metrics      | `/metrics`   | Prometheus request count, status, and latency metrics              |
+| File Storage | `/file`      | Local or Aliyun OSS upload, download, and deletion                 |
+| System Config| `/config`    | Key/value system parameters                                        |
+| Notices      | `/notice`    | Announcement CRUD                                                  |
+| Jobs         | `/job`       | Cron job management, manual run, and execution logs               |
 | Static Files | `/static`    | Static file access                                                  |
 
 Use Swagger docs as the source of truth for full request and response schemas.
@@ -686,6 +701,9 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 # Create an isolated application for tests or multiple instances
 from main import create_app
 application = create_app()
+
+# Register scheduled task handlers explicitly; task_name in /job must match.
+application = create_app(job_tasks={"example.task": lambda args: "ok"})
 
 # Format code
 poetry run black .
