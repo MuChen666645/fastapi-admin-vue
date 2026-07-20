@@ -36,6 +36,7 @@ def test_create_app_keeps_configuration_and_runtime_state_isolated() -> None:
     assert first_app.state.settings is first_settings
     assert second_app.state.settings is second_settings
     assert first_app.state is not second_app.state
+    assert first_app.state.metrics is not second_app.state.metrics
     first_app.state.redis = object()
     assert second_app.state.redis is None
 

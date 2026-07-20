@@ -15,7 +15,8 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 - 若依风格 RBAC 权限模型，支持超级管理员通配权限 `*:*:*`
 - 图片验证码生成与校验；明文数字验证码接口已停用
 - 统一响应拦截与异常处理，未知错误返回脱敏的 500 响应
-- 请求日志中间件
+- 请求 ID、W3C traceparent 链路关联和结构化 JSON 日志
+- Prometheus 指标监控，可通过 `/metrics` 抓取
 - SlowAPI 请求限流
 - Swagger/OpenAPI 在线接口文档，按接口展示完整响应体 DTO
 - Dockerfile 与 Docker Compose 本地编排
@@ -38,6 +39,7 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 | 分页        | fastapi-pagination     |
 | 限流        | slowapi                |
 | 日志        | loguru                 |
+| 指标        | prometheus-client      |
 | 图片处理    | Pillow                 |
 | 依赖管理    | Poetry                 |
 | 容器化      | Docker, Docker Compose |
@@ -234,6 +236,7 @@ docker compose down
 | 在线用户 | `/online`  | 在线会话查询、单会话和用户会话强制退出                   |
 | 验证码   | `/captcha` | 图片验证码与校验；明文数字验证码接口返回 `410`           |
 | 健康检查 | `/health`  | 存活探针和 MySQL/Redis/schema 就绪探针                   |
+| 指标监控 | `/metrics` | Prometheus HTTP 请求数、状态码和耗时指标                 |
 | 静态资源 | `/static`  | 静态文件访问                                             |
 
 完整请求参数与响应结构请以 Swagger 文档为准。
@@ -388,7 +391,8 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - RuoYi-style RBAC model with super-admin wildcard permission `*:*:*`
 - Image captcha generation/verification; the plaintext numeric endpoint is disabled
 - Unified response interception and exception handling with sanitized 500 responses
-- Request logging middleware
+- Request IDs, W3C `traceparent` correlation, and structured JSON logs
+- Prometheus metrics available at `/metrics`
 - SlowAPI rate limiting
 - Swagger/OpenAPI API documentation with concrete per-route response DTOs
 - Dockerfile and Docker Compose setup
@@ -626,6 +630,7 @@ Before staging or production deployment, copy the matching `.env.*.example`, rep
 | Online Users | `/online`    | Online session query and forced logout                                |
 | Captcha      | `/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
 | Health       | `/health`    | Liveness and MySQL/Redis readiness probes                         |
+| Metrics      | `/metrics`   | Prometheus request count, status, and latency metrics              |
 | Static Files | `/static`    | Static file access                                                  |
 
 Use Swagger docs as the source of truth for full request and response schemas.

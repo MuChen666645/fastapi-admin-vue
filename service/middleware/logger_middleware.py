@@ -1,4 +1,4 @@
-"""日志中间件."""
+"""Structured access logging and database audit logging middleware."""
 
 import sys
 import time
@@ -16,64 +16,65 @@ from utils.time_utils import now_utc8
 
 
 class LoggerMiddleware(BaseHTTPMiddleware):
-    """日志类."""
+    """Write structured HTTP logs and authenticated operation audit records."""
 
     _logger_configured = False
 
     def __init__(self, app, *args, **kwargs) -> None:
-        """初始化日志中间件."""
         super().__init__(app, *args, **kwargs)
         if LoggerMiddleware._logger_configured:
             return
         logger.remove()
-        logger.add(sys.stderr, colorize=True, format="{message}", level="INFO")
+        logger.add(sys.stderr, serialize=True, level="INFO")
         logger.add(
             "{time:YYYY-MM-DD}.log",
             rotation="1 week",
             enqueue=True,
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+            serialize=True,
             level="INFO",
         )
         logger.add(
             "{time:YYYY-MM-DD}.debug.log",
             rotation="1 week",
             enqueue=True,
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+            serialize=True,
             level="ERROR",
         )
         LoggerMiddleware._logger_configured = True
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        """重写dispatch方法.
-
-        Args:
-            request (Request): Request.
-            call_next (_type_): 回调函数.
-
-        Returns:
-            Response: Response.
-        """
-        method = request.method
-        path = request.scope["path"]
-        http_type = request.scope["type"]
-        current_time_china = now_utc8()
+        """Log one request and persist an audit record for authenticated users."""
         started_at = time.perf_counter()
         try:
             response = await call_next(request)
         except Exception as exc:
             await self._record_exception(request, exc)
             raise
-        code = response.status_code
-        log_info = f"{method}——{code}——{path}——{http_type}——{current_time_china}"
-        if code >= 500:
-            logger.opt(colors=True).error("<red>{}</red>", log_info)
-        else:
-            logger.opt(colors=True).info("<green>{}</green>", log_info)
-        await self._record_operation(request, code, started_at)
+
+        status_code = response.status_code
+        logger.bind(
+            request_id=getattr(request.state, "request_id", None),
+            trace_id=getattr(request.state, "trace_id", None),
+            span_id=getattr(request.state, "span_id", None),
+            method=request.method,
+            path=request.scope["path"],
+            http_type=request.scope["type"],
+            request_time=now_utc8().isoformat(),
+        ).log(
+            "ERROR" if status_code >= 500 else "INFO",
+            "http_request",
+            status_code=status_code,
+            duration_ms=round((time.perf_counter() - started_at) * 1000),
+        )
+        await self._record_operation(request, status_code, started_at)
         return response
 
     @staticmethod
-    async def _record_operation(request: Request, status_code: int, started_at: float) -> None:
+    async def _record_operation(
+        request: Request,
+        status_code: int,
+        started_at: float,
+    ) -> None:
         user_id = getattr(request.state, "user_id", None)
         if user_id is None:
             return
@@ -98,6 +99,14 @@ class LoggerMiddleware(BaseHTTPMiddleware):
     @staticmethod
     async def _record_exception(request: Request, exc: Exception) -> None:
         payload = getattr(request.state, "auth_payload", {})
+        logger.bind(
+            request_id=getattr(request.state, "request_id", None),
+            trace_id=getattr(request.state, "trace_id", None),
+            span_id=getattr(request.state, "span_id", None),
+            method=request.method,
+            path=request.url.path,
+            exception_type=type(exc).__name__,
+        ).exception("http_request_failed")
         try:
             await LogDao.create_exception(
                 ExceptionLogDo(

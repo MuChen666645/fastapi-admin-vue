@@ -5,11 +5,11 @@ import base64
 import random
 import secrets
 import os
+import sys
 import string
 from typing import Union
 from datetime import datetime
 from passlib.context import CryptContext
-from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
@@ -35,7 +35,7 @@ class FastApiAdmin:
         启动服务.
         :return:
         """
-        logger.info(
+        print(
             r"""
 
                                                          __----~~~~~~~~~~~------___
@@ -61,6 +61,7 @@ class FastApiAdmin:
                                     神兽保佑            永无BUG
            """
         )
+        sys.stdout.flush()
 
     @staticmethod
     def set_scopes(scopes: Scopes) -> list[str]:

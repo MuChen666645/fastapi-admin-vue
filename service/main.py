@@ -5,11 +5,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_pagination import add_pagination
 from loguru import logger
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -20,6 +21,10 @@ from config.rate_limit import limiter
 from config.redis_serve import RedisServe
 from interceptors.http_intercept import ApiExceptionInterception
 from middleware.logger_middleware import LoggerMiddleware
+from middleware.observability_middleware import (
+    ApplicationMetrics,
+    ObservabilityMiddleware,
+)
 from middleware.response_intercept import ResponseInterceptor
 from module_admin.v1 import AdminAPI
 from utils.fastapi_admin import FastApiAdmin
@@ -98,6 +103,7 @@ def create_app(
     application.state.redis = None
     application.state.mysql_engine = None
     application.state.mysql_session_factory = None
+    application.state.metrics = ApplicationMetrics.create()
     if redis_factory is not None:
         application.state.redis_factory = redis_factory
     if mysql_factory is not None:
@@ -107,10 +113,24 @@ def create_app(
 
     application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    async def metrics_endpoint() -> Response:
+        return Response(
+            content=generate_latest(application.state.metrics.registry),
+            media_type=CONTENT_TYPE_LATEST,
+        )
+
+    application.add_api_route(
+        "/metrics",
+        metrics_endpoint,
+        methods=["GET"],
+        include_in_schema=False,
+        name="metrics",
+    )
     ApiExceptionInterception(application)
     application.add_middleware(SlowAPIMiddleware)
     application.add_middleware(ResponseInterceptor)
     application.add_middleware(LoggerMiddleware)
+    application.add_middleware(ObservabilityMiddleware)
     application.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=configured_settings.HOSTS,

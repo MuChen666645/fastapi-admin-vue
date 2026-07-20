@@ -3,6 +3,13 @@ from types import SimpleNamespace
 from utils.fastapi_admin import FastApiAdmin
 
 
+def test_start_serve_writes_banner_to_stdout(capsys) -> None:
+    FastApiAdmin.start_serve()
+
+    output = capsys.readouterr().out
+    assert "__----~~~~~~~~~~~------___" in output
+
+
 def test_create_three_builds_menu_tree_without_mutating_source() -> None:
     root = SimpleNamespace(menu_id=1, parent_id=0, menu_name="system")
     child = SimpleNamespace(menu_id=2, parent_id=1, menu_name="user")
