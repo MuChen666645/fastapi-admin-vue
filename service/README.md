@@ -61,6 +61,8 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 |   |   `-- dto/            # Pydantic 请求/响应模型
 |   `-- service/            # 业务逻辑层
 |-- static/                 # 静态资源目录
+|-- alembic/                # 版本化数据库迁移
+|-- scripts/                # 部署和迁移入口
 |-- test/                   # 测试目录
 |-- utils/                  # 通用工具
 |-- main.py                 # FastAPI 应用入口
@@ -93,9 +95,18 @@ Controller -> Service -> DAO -> Database
 
 ## 环境变量
 
-项目运行依赖以下环境变量。Docker Compose 会读取当前目录下的 `.env` 文件；如果直接使用 `uvicorn` 启动，请确保这些变量已经注入到当前进程环境中。
+项目根据 `APP_ENV` 选择 `.env.development`、`.env.staging` 或 `.env.production`。环境变量会覆盖环境文件中的值；如果直接使用 `uvicorn` 启动，请确保选定环境文件存在或变量已经注入到当前进程环境中。
 
 ```env
+# FastAPI
+APP_ENV=development
+APP_ENV_FILE=.env.development
+DEBUG=true
+TITLE=FastAPI Admin
+SUMMARY=FastAPI, SQLModel, MySQL and Redis admin service.
+VERSION=0.0.1
+OPENAPI_URL=/openapi.json
+
 # MySQL
 MYSQL_HOST=127.0.0.1
 MYSQL_POST=3306
@@ -118,6 +129,7 @@ ACCESSKEY_SECRET=your_access_key_secret
 # Optional
 SECRET_KEY=replace_with_a_stable_random_secret
 ACCESS_TOKEN_EXPIRE_MINUTES=3600
+ADMIN_ROLE_CODE=admin
 RATE_LIMIT_DEFAULT=300/minute
 RATE_LIMIT_LOGIN=10/minute
 RATE_LIMIT_CAPTCHA=30/minute
@@ -134,7 +146,7 @@ CREDENTIALS=false
 
 > 注意：`MYSQL_POST`、`REDIS_POST`、`MEDOTHS`、`ACCESSKEY_SECRET` 是当前代码中的实际配置项名称，请保持一致。
 
-> `SECRET_KEY`、数据库密码、Redis 密码和 OSS 凭据不再提供代码级生产默认值。请通过选定的环境文件或进程环境注入；更换密钥会使已签发的 JWT 失效。
+> 除 `DATABASE_SCHEMA_VERSION` 等代码不变量外，部署参数不再提供代码级默认值。请复制对应的 `.example` 文件并填写所有值；更换 `SECRET_KEY` 会使已签发的 JWT 失效。
 
 ## 本地开发
 
@@ -160,7 +172,7 @@ docker compose up -d fastapi-mysql fastapi-redis
 CREATE DATABASE fastapi_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-数据库结构由 Alembic 在服务启动前迁移，初始数据脚本由部署阶段显式执行。开发环境执行 `poetry run alembic upgrade head` 后，再执行 `assets/sql/fastapi-admin.sql`；预发布和正式环境请先复制对应的 `.example` 文件并替换全部占位值。
+数据库结构由 `fastapi-migrate` 或 `scripts.migrate_database` 在服务启动前迁移，初始数据脚本由部署阶段显式执行。开发环境执行迁移后，再执行 `assets/sql/fastapi-admin.sql`；预发布和正式环境请先复制对应的 `.example` 文件并替换全部占位值。
 
 ### 4. 启动服务
 
@@ -214,7 +226,13 @@ docker compose down
 | 用户     | `/user`    | 用户创建、登录、自助修改密码、管理员重置密码、用户信息查询 |
 | 角色     | `/role`    | 角色创建、列表查询、详情、更新、删除                     |
 | 菜单     | `/menu`    | 菜单创建、菜单树/列表查询、详情、更新、删除              |
+| 部门     | `/dept`    | 部门树查询、创建、更新、删除                             |
+| 岗位     | `/post`    | 岗位列表查询、创建、更新、删除                           |
+| 字典     | `/dict`    | 字典类型和字典数据的增删改查                             |
+| 日志     | `/log`     | 登录、操作、异常日志查询和删除                           |
+| 在线用户 | `/online`  | 在线会话查询、单会话和用户会话强制退出                   |
 | 验证码   | `/captcha` | 图片验证码与校验；明文数字验证码接口返回 `410`           |
+| 健康检查 | `/health`  | 存活探针和 MySQL/Redis/schema 就绪探针                   |
 | 静态资源 | `/static`  | 静态文件访问                                             |
 
 完整请求参数与响应结构请以 Swagger 文档为准。
@@ -253,10 +271,10 @@ poetry install
 poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 # 运行测试
-poetry run pytest
+poetry run python -m pytest -q
 
 # 运行 MySQL/Redis 集成测试
-RUN_INTEGRATION_TESTS=1 poetry run pytest -m integration
+RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 
 # 代码格式化
 poetry run black .
@@ -293,7 +311,7 @@ chore: update dependencies
 
 ## 初始化数据
 
-`assets/sql/fastapi-admin.sql` 会在服务启动生命周期中执行，用于写入初始用户、角色、菜单、权限目录和角色菜单关系等基础数据。脚本使用 `INSERT IGNORE`，重复启动时不会重复插入已有主键数据。
+`assets/sql/fastapi-admin.sql` 是部署阶段显式执行的种子脚本，用于写入初始用户、角色、菜单、权限目录和角色菜单关系等基础数据。应用生命周期不会执行该脚本；脚本使用 `INSERT IGNORE`，可以安全重复执行。
 
 ## 常见问题
 
@@ -408,6 +426,8 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 |   |   `-- dto/            # Pydantic request/response models
 |   `-- service/            # Business logic layer
 |-- static/                 # Static files
+|-- alembic/                # Versioned database migrations
+|-- scripts/                # Deployment and migration entrypoints
 |-- test/                   # Test directory
 |-- utils/                  # Shared utilities
 |-- main.py                 # FastAPI application entry
@@ -447,6 +467,13 @@ The service selects one profile with `APP_ENV`: `development`, `staging`, or `pr
 APP_ENV=development
 APP_ENV_FILE=.env.development
 
+# FastAPI
+DEBUG=true
+TITLE=FastAPI Admin
+SUMMARY=FastAPI, SQLModel, MySQL and Redis admin service.
+VERSION=0.0.1
+OPENAPI_URL=/openapi.json
+
 # MySQL
 MYSQL_HOST=127.0.0.1
 MYSQL_POST=3306
@@ -469,6 +496,7 @@ ACCESSKEY_SECRET=your_access_key_secret
 # Security and optional settings
 SECRET_KEY=generate_a_random_secret_at_least_32_characters_long
 ACCESS_TOKEN_EXPIRE_MINUTES=3600
+ADMIN_ROLE_CODE=admin
 RATE_LIMIT_DEFAULT=300/minute
 RATE_LIMIT_LOGIN=10/minute
 RATE_LIMIT_CAPTCHA=30/minute
@@ -485,7 +513,7 @@ CREDENTIALS=false
 
 > Note: `MYSQL_POST`, `REDIS_POST`, `MEDOTHS`, and `ACCESSKEY_SECRET` are the actual setting names used by the current codebase. Keep them unchanged unless the code is updated.
 
-> `SECRET_KEY`, database passwords, Redis passwords, and OSS credentials have no code-level production defaults. Generate and inject them through the selected environment file or the process environment. A key change invalidates previously issued JWTs.
+> Except for code invariants such as `DATABASE_SCHEMA_VERSION`, deployment settings have no code-level defaults. Copy the matching `.example` file and fill every value. A `SECRET_KEY` change invalidates previously issued JWTs.
 
 ## Environment Profiles
 
@@ -582,6 +610,11 @@ Before staging or production deployment, copy the matching `.env.*.example`, rep
 | User         | `/user`      | User creation, login, self-service password change, administrator password reset, user info |
 | Role         | `/role`      | Role creation, list, detail, update, delete                         |
 | Menu         | `/menu`      | Menu creation, tree/list query, detail, update, delete               |
+| Department   | `/dept`      | Department tree query, create, update, delete                        |
+| Post         | `/post`      | Post list, create, update, delete                                     |
+| Dictionary   | `/dict`      | Dictionary type and dictionary data CRUD                              |
+| Logs         | `/log`       | Login, operation, exception log query and deletion                    |
+| Online Users | `/online`    | Online session query and forced logout                                |
 | Captcha      | `/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
 | Health       | `/health`    | Liveness and MySQL/Redis readiness probes                         |
 | Static Files | `/static`    | Static file access                                                  |
@@ -628,10 +661,10 @@ poetry run python -m scripts.migrate_database
 poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 # Run tests
-poetry run pytest
+poetry run python -m pytest -q
 
 # Run MySQL/Redis integration tests
-RUN_INTEGRATION_TESTS=1 poetry run pytest -m integration
+RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 
 # Format code
 poetry run black .

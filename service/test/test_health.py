@@ -86,6 +86,30 @@ def test_readiness_returns_503_when_mysql_is_unavailable() -> None:
     anyio.run(run)
 
 
+def test_readiness_returns_503_when_redis_is_unavailable() -> None:
+    class BrokenRedis(FakeRedis):
+        async def ping(self) -> bool:
+            raise ConnectionError("Redis unavailable")
+
+    async def run() -> None:
+        from main import app
+
+        app.state.redis = BrokenRedis()
+        app.state.mysql_session_factory = ReadySessionFactory()
+        async with create_async_client() as client:
+            response = await client.get("/health/ready")
+
+        assert response.status_code == 503
+        body = response.json()
+        assert body["message"]["checks"] == {
+            "redis": "unavailable",
+            "mysql": "ok",
+            "schema": "ok",
+        }
+
+    anyio.run(run)
+
+
 def test_readiness_returns_503_when_schema_is_outdated() -> None:
     async def run() -> None:
         from main import app
@@ -117,5 +141,30 @@ def test_redis_client_factory_is_not_awaited(
 
     async def run() -> None:
         assert await RedisServe.get_redis_server() is client
+
+    anyio.run(run)
+
+
+def test_redis_client_factory_closes_client_when_ping_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenClient:
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def ping(self):
+            raise ConnectionError("Redis unavailable")
+
+        async def aclose(self):
+            self.closed = True
+
+    client = BrokenClient()
+    monkeypatch.setattr(aioredis, "from_url", lambda **kwargs: client)
+
+    async def run() -> None:
+        with pytest.raises(RedisServe.RedisError, match="Redis connection failed"):
+            await RedisServe.get_redis_server()
+
+        assert client.closed
 
     anyio.run(run)

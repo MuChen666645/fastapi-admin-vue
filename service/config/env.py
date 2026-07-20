@@ -33,6 +33,7 @@ PLACEHOLDER_SECRET_MARKERS = (
 
 
 def _resolve_environment() -> EnvironmentName:
+    """Resolve the deployment profile before loading its environment file."""
     raw_environment = os.getenv("APP_ENV", "development").strip().lower()
     if raw_environment not in ENVIRONMENT_NAMES:
         supported = ", ".join(sorted(ENVIRONMENT_NAMES))
@@ -43,6 +44,7 @@ def _resolve_environment() -> EnvironmentName:
 
 
 def _resolve_environment_file(environment: EnvironmentName) -> Path:
+    """Return the profile file, with the legacy `.env` development fallback."""
     environment_file = PROJECT_ROOT / f".env.{environment}"
     if environment_file.exists():
         return environment_file
@@ -57,7 +59,7 @@ def _resolve_environment_file(environment: EnvironmentName) -> Path:
 
 
 class Settings(BaseSettings):
-    """Typed application configuration."""
+    """Typed application configuration loaded from the selected environment."""
 
     class HttpResponses(BaseModel):
         """Default response metadata."""
@@ -66,14 +68,16 @@ class Settings(BaseSettings):
         message: str
         data: Any
 
+    # This bootstrap default is needed to choose the first environment file.
     APP_ENV: EnvironmentName = "development"
 
     # FastAPI
-    DEBUG: bool = False
-    TITLE: str = "FastAPI Admin"
-    SUMMARY: str = "FastAPI, SQLModel, MySQL and Redis admin service."
-    VERSION: str = "0.0.1"
-    OPENAPI_URL: str = "/openapi.json"
+    DEBUG: bool
+    TITLE: str = Field(min_length=1)
+    SUMMARY: str = Field(min_length=1)
+    VERSION: str = Field(min_length=1)
+    OPENAPI_URL: str = Field(min_length=1)
+    # Response models are part of the API contract, not deployment settings.
     RESPONSES: dict[int, dict[str, str | type]] = {
         422: {"description": "Validation Error", "model": HttpResponses},
         401: {"description": "Token Error", "model": HttpResponses},
@@ -81,47 +85,46 @@ class Settings(BaseSettings):
 
     # MySQL
     MYSQL_HOST: str = Field(min_length=1)
-    MYSQL_POST: int = Field(default=3306, gt=0, le=65535)
+    MYSQL_POST: int = Field(gt=0, le=65535)
     MYSQL_USERNAME: str = Field(min_length=1)
     MYSQL_PASSWORD: str = Field(min_length=1)
     MYSQL_DATABASES: str = Field(min_length=1)
-    TIMEZONE: str = "Asia/Shanghai"
+    TIMEZONE: str = Field(min_length=1)
 
     # Redis
     REDIS_HOST: str = Field(min_length=1)
-    REDIS_POST: int = Field(default=6379, gt=0, le=65535)
-    REDIS_PASSWORD: str = ""
-    REDIS_USERNAME: str = ""
-    REDIS_DB: int = Field(default=0, ge=0)
+    REDIS_POST: int = Field(gt=0, le=65535)
+    REDIS_PASSWORD: str
+    REDIS_USERNAME: str
+    REDIS_DB: int = Field(ge=0)
 
     # Token and RBAC
     SECRET_KEY: str = Field(min_length=32)
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=3600, gt=0)
-    ADMIN_ROLE_CODE: str = Field(default="admin", min_length=1)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(gt=0)
+    ADMIN_ROLE_CODE: str = Field(min_length=1)
+    # Keep this tied to the migration head; it must not be configurable.
     DATABASE_SCHEMA_VERSION: str = "0002_role_data_scope"
 
     # Rate limit and verification
-    RATE_LIMIT_DEFAULT: str = "300/minute"
-    RATE_LIMIT_LOGIN: str = "10/minute"
-    RATE_LIMIT_CAPTCHA: str = "30/minute"
-    CAPTCHA_TTL_SECONDS: int = Field(default=300, gt=0)
-    CAPTCHA_MAX_VERIFY_ATTEMPTS: int = Field(default=5, gt=0)
-    LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5, gt=0)
-    LOGIN_IP_LOCK_SECONDS: int = Field(default=300, gt=0)
+    RATE_LIMIT_DEFAULT: str = Field(min_length=1)
+    RATE_LIMIT_LOGIN: str = Field(min_length=1)
+    RATE_LIMIT_CAPTCHA: str = Field(min_length=1)
+    CAPTCHA_TTL_SECONDS: int = Field(gt=0)
+    CAPTCHA_MAX_VERIFY_ATTEMPTS: int = Field(gt=0)
+    LOGIN_MAX_FAILED_ATTEMPTS: int = Field(gt=0)
+    LOGIN_IP_LOCK_SECONDS: int = Field(gt=0)
 
     # Aliyun OSS
     ACCESS_KEY_ID: str = Field(min_length=1)
     ACCESSKEY_SECRET: str = Field(min_length=1)
 
     # Network policy
-    HOSTS: list[str] = Field(default_factory=lambda: ["localhost", "127.0.0.1"])
-    TRUSTED_PROXIES: list[str] = Field(default_factory=list)
-    ORIGINS: list[str] = Field(default_factory=list)
-    MEDOTHS: list[str] = Field(
-        default_factory=lambda: ["GET", "POST", "PUT", "DELETE"]
-    )
-    HEADERS: list[str] = Field(default_factory=lambda: ["*"])
-    CREDENTIALS: bool = False
+    HOSTS: list[str]
+    TRUSTED_PROXIES: list[str]
+    ORIGINS: list[str]
+    MEDOTHS: list[str]
+    HEADERS: list[str]
+    CREDENTIALS: bool
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

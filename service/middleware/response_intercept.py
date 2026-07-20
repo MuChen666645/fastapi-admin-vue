@@ -16,26 +16,11 @@ def _is_json_content_type(content_type: str) -> bool:
 
 
 class ResponseInterceptor(BaseHTTPMiddleware):
-    """相应类."""
-
-    class ResponseError(Exception):
-        """响应异常类."""
-
-        pass
+    """Wrap JSON API responses in the service response envelope."""
 
     async def dispatch(self, request: Request, call_next) -> JSONResponse | Response:
-        """重写dispatch方法."""
-        try:
-            response = await call_next(request)
-        except ResponseInterceptor.ResponseError:
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "code": 500,
-                    "data": None,
-                    "message": "Internal Server Error",
-                },
-            )
+        """Return non-JSON responses unchanged and wrap JSON responses."""
+        response = await call_next(request)
         skip_wrapper = response.headers.get(SKIP_RESPONSE_WRAPPER_HEADER) == "1"
         if skip_wrapper:
             del response.headers[SKIP_RESPONSE_WRAPPER_HEADER]

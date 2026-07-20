@@ -1,6 +1,7 @@
 """Application entry point."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -21,6 +22,8 @@ from middleware.response_intercept import ResponseInterceptor
 from module_admin.v1 import AdminAPI
 from utils.fastapi_admin import FastApiAdmin
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +32,7 @@ async def lifespan(app: FastAPI):
     engine = None
     app.state.limiter = limiter
     app.state.redis = None
+    app.state.mysql_engine = None
     app.state.mysql_session_factory = None
     try:
         app.state.redis = await RedisServe.get_redis_server()
@@ -40,12 +44,14 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         app.state.mysql_session_factory = None
-        if engine:
-            logger.info("Closing MySQL connection")
-            await engine.dispose()
-            app.state.mysql_engine = None
-            logger.info("MySQL connection closed")
-        await RedisServe.close_redis_server(app)
+        try:
+            if engine is not None:
+                logger.info("Closing MySQL connection")
+                app.state.mysql_engine = None
+                await engine.dispose()
+                logger.info("MySQL connection closed")
+        finally:
+            await RedisServe.close_redis_server(app)
 
 
 app = FastAPI(
@@ -59,7 +65,7 @@ app = FastAPI(
 )
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 ApiExceptionInterception(app)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(ResponseInterceptor)
