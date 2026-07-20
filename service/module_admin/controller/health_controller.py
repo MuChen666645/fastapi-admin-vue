@@ -1,5 +1,7 @@
 """Application health probes."""
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import text
 
@@ -25,8 +27,12 @@ class HealthController:
         try:
             if redis is None:
                 raise RuntimeError("Redis client is not initialized")
-            await redis.ping()
+            await asyncio.wait_for(
+                redis.ping(), timeout=settings.READINESS_TIMEOUT_SECONDS
+            )
             checks["redis"] = "ok"
+        except asyncio.TimeoutError:
+            checks["redis"] = "timeout"
         except Exception:
             checks["redis"] = "unavailable"
 
@@ -34,18 +40,22 @@ class HealthController:
         try:
             if session_factory is None:
                 raise RuntimeError("MySQL session factory is not initialized")
-            async with session_factory() as session:
-                await session.execute(text("SELECT 1"))
-                checks["mysql"] = "ok"
-                version_result = await session.execute(
-                    text("SELECT version_num FROM alembic_version LIMIT 1")
-                )
-                version = version_result.scalar_one_or_none()
-                checks["schema"] = (
-                    "ok"
-                    if version == settings.DATABASE_SCHEMA_VERSION
-                    else "outdated"
-                )
+            async with asyncio.timeout(settings.READINESS_TIMEOUT_SECONDS):
+                async with session_factory() as session:
+                    await session.execute(text("SELECT 1"))
+                    checks["mysql"] = "ok"
+                    version_result = await session.execute(
+                        text("SELECT version_num FROM alembic_version LIMIT 1")
+                    )
+                    version = version_result.scalar_one_or_none()
+                    checks["schema"] = (
+                        "ok"
+                        if version == settings.DATABASE_SCHEMA_VERSION
+                        else "outdated"
+                    )
+        except asyncio.TimeoutError:
+            checks.setdefault("mysql", "timeout")
+            checks.setdefault("schema", "timeout")
         except Exception:
             checks.setdefault("mysql", "unavailable")
             checks.setdefault("schema", "unavailable")

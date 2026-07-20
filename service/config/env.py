@@ -113,6 +113,7 @@ class Settings(BaseSettings):
     CAPTCHA_MAX_VERIFY_ATTEMPTS: int = Field(gt=0)
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(gt=0)
     LOGIN_IP_LOCK_SECONDS: int = Field(gt=0)
+    READINESS_TIMEOUT_SECONDS: float = Field(gt=0)
 
     # Aliyun OSS
     ACCESS_KEY_ID: str = Field(min_length=1)

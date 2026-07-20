@@ -5,6 +5,9 @@ from fastapi.exceptions import RequestValidationError
 from jwt import PyJWTError
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
+from starlette.responses import JSONResponse
+
+from middleware.response_intercept import SKIP_RESPONSE_WRAPPER_HEADER
 
 
 
@@ -27,6 +30,7 @@ class ApiExceptionInterception:
         app.add_exception_handler(RequestValidationError, handler=self.all_verify)
         app.add_exception_handler(PyJWTError, handler=self.all_jwt_error)
         app.add_exception_handler(IntegrityError, handler=self.sql_Integrity)
+        app.add_exception_handler(Exception, handler=self.all_exception)
 
     @staticmethod
     async def all_jwt_error(request: Request, exc: PyJWTError):
@@ -57,4 +61,22 @@ class ApiExceptionInterception:
         raise HTTPException(
             status_code=400,
             detail="database anomaly",
+        )
+
+    @staticmethod
+    async def all_exception(request: Request, exc: Exception) -> JSONResponse:
+        """Log unexpected failures and return the public 500 response contract."""
+        logger.opt(exception=(type(exc), exc, exc.__traceback__)).error(
+            "Unhandled application error: {} {}",
+            request.method,
+            request.url.path,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": 500,
+                "message": "Internal Server Error",
+                "data": None,
+            },
+            headers={SKIP_RESPONSE_WRAPPER_HEADER: "1"},
         )

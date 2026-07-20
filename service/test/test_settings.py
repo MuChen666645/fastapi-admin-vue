@@ -35,6 +35,7 @@ def valid_shared_settings(**overrides) -> dict:
         "CAPTCHA_MAX_VERIFY_ATTEMPTS": 5,
         "LOGIN_MAX_FAILED_ATTEMPTS": 5,
         "LOGIN_IP_LOCK_SECONDS": 300,
+        "READINESS_TIMEOUT_SECONDS": 5,
         "HOSTS": ["admin.example.com"],
         "TRUSTED_PROXIES": [],
         "ORIGINS": ["https://admin.example.com"],
@@ -58,6 +59,7 @@ def test_development_profile_contains_runtime_settings() -> None:
     assert settings.REDIS_POST == 6379
     assert settings.RATE_LIMIT_DEFAULT == "300/minute"
     assert settings.CAPTCHA_TTL_SECONDS == 300
+    assert settings.READINESS_TIMEOUT_SECONDS == 5
 
 
 def test_shared_environment_rejects_placeholder_secrets() -> None:

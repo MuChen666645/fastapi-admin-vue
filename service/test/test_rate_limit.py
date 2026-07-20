@@ -20,6 +20,13 @@ def _route_limits(endpoint_name: str):
 
 def test_rate_limit_defaults_support_admin_page_concurrency() -> None:
     assert settings.RATE_LIMIT_DEFAULT == "300/minute"
+    assert limiter._storage_uri == (
+        f"redis://{settings.REDIS_HOST}:{settings.REDIS_POST}/{settings.REDIS_DB}"
+    )
+    assert limiter._storage_options == {
+        "username": settings.REDIS_USERNAME,
+        "password": settings.REDIS_PASSWORD,
+    }
     default_limits = list(limiter._default_limits[0])
     assert len(default_limits) == 1
     assert default_limits[0].limit.amount == 300

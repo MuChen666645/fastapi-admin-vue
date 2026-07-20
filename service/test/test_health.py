@@ -1,5 +1,7 @@
 from test.conftest import FakeRedis, create_async_client
 
+import asyncio
+
 import anyio
 import pytest
 import redis.asyncio as aioredis
@@ -106,6 +108,59 @@ def test_readiness_returns_503_when_redis_is_unavailable() -> None:
             "mysql": "ok",
             "schema": "ok",
         }
+
+    anyio.run(run)
+
+
+def test_readiness_times_out_when_redis_hangs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class HangingRedis(FakeRedis):
+        async def ping(self) -> bool:
+            await asyncio.sleep(1)
+            return True
+
+    async def run() -> None:
+        from config.env import settings
+        from main import app
+
+        monkeypatch.setattr(settings, "READINESS_TIMEOUT_SECONDS", 0.01)
+        app.state.redis = HangingRedis()
+        app.state.mysql_session_factory = ReadySessionFactory()
+        async with create_async_client() as client:
+            response = await client.get("/health/ready")
+
+        assert response.status_code == 503
+        assert response.json()["message"]["checks"]["redis"] == "timeout"
+
+    anyio.run(run)
+
+
+def test_readiness_times_out_when_mysql_hangs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class HangingSession(ReadySession):
+        async def execute(self, statement):
+            await asyncio.sleep(1)
+            return ReadyResult(1)
+
+    class HangingSessionFactory(ReadySessionFactory):
+        def __call__(self):
+            return HangingSession(self.schema_version)
+
+    async def run() -> None:
+        from config.env import settings
+        from main import app
+
+        monkeypatch.setattr(settings, "READINESS_TIMEOUT_SECONDS", 0.01)
+        app.state.redis = FakeRedis()
+        app.state.mysql_session_factory = HangingSessionFactory()
+        async with create_async_client() as client:
+            response = await client.get("/health/ready")
+
+        assert response.status_code == 503
+        assert response.json()["message"]["checks"]["mysql"] == "timeout"
+        assert response.json()["message"]["checks"]["schema"] == "timeout"
 
     anyio.run(run)
 

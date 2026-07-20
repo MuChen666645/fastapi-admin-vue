@@ -9,6 +9,7 @@ from typing import Set
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from limits.storage import MemoryStorage
 
 for key, value in {
     "APP_ENV": "development",
@@ -171,6 +172,11 @@ async def skip_mysql_session() -> AsyncIterator[None]:
 
 @pytest.fixture(autouse=True)
 def isolate_app_dependencies() -> AsyncIterator[None]:
+    # Unit tests use isolated storage; production is configured with Redis in
+    # config.rate_limit and is verified separately by the rate-limit tests.
+    limiter._storage = MemoryStorage()
+    limiter._limiter = type(limiter._limiter)(limiter._storage)
+    limiter._storage_dead = False
     limiter.enabled = False
     app.state.limiter = limiter
     app.state.redis = FakeRedis()

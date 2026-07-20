@@ -9,12 +9,12 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 - FastAPI 异步 Web API 服务
 - SQLModel + SQLAlchemy AsyncSession 数据访问
 - MySQL 数据持久化
-- Redis 缓存、验证码存储与 Token 二级缓存
+- Redis 缓存、验证码存储、Token 二级缓存与跨进程共享限流
 - JWT 登录认证、Token 内存/Redis 校验与按钮级接口权限校验
 - 用户、角色、菜单管理模块，菜单按钮权限同步到权限目录
 - 若依风格 RBAC 权限模型，支持超级管理员通配权限 `*:*:*`
 - 图片验证码生成与校验；明文数字验证码接口已停用
-- 统一响应拦截与异常处理
+- 统一响应拦截与异常处理，未知错误返回脱敏的 500 响应
 - 请求日志中间件
 - SlowAPI 请求限流
 - Swagger/OpenAPI 在线接口文档，按接口展示完整响应体 DTO
@@ -137,6 +137,7 @@ CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
+READINESS_TIMEOUT_SECONDS=5
 HOSTS=["*"]
 ORIGINS=["*"]
 MEDOTHS=["*"]
@@ -259,7 +260,7 @@ Token 使用 `HS256` 算法签名，过期时间由 `ACCESS_TOKEN_EXPIRE_MINUTES
 - 角色通过 `role_menu` 关联菜单和按钮权限，接口鉴权时按用户角色、菜单按钮和权限目录共同判断。
 - 超级管理员权限 `*:*:*` 存放在 `permissions` 表中，不作为菜单数据返回；拥有超级权限时，用户信息接口只返回 `*:*:*` 权限标识。
 - `PUT /user/{user_id}/password` 用于输入旧密码的自助修改；`PUT /user/{user_id}/reset-password` 使用 `system:user:resetPwd` 权限执行管理员重置，成功后会使目标用户已有会话失效。
-- 接口运行时统一返回 `{ "code": 200, "message": "success", "data": ... }`。Swagger 中每个接口使用 `ApiResponseDto[T]` 描述实际响应体，避免响应体展示为 `Any`。
+- 接口运行时统一返回 `{ "code": 200, "message": "success", "data": ... }`；未知异常只返回脱敏的 500 响应，详细堆栈写入服务日志。Swagger 中每个接口使用 `ApiResponseDto[T]` 描述实际响应体，避免响应体展示为 `Any`。
 
 ## 常用命令
 
@@ -374,12 +375,12 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - Async FastAPI Web API service
 - SQLModel + SQLAlchemy AsyncSession data access
 - MySQL persistence
-- Redis cache, captcha storage, and token cache
+- Redis cache, captcha storage, token cache, and cross-process shared rate limiting
 - JWT login authentication, memory/Redis token validation, and button-level route authorization
 - User, role, and menu management modules with menu button permission synchronization
 - RuoYi-style RBAC model with super-admin wildcard permission `*:*:*`
 - Image captcha generation/verification; the plaintext numeric endpoint is disabled
-- Unified response interception and exception handling
+- Unified response interception and exception handling with sanitized 500 responses
 - Request logging middleware
 - SlowAPI rate limiting
 - Swagger/OpenAPI API documentation with concrete per-route response DTOs
@@ -504,6 +505,7 @@ CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
+READINESS_TIMEOUT_SECONDS=5
 HOSTS=["localhost","127.0.0.1"]
 ORIGINS=["http://localhost:5173"]
 MEDOTHS=["GET","POST","PUT","DELETE","OPTIONS"]
@@ -646,7 +648,7 @@ Protected APIs check the in-memory cache first and then Redis. If both caches mi
 - Data scope is role-based and uses the union of all enabled roles assigned to the actor. Scope values are `1` all data, `2` selected departments, `3` current department, `4` current department and descendants, and `5` self only.
 - `role_dept` stores selected departments for scope `2`. The service applies scope predicates to user, department, post, log, and online-session queries, and checks the same scope before detail, mutation, deletion, and forced logout operations.
 - Role and menu configuration remains global system configuration. Changing a role's menus or data scope is restricted to super administrators; non-admin writes cannot use data scope as an escalation path.
-- Runtime API responses are wrapped as `{ "code": 200, "message": "success", "data": ... }`. Swagger uses `ApiResponseDto[T]` per route so response bodies show concrete schemas instead of `Any`.
+- Runtime API responses are wrapped as `{ "code": 200, "message": "success", "data": ... }`. Unexpected failures return a sanitized 500 response while full tracebacks remain in server logs. Swagger uses `ApiResponseDto[T]` per route so response bodies show concrete schemas instead of `Any`.
 
 ## Common Commands
 
