@@ -54,7 +54,22 @@ jobs:
         run: poetry run alembic upgrade head --sql > migration.sql
 
       - name: Run unit tests
-        run: poetry run python -m pytest -q -m "not integration"
+        run: >-
+          poetry run python -m pytest -q -m "not integration"
+          --cov
+          --cov-report=term-missing
+          --cov-report=xml:coverage.xml
+          --cov-report=html:htmlcov
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage
+          path: |
+            coverage.xml
+            htmlcov/
+          if-no-files-found: warn
 
   integration:
     name: MySQL and Redis integration tests

@@ -274,6 +274,9 @@ poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 # 运行测试
 poetry run python -m pytest -q
 
+# 运行单元测试并检查 60% 覆盖率阈值
+poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-missing
+
 # 运行 MySQL/Redis 集成测试
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 
@@ -664,6 +667,9 @@ poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 # Run tests
 poetry run python -m pytest -q
+
+# Run unit tests and enforce the 60% coverage threshold
+poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-missing
 
 # Run MySQL/Redis integration tests
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration

@@ -41,6 +41,18 @@ pillow = "^11.0.0"
 pre-commit = "^4.0.1"
 commitizen = "^3.30.0"
 pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+
+[tool.coverage.run]
+branch = true
+source = ["main", "config", "interceptors", "middleware", "module_admin", "scripts", "utils"]
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 60
+precision = 1
+show_missing = true
+skip_covered = true
 
 [build-system]
 requires = ["poetry-core"]
