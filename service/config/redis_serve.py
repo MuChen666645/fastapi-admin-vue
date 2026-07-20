@@ -5,7 +5,7 @@ import redis.asyncio as aioredis
 from redis.asyncio import Redis
 from loguru import logger
 
-from config.env import settings
+from config.env import Settings, settings
 
 
 class RedisServe:
@@ -15,16 +15,17 @@ class RedisServe:
         """Redis connection error."""
 
     @classmethod
-    async def get_redis_server(cls):
+    async def get_redis_server(cls, app_settings: Settings | None = None):
         """Create a Redis client and fail startup if the connection is unusable."""
+        app_settings = app_settings or settings
         logger.info("Starting Redis connection")
         redis: Redis = aioredis.from_url(
-            url=f"redis://{settings.REDIS_HOST}:{settings.REDIS_POST}",
-            db=settings.REDIS_DB,
+            url=f"redis://{app_settings.REDIS_HOST}:{app_settings.REDIS_POST}",
+            db=app_settings.REDIS_DB,
             encoding="utf-8",
             decode_responses=True,
-            username=settings.REDIS_USERNAME,
-            password=settings.REDIS_PASSWORD,
+            username=app_settings.REDIS_USERNAME,
+            password=app_settings.REDIS_PASSWORD,
         )
         try:
             await redis.ping()

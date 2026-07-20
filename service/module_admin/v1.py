@@ -2,7 +2,7 @@
 
 from fastapi import Depends, FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from config.env import settings
+from config.env import Settings, settings
 from config.mysql_serve import bind_request_mysql_session
 from module_admin.controller.health_controller import HealthController
 from module_admin.controller.user_controller import UserController
@@ -20,18 +20,25 @@ from module_admin.controller.log_controller import LogController
 class AdminAPI:
     """This class contains the API endpoints for the admin module."""
 
-    def __init__(self, app: FastAPI, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        app: FastAPI,
+        app_settings: Settings | None = None,
+        *args,
+        **kwargs,
+    ) -> None:
         """初始化APP."""
         super().__init__(*args, **kwargs)
         if app is not None:
             self.init_router(app)
             # CORS配置
+            app_settings = app_settings or settings
             app.add_middleware(
                 CORSMiddleware,
-                allow_origins=settings.ORIGINS,
-                allow_credentials=settings.CREDENTIALS,
-                allow_methods=settings.MEDOTHS,
-                allow_headers=settings.HEADERS,
+                allow_origins=app_settings.ORIGINS,
+                allow_credentials=app_settings.CREDENTIALS,
+                allow_methods=app_settings.MEDOTHS,
+                allow_headers=app_settings.HEADERS,
             )
 
     @staticmethod

@@ -13,7 +13,7 @@ from config.mysql_serve import MysqlServe
 
 async def _database_state() -> tuple[bool, str | None]:
     """Return whether this is a legacy database and its Alembic version."""
-    engine = create_async_engine(MysqlServe.DB_URL, pool_pre_ping=True)
+    engine = create_async_engine(MysqlServe.get_db_url(), pool_pre_ping=True)
     try:
         async with engine.connect() as connection:
             tables = await connection.run_sync(

@@ -30,7 +30,7 @@ target_metadata = SQLModel.metadata
 def run_migrations_offline() -> None:
     """Run migrations without creating a database connection."""
     context.configure(
-        url=MysqlServe.DB_URL,
+        url=MysqlServe.get_db_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -54,7 +54,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     connectable = create_async_engine(
-        MysqlServe.DB_URL,
+        MysqlServe.get_db_url(),
         poolclass=pool.NullPool,
         connect_args={"init_command": "SET time_zone = '+08:00'"},
     )

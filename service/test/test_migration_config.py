@@ -45,5 +45,7 @@ def test_migration_entrypoint_and_schema_readiness_are_configured() -> None:
 
     assert 'command.stamp(config, "0001_initial_schema")' in migration_source
     assert 'command.upgrade(config, "head")' in migration_source
+    assert "MysqlServe.get_db_url()" in migration_source
+    assert "MysqlServe.DB_URL" not in migration_source
     assert "service_completed_successfully" in compose
     assert "alembic_version" in health_source

@@ -280,6 +280,10 @@ poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-miss
 # 运行 MySQL/Redis 集成测试
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 
+# 在测试或多实例部署中创建独立应用
+from main import create_app
+application = create_app()
+
 # 代码格式化
 poetry run black .
 poetry run isort .
@@ -673,6 +677,10 @@ poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-miss
 
 # Run MySQL/Redis integration tests
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
+
+# Create an isolated application for tests or multiple instances
+from main import create_app
+application = create_app()
 
 # Format code
 poetry run black .

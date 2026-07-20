@@ -23,12 +23,13 @@ class HealthController:
         """Verify dependencies needed by business requests."""
         checks: dict[str, str] = {}
 
+        app_settings = getattr(request.app.state, "settings", settings)
         redis = getattr(request.app.state, "redis", None)
         try:
             if redis is None:
                 raise RuntimeError("Redis client is not initialized")
             await asyncio.wait_for(
-                redis.ping(), timeout=settings.READINESS_TIMEOUT_SECONDS
+                redis.ping(), timeout=app_settings.READINESS_TIMEOUT_SECONDS
             )
             checks["redis"] = "ok"
         except asyncio.TimeoutError:
@@ -40,7 +41,7 @@ class HealthController:
         try:
             if session_factory is None:
                 raise RuntimeError("MySQL session factory is not initialized")
-            async with asyncio.timeout(settings.READINESS_TIMEOUT_SECONDS):
+            async with asyncio.timeout(app_settings.READINESS_TIMEOUT_SECONDS):
                 async with session_factory() as session:
                     await session.execute(text("SELECT 1"))
                     checks["mysql"] = "ok"
@@ -50,7 +51,7 @@ class HealthController:
                     version = version_result.scalar_one_or_none()
                     checks["schema"] = (
                         "ok"
-                        if version == settings.DATABASE_SCHEMA_VERSION
+                        if version == app_settings.DATABASE_SCHEMA_VERSION
                         else "outdated"
                     )
         except asyncio.TimeoutError:
