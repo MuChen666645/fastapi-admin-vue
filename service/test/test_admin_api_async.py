@@ -1,526 +1,612 @@
-from test.conftest import create_async_client
+"""基于真实 MySQL、Redis 和 HTTP 栈的后台 API 集成测试。"""
+
+import json
+import os
+import uuid
+from dataclasses import dataclass, field
 
 import anyio
 import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete, select
+from starlette.requests import Request
 
+from config.env import settings
+from module_admin.auth.authorization import Auth
+from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
+from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.entity.do.menu_do import MenuDo
+from module_admin.entity.do.notice_do import NoticeDo
+from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
+from module_admin.entity.do.permission_do import PermissionDo
+from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
+from module_admin.entity.do.system_config_do import SystemConfigDo
+from module_admin.entity.do.user_do import UserDo, UserRoleDo
+from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.service.code_service import CodeService
-from module_admin.service.dictionary_service import DictionaryService
-from module_admin.service.menu_service import MenuService
-from module_admin.service.organization_service import (DepartmentService,
-                                                       PostService)
-from module_admin.service.role_service import RoleService
-from module_admin.service.user_service import UserService
+from test.conftest import app
+from utils.fastapi_admin import FastApiAdmin
 
 
-def run_async(async_fn):
-    anyio.run(async_fn)
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        os.getenv("RUN_INTEGRATION_TESTS") != "1",
+        reason="RUN_INTEGRATION_TESTS=1 is required for real service tests",
+    ),
+]
+
+ADMIN_PASSWORD = "integration-admin-password"
+CAPTCHA_CODE = "1234"
 
 
-def ok_response(response):
-    assert response.status_code == 200
+@dataclass
+class ApiCase:
+    """记录本次集成测试创建的实体，供清理阶段使用。"""
+
+    suffix: str
+    admin_user_id: int
+    admin_role_id: int
+    department_ids: list[int] = field(default_factory=list)
+    user_ids: list[int] = field(default_factory=list)
+    post_ids: list[int] = field(default_factory=list)
+    menu_ids: list[int] = field(default_factory=list)
+    role_ids: list[int] = field(default_factory=list)
+    dict_type_ids: list[int] = field(default_factory=list)
+    dict_data_ids: list[int] = field(default_factory=list)
+    config_ids: list[int] = field(default_factory=list)
+    notice_ids: list[int] = field(default_factory=list)
+    job_ids: list[int] = field(default_factory=list)
+    created_admin_role: bool = False
+    created_wildcard: bool = False
+
+
+def _request_for_token() -> Request:
+    """创建用于 Token 清理和验证码哈希的真实请求上下文。"""
+    return Request(
+        {
+            "type": "http",
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": "/",
+            "raw_path": b"/",
+            "query_string": b"",
+            "headers": [(b"user-agent", b"integration-test")],
+            "client": ("127.0.0.1", 23456),
+            "server": ("127.0.0.1", 3000),
+            "app": app,
+        }
+    )
+
+
+def _phone_number() -> str:
+    """生成本次测试专用的合法手机号。"""
+    return f"139{uuid.uuid4().int % 100_000_000:08d}"
+
+
+async def _seed_case(session_factory) -> ApiCase:
+    """使用随机后缀创建真实管理员账号和权限前置数据。"""
+    suffix = uuid.uuid4().hex[:12]
+    async with session_factory() as session:
+        role_result = await session.execute(
+            select(RoleDo)
+            .where(RoleDo.code == settings.ADMIN_ROLE_CODE, RoleDo.status == "1")
+            .order_by(RoleDo.id)
+            .limit(1)
+        )
+        admin_role = role_result.scalars().first()
+        created_admin_role = admin_role is None
+        if admin_role is None:
+            admin_role = RoleDo(
+                id=None,
+                name=f"integration-admin-{suffix}",
+                code=settings.ADMIN_ROLE_CODE,
+                description="集成测试管理员角色",
+            )
+            session.add(admin_role)
+            await session.flush()
+
+        wildcard_result = await session.execute(
+            select(PermissionDo).where(
+                PermissionDo.code == "*:*:*", PermissionDo.status == "1"
+            )
+        )
+        wildcard = wildcard_result.scalars().first()
+        created_wildcard = wildcard is None
+        if wildcard is None:
+            existing_wildcard = await session.execute(
+                select(PermissionDo).where(PermissionDo.code == "*:*:*")
+            )
+            if existing_wildcard.scalars().first() is not None:
+                raise RuntimeError("数据库中的超级管理员通配权限已被停用")
+            session.add(
+                PermissionDo(
+                    name="集成测试超级管理员权限",
+                    code="*:*:*",
+                    module="system",
+                )
+            )
+
+        department = DepartmentDo(
+            dept_name=f"集成测试部门-{suffix}",
+            ancestors="0",
+        )
+        session.add(department)
+        await session.flush()
+
+        admin_user = UserDo(
+            id=None,
+            username=f"integration-admin-{suffix}",
+            password=FastApiAdmin.password_hash(ADMIN_PASSWORD),
+            phone=_phone_number(),
+            email=f"integration-admin-{suffix}@example.com",
+            dept_id=department.dept_id,
+            role_id=admin_role.id,
+            nickname="集成测试管理员",
+        )
+        session.add(admin_user)
+        await session.commit()
+
+        return ApiCase(
+            suffix=suffix,
+            admin_user_id=admin_user.id,
+            admin_role_id=admin_role.id,
+            department_ids=[department.dept_id],
+            user_ids=[admin_user.id],
+            created_admin_role=created_admin_role,
+            created_wildcard=created_wildcard,
+        )
+
+
+async def _seed_captcha(captcha_id: str, request: Request) -> None:
+    """把已知验证码写入真实 Redis，供登录接口消费。"""
+    payload = json.dumps(
+        {
+            "code_hash": CodeService._code_hash(captcha_id, CAPTCHA_CODE),
+            "ip_hash": CodeService._client_ip_hash(request),
+            "attempts": 0,
+        },
+        separators=(",", ":"),
+    )
+    await app.state.redis.set(
+        CodeService._captcha_key(captcha_id),
+        payload,
+        ex=settings.CAPTCHA_TTL_SECONDS,
+    )
+
+
+def _assert_success(response) -> dict:
+    """校验统一成功响应并返回业务数据。"""
+    assert response.status_code == 200, response.text
     body = response.json()
     assert body["code"] == 200
     assert body["message"] == "success"
     return body["data"]
 
 
-@pytest.fixture(autouse=True)
-def mock_services(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def none_service(*args, **kwargs):
-        return None
-
-    async def token_service(*args, **kwargs):
-        return {"access_token": "test-token"}
-
-    async def user_list_service(*args, **kwargs):
-        return {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
-
-    async def user_routes_service(*args, **kwargs):
-        return [
-            {
-                "path": "/system",
-                "name": "system",
-                "component": "Layout",
-                "redirect": None,
-                "hidden": False,
-                "meta": {
-                    "title": "system",
-                    "icon": "Setting",
-                    "noCache": True,
-                    "link": None,
-                },
-                "children": [],
-            }
-        ]
-
-    async def user_info_service(*args, **kwargs):
-        return {
-            "user": {
-                "id": 1,
-                "create_time": "2026-07-13T00:00:00",
-                "username": "admin",
-                "email": "admin@example.com",
-                "phone": "13800138000",
-                "role_id": 1,
-                "nickname": "admin",
-                "sex": "1",
-                "avatar": "",
-                "update_time": "2026-07-13T00:00:00",
-                "status": "1",
-            },
-            "roles": [
-                {
-                    "id": 1,
-                    "name": "admin",
-                    "code": "admin",
-                    "description": "administrator",
-                    "create_time": "2026-07-13T00:00:00",
-                    "update_time": "2026-07-13T00:00:00",
-                    "status": "1",
-                }
-            ],
-            "permissions": ["*:*:*"],
-        }
-
-    async def captcha_image_service(*args, **kwargs):
-        return {
-            "captcha_id": "captcha-id-1234567890",
-            "image": "data:image/png;base64,test",
-        }
-
-    async def role_detail_service(*args, **kwargs):
-        return {
-            "id": 1,
-            "name": "admin",
-            "code": "admin",
-            "description": "administrator",
-            "create_time": "2026-07-13T00:00:00",
-            "update_time": "2026-07-13T00:00:00",
-            "status": "1",
-            "menu_ids": [1, 2],
-        }
-
-    async def role_list_service(*args, **kwargs):
-        return {
-            "items": [await role_detail_service()],
-            "total": 1,
-            "page": 1,
-            "size": 50,
-            "pages": 1,
-        }
-
-    async def menu_detail_service(*args, **kwargs):
-        return {
-            "menu_id": 1,
-            "menu_name": "system",
-            "parent_id": 0,
-            "icon": "Setting",
-            "menu_path": "/system",
-            "component": "Layout",
-            "is_hidden": "0",
-            "is_cache": "0",
-            "menu_type": "C",
-            "sort": 1,
-            "link_url": None,
-            "perms": "system:menu:list",
-            "status": "1",
-            "create_time": "2026-07-13T00:00:00",
-            "update_time": "2026-07-13T00:00:00",
-            "remark": "system menu",
-        }
-
-    async def menu_list_service(*args, **kwargs):
-        menu = await menu_detail_service()
-        menu["children"] = []
-        return [menu]
-
-    monkeypatch.setattr(CodeService, "get_captcha_img_services", captcha_image_service)
-    monkeypatch.setattr(CodeService, "verify_captcha_services", none_service)
-
-    monkeypatch.setattr(UserService, "create_user_by_username_services", none_service)
-    monkeypatch.setattr(UserService, "get_user_by_username_services", token_service)
-    monkeypatch.setattr(UserService, "get_user_by_phone_services", token_service)
-    monkeypatch.setattr(UserService, "list_users_services", user_list_service)
-    monkeypatch.setattr(UserService, "get_current_user_routes_services", user_routes_service)
-    monkeypatch.setattr(UserService, "get_current_user_info_services", user_info_service)
-    monkeypatch.setattr(UserService, "get_user_by_id_services", user_info_service)
-    monkeypatch.setattr(UserService, "update_user_by_id_services", none_service)
-    monkeypatch.setattr(UserService, "update_user_password_by_id_services", none_service)
-    monkeypatch.setattr(UserService, "reset_user_password_services", none_service)
-    monkeypatch.setattr(UserService, "bind_user_roles_services", none_service)
-    monkeypatch.setattr(UserService, "batch_update_user_status_services", none_service)
-    monkeypatch.setattr(UserService, "batch_delete_users_services", none_service)
-    monkeypatch.setattr(UserService, "delete_user_by_id_services", none_service)
-    monkeypatch.setattr(UserService, "logout_services", none_service)
-
-    monkeypatch.setattr(RoleService, "create_role_services", none_service)
-    monkeypatch.setattr(RoleService, "get_role_by_all_services", role_list_service)
-    monkeypatch.setattr(RoleService, "get_role_by_id_services", role_detail_service)
-    monkeypatch.setattr(RoleService, "del_role_by_id_services", none_service)
-    monkeypatch.setattr(RoleService, "upd_role_by_id_services", none_service)
-    monkeypatch.setattr(RoleService, "batch_update_role_status_services", none_service)
-
-    monkeypatch.setattr(MenuService, "create_menu_by_router", none_service)
-    monkeypatch.setattr(MenuService, "create_menu_by_btn", none_service)
-    monkeypatch.setattr(MenuService, "create_menu_by_link", none_service)
-    monkeypatch.setattr(MenuService, "create_menu_by_iframe", none_service)
-    monkeypatch.setattr(MenuService, "get_menu_list_all", menu_list_service)
-    monkeypatch.setattr(MenuService, "get_menu_by_id_services", menu_detail_service)
-    monkeypatch.setattr(MenuService, "upd_menu_by_id_services", none_service)
-    monkeypatch.setattr(MenuService, "del_menu_by_id_services", none_service)
-
-    async def list_service(*args, **kwargs):
-        return []
-
-    async def detail_service(*args, **kwargs):
-        return {"id": 1}
-
-    async def post_list_service(*args, **kwargs):
-        return {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
-
-    async def page_list_service(*args, **kwargs):
-        return {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
-
-    monkeypatch.setattr(DepartmentService, "list", list_service)
-    monkeypatch.setattr(DepartmentService, "detail", detail_service)
-    monkeypatch.setattr(DepartmentService, "create", none_service)
-    monkeypatch.setattr(DepartmentService, "update", none_service)
-    monkeypatch.setattr(DepartmentService, "delete", none_service)
-
-    monkeypatch.setattr(PostService, "list", post_list_service)
-    monkeypatch.setattr(PostService, "detail", detail_service)
-    monkeypatch.setattr(PostService, "create", none_service)
-    monkeypatch.setattr(PostService, "update", none_service)
-    monkeypatch.setattr(PostService, "delete", none_service)
-
-    monkeypatch.setattr(DictionaryService, "list_types", page_list_service)
-    monkeypatch.setattr(DictionaryService, "type_detail", detail_service)
-    monkeypatch.setattr(DictionaryService, "create_type", none_service)
-    monkeypatch.setattr(DictionaryService, "update_type", none_service)
-    monkeypatch.setattr(DictionaryService, "delete_type", none_service)
-    monkeypatch.setattr(DictionaryService, "list_data", page_list_service)
-    monkeypatch.setattr(DictionaryService, "data_detail", detail_service)
-    monkeypatch.setattr(DictionaryService, "create_data", none_service)
-    monkeypatch.setattr(DictionaryService, "update_data", none_service)
-    monkeypatch.setattr(DictionaryService, "delete_data", none_service)
+async def _find_id(session_factory, model, field, value) -> int:
+    """从真实数据库中查询随机测试实体的主键。"""
+    async with session_factory() as session:
+        result = await session.execute(select(model).where(field == value))
+        item = result.scalars().first()
+        assert item is not None
+        for primary_key in ("id", "dept_id", "post_id", "menu_id", "dict_id", "dict_code"):
+            identifier = getattr(item, primary_key, None)
+            if identifier is not None:
+                return identifier
+        raise AssertionError(f"无法读取 {model.__name__} 的主键")
 
 
-def test_captcha_api_async() -> None:
-    async def run() -> None:
-        async with create_async_client() as client:
-            image = ok_response(await client.get("/captcha/image"))
-            number = await client.get("/captcha/number")
-            verified = ok_response(
-                await client.get(
-                    "/captcha/verify",
-                    params={
-                        "captcha_id": "captcha-id-1234567890",
-                        "code": "1234",
-                    },
-                )
+async def _login(client: AsyncClient, case: ApiCase) -> str:
+    """通过真实验证码、密码校验和 Redis 锁定服务登录。"""
+    captcha_id = uuid.uuid4().hex
+    request = _request_for_token()
+    await _seed_captcha(captcha_id, request)
+    response = await client.post(
+        "/user/login/username",
+        data={
+            "username": f"integration-admin-{case.suffix}",
+            "password": ADMIN_PASSWORD,
+            "captcha_id": captcha_id,
+            "captcha": CAPTCHA_CODE,
+        },
+    )
+    data = _assert_success(response)
+    assert data["access_token"]
+    return data["access_token"]
+
+
+async def _cleanup_case(session_factory, case: ApiCase) -> None:
+    """按外键依赖顺序删除本次测试创建的所有业务数据。"""
+    request = _request_for_token()
+    for session in await Auth.list_online_tokens(request):
+        if session.get("user_id") in case.user_ids:
+            await Auth._delete_cache_key(
+                request, f"{Auth.TOKEN_REDIS_PREFIX}{session['token_id']}"
             )
 
-        assert image == {
-            "captcha_id": "captcha-id-1234567890",
-            "image": "data:image/png;base64,test",
-        }
-        assert number.status_code == 410
-        assert number.json() == {
-            "code": 410,
-            "message": "数字验证码接口已停用，请使用图形验证码",
-            "data": None,
-        }
-        assert verified is None
+    async with session_factory() as session:
+        if case.user_ids:
+            await session.execute(
+                delete(LoginLogDo).where(LoginLogDo.user_id.in_(case.user_ids))
+            )
+            await session.execute(
+                delete(OperationLogDo).where(OperationLogDo.user_id.in_(case.user_ids))
+            )
+            await session.execute(
+                delete(ExceptionLogDo).where(ExceptionLogDo.user_id.in_(case.user_ids))
+            )
+            await session.execute(
+                delete(UserPostDo).where(UserPostDo.user_id.in_(case.user_ids))
+            )
+            await session.execute(
+                delete(UserRoleDo).where(UserRoleDo.user_id.in_(case.user_ids))
+            )
+            await session.execute(delete(UserDo).where(UserDo.id.in_(case.user_ids)))
+        if case.job_ids:
+            await session.execute(delete(JobLogDo).where(JobLogDo.job_id.in_(case.job_ids)))
+            await session.execute(
+                delete(ScheduledJobDo).where(ScheduledJobDo.id.in_(case.job_ids))
+            )
+        if case.menu_ids:
+            await session.execute(
+                delete(RoleMenuDo).where(RoleMenuDo.menu_id.in_(case.menu_ids))
+            )
+            await session.execute(delete(MenuDo).where(MenuDo.menu_id.in_(case.menu_ids)))
+        if case.dict_data_ids:
+            await session.execute(
+                delete(DictDataDo).where(DictDataDo.dict_code.in_(case.dict_data_ids))
+            )
+        if case.dict_type_ids:
+            await session.execute(
+                delete(DictTypeDo).where(DictTypeDo.dict_id.in_(case.dict_type_ids))
+            )
+        if case.notice_ids:
+            await session.execute(delete(NoticeDo).where(NoticeDo.id.in_(case.notice_ids)))
+        if case.config_ids:
+            await session.execute(
+                delete(SystemConfigDo).where(SystemConfigDo.id.in_(case.config_ids))
+            )
+        if case.post_ids:
+            await session.execute(
+                delete(UserPostDo).where(UserPostDo.post_id.in_(case.post_ids))
+            )
+            await session.execute(delete(PostDo).where(PostDo.post_id.in_(case.post_ids)))
+        if case.department_ids:
+            for department_id in sorted(case.department_ids, reverse=True):
+                await session.execute(
+                    delete(DepartmentDo).where(DepartmentDo.dept_id == department_id)
+                )
+        if case.created_admin_role:
+            await session.execute(
+                delete(RoleDeptDo).where(RoleDeptDo.role_id == case.admin_role_id)
+            )
+            await session.execute(delete(RoleDo).where(RoleDo.id == case.admin_role_id))
+        if case.role_ids:
+            await session.execute(
+                delete(RoleMenuDo).where(RoleMenuDo.role_id.in_(case.role_ids))
+            )
+            await session.execute(
+                delete(RoleDeptDo).where(RoleDeptDo.role_id.in_(case.role_ids))
+            )
+            await session.execute(delete(RoleDo).where(RoleDo.id.in_(case.role_ids)))
+        if case.created_wildcard:
+            await session.execute(
+                delete(PermissionDo).where(PermissionDo.code == "*:*:*")
+            )
+        await session.commit()
 
-    run_async(run)
+
+async def _run_with_admin(callback) -> None:
+    """启动真实应用、执行测试回调，并保证测试数据最终清理。"""
+    async with app.router.lifespan_context(app):
+        app.dependency_overrides.clear()
+        case = await _seed_case(app.state.mysql_session_factory)
+        try:
+            transport = ASGITransport(
+                app=app,
+                client=("127.0.0.1", 23456),
+            )
+            async with AsyncClient(
+                transport=transport,
+                base_url="http://127.0.0.1",
+            ) as client:
+                token = await _login(client, case)
+                client.headers["Authorization"] = f"Bearer {token}"
+                await callback(client, case)
+        finally:
+            await _cleanup_case(app.state.mysql_session_factory, case)
 
 
-def test_user_api_async() -> None:
+def test_real_captcha_and_user_api() -> None:
+    """验证真实验证码、登录、用户查询、创建、更新和删除链路。"""
+
     async def run() -> None:
-        async with create_async_client() as client:
-            ok_response(
+        async def exercise(client: AsyncClient, case: ApiCase) -> None:
+            image = await client.get("/captcha/image")
+            assert image.status_code == 200
+            assert image.json()["data"]["captcha_id"]
+            assert image.json()["data"]["image"].startswith("data:image/")
+
+            username = f"integration-target-{case.suffix}"
+            phone = _phone_number()
+            _assert_success(
                 await client.post(
                     "/user/add",
                     json={
-                        "username": "tester",
-                        "password": "password",
-                        "phone": "13800138000",
-                        "email": "tester@example.com",
-                        "nickname": "tester",
+                        "username": username,
+                        "password": "target-password",
+                        "phone": phone,
+                        "email": f"{username}@example.com",
+                        "nickname": "集成测试用户",
                         "sex": "1",
                     },
                 )
             )
-            username_login = ok_response(
-                await client.post(
-                    "/user/login/username",
-                    data={
-                        "username": "tester",
-                        "password": "password",
-                        "captcha_id": "captcha-id-1234567890",
-                        "captcha": "1234",
-                    },
-                )
+            user_id = await _find_id(
+                app.state.mysql_session_factory, UserDo, UserDo.username, username
             )
-            phone_login = ok_response(
-                await client.post(
-                    "/user/login/phone",
-                    data={
-                        "phone": "13800138000",
-                        "password": "password",
-                        "captcha_id": "captcha-id-1234567890",
-                        "captcha": "1234",
-                    },
-                )
-            )
-            phone_login_without_password = await client.post(
-                "/user/login/phone",
-                data={
-                    "phone": "13800138000",
-                    "captcha_id": "captcha-id-1234567890",
-                    "captcha": "1234",
-                },
-            )
-            ok_response(await client.post("/user/logout"))
-            users = ok_response(
-                await client.get(
-                    "/user/list",
-                    params={
-                        "username": "admin",
-                        "phone": "138",
-                        "email": "admin@example.com",
-                        "nickname": "admin",
-                    },
-                )
-            )
-            current_user = ok_response(await client.get("/user/info"))
-            routes = ok_response(await client.get("/user/routes"))
-            user = ok_response(await client.get("/user/1"))
-            ok_response(
-                await client.put(
-                    "/user/1",
-                    json={
-                        "username": "tester",
-                        "phone": "13800138000",
-                        "email": "tester@example.com",
-                        "sex": "1",
-                        "status": "1",
-                    },
-                )
-            )
-            update_with_role_id = await client.put(
-                "/user/1", json={"role_id": 1}
-            )
-            ok_response(
-                await client.put(
-                    "/user/1/password",
-                    json={"old_password": "old-password", "new_password": "new-password"},
-                )
-            )
-            ok_response(
-                await client.put(
-                    "/user/1/reset-password",
-                    json={"password": "reset-password"},
-                )
-            )
-            ok_response(
-                await client.put("/user/1/roles", json={"role_ids": [1, 2]})
-            )
-            ok_response(
-                await client.put(
-                    "/user/batch/status",
-                    json={"user_ids": [1, 2], "status": "0"},
-                )
-            )
-            ok_response(
-                await client.request(
-                    "DELETE", "/user/batch", json={"user_ids": [1, 2]}
-                )
-            )
-            ok_response(await client.delete("/user/1"))
+            case.user_ids.append(user_id)
 
-        assert username_login == {"access_token": "test-token"}
-        assert phone_login == {"access_token": "test-token"}
-        assert phone_login_without_password.status_code == 422
-        assert update_with_role_id.status_code == 422
-        assert users == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
-        assert current_user["user"]["id"] == 1
-        assert routes[0]["meta"]["title"] == "system"
-        assert routes[0]["children"] == []
-        assert user["permissions"] == ["*:*:*"]
+            info = _assert_success(await client.get("/user/info"))
+            assert info["user"]["username"] == f"integration-admin-{case.suffix}"
+            assert "*:*:*" in info["permissions"]
+            routes = _assert_success(await client.get("/user/routes"))
+            assert isinstance(routes, list)
+            users = _assert_success(
+                await client.get("/user/list", params={"username": username})
+            )
+            assert users["total"] == 1
+            assert users["items"][0]["id"] == user_id
 
-    run_async(run)
+            _assert_success(
+                await client.put(
+                    f"/user/{user_id}",
+                    json={"nickname": "集成测试用户已更新"},
+                )
+            )
+            invalid_update = await client.put(
+                f"/user/{user_id}", json={"role_id": case.admin_role_id}
+            )
+            assert invalid_update.status_code == 422
+            _assert_success(await client.delete(f"/user/{user_id}"))
+            assert (await client.get(f"/user/{user_id}")).status_code == 404
+
+        await _run_with_admin(exercise)
+
+    anyio.run(run)
 
 
-def test_role_api_async() -> None:
+def test_real_admin_crud_and_monitoring_api() -> None:
+    """验证角色、菜单、组织、字典、参数、公告、任务和日志真实链路。"""
+
     async def run() -> None:
-        async with create_async_client() as client:
-            ok_response(
+        async def exercise(client: AsyncClient, case: ApiCase) -> None:
+            suffix = case.suffix
+
+            department_name = f"集成子部门-{suffix}"
+            _assert_success(
+                await client.post(
+                    "/dept/add",
+                    json={
+                        "dept_name": department_name,
+                        "parent_id": case.department_ids[0],
+                    },
+                )
+            )
+            department_id = await _find_id(
+                app.state.mysql_session_factory,
+                DepartmentDo,
+                DepartmentDo.dept_name,
+                department_name,
+            )
+            case.department_ids.append(department_id)
+            _assert_success(
+                await client.put(
+                    f"/dept/{department_id}",
+                    json={"dept_name": f"{department_name}-已更新"},
+                )
+            )
+
+            post_code = f"integration-post-{suffix}"
+            _assert_success(
+                await client.post(
+                    "/post/add",
+                    json={"post_code": post_code, "post_name": "集成测试岗位"},
+                )
+            )
+            post_id = await _find_id(
+                app.state.mysql_session_factory, PostDo, PostDo.post_code, post_code
+            )
+            case.post_ids.append(post_id)
+            _assert_success(
+                await client.put(
+                    f"/post/{post_id}", json={"post_name": "集成测试岗位已更新"}
+                )
+            )
+
+            role_code = f"integration-role-{suffix}"
+            _assert_success(
                 await client.post(
                     "/role/add",
-                    json={
-                        "name": "admin",
-                        "code": "admin",
-                        "description": "administrator",
-                        "menu_ids": [1, 2],
-                    },
+                    json={"name": f"集成角色-{suffix}", "code": role_code},
                 )
             )
-            roles = ok_response(
-                await client.get("/role/list", params={"name": "admin", "code": "admin"})
+            role_id = await _find_id(
+                app.state.mysql_session_factory, RoleDo, RoleDo.code, role_code
             )
-            role = ok_response(await client.get("/role/1"))
-            ok_response(
+            case.role_ids.append(role_id)
+            _assert_success(
                 await client.put(
-                    "/role/1",
-                    json={
-                        "name": "admin",
-                        "code": "admin",
-                        "description": "administrator",
-                        "menu_ids": [1, 3],
-                    },
+                    f"/role/{role_id}",
+                    json={"name": f"集成角色-{suffix}-已更新"},
                 )
             )
-            ok_response(
-                await client.put(
-                    "/role/batch/status",
-                    json={"role_ids": [1, 2], "status": "0"},
-                )
-            )
-            ok_response(await client.delete("/role/1"))
 
-        assert roles["total"] == 1
-        assert role["id"] == 1
-        assert role["menu_ids"] == [1, 2]
-
-    run_async(run)
-
-
-def test_menu_api_async() -> None:
-    async def run() -> None:
-        async with create_async_client() as client:
-            ok_response(
+            menu_name = f"集成菜单-{suffix}"
+            _assert_success(
                 await client.post(
                     "/menu/add",
                     json={
-                        "menu_name": "system",
+                        "menu_name": menu_name,
                         "parent_id": 0,
                         "menu_type": "C",
-                        "menu_path": "/system",
+                        "menu_path": f"/integration-{suffix}",
                         "sort": 1,
-                        "icon": "Setting",
                         "component": "Layout",
                         "is_cache": "0",
                         "is_hidden": "0",
-                        "remark": "system menu",
                     },
                 )
             )
-            invalid_menu = await client.post(
-                "/menu/add",
-                json={
-                    "menu_name": "invalid",
-                    "parent_id": 0,
-                    "menu_type": "F",
-                    "menu_path": "/invalid",
-                },
+            menu_id = await _find_id(
+                app.state.mysql_session_factory, MenuDo, MenuDo.menu_name, menu_name
             )
-            menus = ok_response(
-                await client.get(
-                    "/menu/list", params={"menu_name": "system", "status": "1"}
-                )
-            )
-            menu = ok_response(await client.get("/menu/1"))
-            ok_response(
+            case.menu_ids.append(menu_id)
+            _assert_success(
                 await client.put(
-                    "/menu/1",
-                    json={
-                        "menu_name": "system",
-                        "parent_id": 0,
-                        "menu_type": "C",
-                        "menu_path": "/system",
-                        "sort": 1,
-                        "status": "1",
-                    },
+                    f"/menu/{menu_id}",
+                    json={"menu_name": f"{menu_name}-已更新"},
                 )
             )
-            ok_response(await client.delete("/menu/1"))
 
-        assert menus[0]["menu_id"] == 1
-        assert menu["menu_name"] == "system"
-        assert invalid_menu.status_code == 422
-
-    run_async(run)
-
-
-def test_organization_and_dictionary_api_async() -> None:
-    async def run() -> None:
-        async with create_async_client() as client:
-            ok_response(await client.get("/dept/list", params={"status": "1"}))
-            ok_response(await client.get("/dept/1"))
-            ok_response(
-                await client.post(
-                    "/dept/add", json={"dept_name": "研发部", "parent_id": 0}
-                )
-            )
-            ok_response(await client.put("/dept/1", json={"dept_name": "技术部"}))
-            ok_response(await client.delete("/dept/1"))
-
-            posts = ok_response(await client.get("/post/list", params={"status": "1"}))
-            ok_response(await client.get("/post/1"))
-            ok_response(
-                await client.post(
-                    "/post/add",
-                    json={"post_code": "dev", "post_name": "开发工程师"},
-                )
-            )
-            ok_response(await client.put("/post/1", json={"post_name": "高级开发"}))
-            ok_response(await client.delete("/post/1"))
-
-            dict_types = ok_response(await client.get("/dict/type/list"))
-            ok_response(await client.get("/dict/type/1"))
-            ok_response(
+            dict_type = f"integration_dict_{suffix}"
+            _assert_success(
                 await client.post(
                     "/dict/type/add",
-                    json={"dict_name": "用户性别", "dict_type": "sys_user_sex"},
+                    json={"dict_name": "集成字典", "dict_type": dict_type},
                 )
             )
-            ok_response(await client.put("/dict/type/1", json={"status": "0"}))
-            ok_response(await client.delete("/dict/type/1"))
-
-            dict_data = ok_response(
-                await client.get(
-                    "/dict/data/list", params={"dict_type": "sys_user_sex"}
-                )
+            dict_type_id = await _find_id(
+                app.state.mysql_session_factory, DictTypeDo, DictTypeDo.dict_type, dict_type
             )
-            ok_response(await client.get("/dict/data/1"))
-            ok_response(
+            case.dict_type_ids.append(dict_type_id)
+            _assert_success(
                 await client.post(
                     "/dict/data/add",
                     json={
-                        "dict_label": "男",
+                        "dict_label": "集成值",
                         "dict_value": "1",
-                        "dict_type": "sys_user_sex",
+                        "dict_type": dict_type,
                     },
                 )
             )
-            ok_response(await client.put("/dict/data/1", json={"status": "0"}))
-            ok_response(await client.delete("/dict/data/1"))
+            dict_data_id = await _find_id(
+                app.state.mysql_session_factory,
+                DictDataDo,
+                DictDataDo.dict_type,
+                dict_type,
+            )
+            case.dict_data_ids.append(dict_data_id)
+            _assert_success(
+                await client.put(f"/dict/data/{dict_data_id}", json={"status": "0"})
+            )
 
-        assert posts == {"items": [], "total": 0, "page": 1, "size": 50, "pages": 0}
-        assert dict_types == {
-            "items": [],
-            "total": 0,
-            "page": 1,
-            "size": 50,
-            "pages": 0,
-        }
-        assert dict_data == {
-            "items": [],
-            "total": 0,
-            "page": 1,
-            "size": 50,
-            "pages": 0,
-        }
+            config_key = f"integration.config.{suffix}"
+            _assert_success(
+                await client.post(
+                    "/config/add",
+                    json={
+                        "config_name": "集成参数",
+                        "config_key": config_key,
+                        "config_value": "before",
+                    },
+                )
+            )
+            config_id = await _find_id(
+                app.state.mysql_session_factory,
+                SystemConfigDo,
+                SystemConfigDo.config_key,
+                config_key,
+            )
+            case.config_ids.append(config_id)
+            _assert_success(
+                await client.put(
+                    f"/config/{config_id}",
+                    json={"config_value": "after"},
+                )
+            )
+            config_value = _assert_success(await client.get(f"/config/value/{config_key}"))
+            assert config_value["config_value"] == "after"
 
-    run_async(run)
+            notice_title = f"集成公告-{suffix}"
+            _assert_success(
+                await client.post(
+                    "/notice/add",
+                    json={
+                        "notice_title": notice_title,
+                        "notice_content": "集成测试公告内容",
+                    },
+                )
+            )
+            notice_id = await _find_id(
+                app.state.mysql_session_factory, NoticeDo, NoticeDo.notice_title, notice_title
+            )
+            case.notice_ids.append(notice_id)
+            _assert_success(
+                await client.put(
+                    f"/notice/{notice_id}",
+                    json={"notice_content": "公告已更新"},
+                )
+            )
+
+            job_key = f"integration.job.{suffix}"
+            _assert_success(
+                await client.post(
+                    "/job/add",
+                    json={
+                        "job_name": "集成任务",
+                        "job_key": job_key,
+                        "task_name": "integration.noop",
+                        "cron_expression": "*/5 * * * *",
+                        "args_json": "{}",
+                    },
+                )
+            )
+            job_id = await _find_id(
+                app.state.mysql_session_factory, ScheduledJobDo, ScheduledJobDo.job_key, job_key
+            )
+            case.job_ids.append(job_id)
+            _assert_success(
+                await client.put(
+                    f"/job/{job_id}",
+                    json={"job_name": "集成任务已更新"},
+                )
+            )
+            logs = _assert_success(await client.get(f"/job/{job_id}/log/list"))
+            assert logs["total"] == 0
+            run_response = await client.post(f"/job/{job_id}/run")
+            assert run_response.status_code in {200, 503}
+            if run_response.status_code == 200:
+                assert run_response.json()["data"]["status"] == "failed"
+
+            for path in (
+                "/role/list",
+                "/menu/list",
+                "/dept/list",
+                "/post/list",
+                "/dict/type/list",
+                "/dict/data/list",
+                "/config/list",
+                "/notice/list",
+                "/job/list",
+                "/log/login/list",
+                "/log/operation/list",
+                "/online/list",
+            ):
+                assert _assert_success(await client.get(path)) is not None
+
+            _assert_success(await client.delete(f"/notice/{notice_id}"))
+            _assert_success(await client.delete(f"/config/{config_id}"))
+            _assert_success(await client.delete(f"/job/{job_id}"))
+            _assert_success(await client.delete(f"/dict/data/{dict_data_id}"))
+            _assert_success(await client.delete(f"/dict/type/{dict_type_id}"))
+            _assert_success(await client.delete(f"/menu/{menu_id}"))
+            _assert_success(await client.delete(f"/role/{role_id}"))
+            _assert_success(await client.delete(f"/post/{post_id}"))
+            _assert_success(await client.delete(f"/dept/{department_id}"))
+
+        await _run_with_admin(exercise)
+
+    anyio.run(run)
