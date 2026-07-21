@@ -1,4 +1,4 @@
-""" This module contains the API endpoints for the admin module. """
+"""后台管理模块的 API 路由注册入口。"""
 
 from fastapi import Depends, FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -22,7 +22,7 @@ from module_admin.controller.system_config_controller import SystemConfigControl
 
 
 class AdminAPI:
-    """This class contains the API endpoints for the admin module."""
+    """注册后台管理模块的 API 路由和跨域中间件。"""
 
     def __init__(
         self,

@@ -14,12 +14,14 @@ class DictionaryDao:
 
     @staticmethod
     async def get_by_id(model, item_id: int, request: Request):
+        """按主键值查询一个字典模型。"""
         return await request.state.mysql.get(model, item_id)
 
     @staticmethod
     async def list_types(
         request: Request, name: str | None, status: str | None, params: Params
     ):
+        """构造并分页查询过滤后的字典类型。"""
         query = select(DictTypeDo).order_by(DictTypeDo.dict_id)
         if name:
             query = query.where(DictTypeDo.dict_name.contains(name))
@@ -29,10 +31,12 @@ class DictionaryDao:
 
     @staticmethod
     async def create_type(data, request: Request):
+        """在当前请求事务中暂存新的字典类型。"""
         request.state.mysql.add(DictTypeDo(**data.model_dump()))
 
     @staticmethod
     async def update_type(dict_id: int, data, request: Request):
+        """修改字典类型，编码变化时同步迁移关联数据。"""
         mysql = request.state.mysql
         item = await mysql.get(DictTypeDo, dict_id)
         if item is None:
@@ -54,6 +58,7 @@ class DictionaryDao:
 
     @staticmethod
     async def delete_type(dict_id: int, request: Request):
+        """仅在没有数据行引用编码时删除字典类型。"""
         mysql = request.state.mysql
         item = await mysql.get(DictTypeDo, dict_id)
         if item is None:
@@ -72,6 +77,7 @@ class DictionaryDao:
     async def list_data(
         request: Request, dict_type: str | None, status: str | None, params: Params
     ):
+        """构造并分页查询过滤后的字典数据。"""
         query = select(DictDataDo).order_by(DictDataDo.dict_sort, DictDataDo.dict_code)
         if dict_type:
             query = query.where(DictDataDo.dict_type == dict_type)
@@ -81,6 +87,7 @@ class DictionaryDao:
 
     @staticmethod
     async def create_data(data, request: Request):
+        """校验父级字典类型，并在当前事务中暂存字典数据。"""
         mysql = request.state.mysql
         result = await mysql.execute(
             select(DictTypeDo.dict_id).where(DictTypeDo.dict_type == data.dict_type)
@@ -92,6 +99,7 @@ class DictionaryDao:
 
     @staticmethod
     async def update_data(dict_code: int, data, request: Request):
+        """修改字典数据，并校验变更后的父级字典类型。"""
         mysql = request.state.mysql
         item = await mysql.get(DictDataDo, dict_code)
         if item is None:
@@ -110,6 +118,7 @@ class DictionaryDao:
 
     @staticmethod
     async def delete_data(dict_code: int, request: Request):
+        """在当前请求事务中暂存一条字典数据的删除。"""
         mysql = request.state.mysql
         item = await mysql.get(DictDataDo, dict_code)
         if item is None:

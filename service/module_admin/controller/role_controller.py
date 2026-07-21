@@ -15,12 +15,12 @@ from fastapi_pagination import Page, Params
 
 
 class RoleController:
-    """RoleController."""
+    """角色接口控制器。"""
 
     role = APIRouter(tags=["角色模块"], prefix="/role")
 
     def __init__(self, app: FastAPI):
-        """Constructor."""
+        """保存应用实例并完成控制器初始化。"""
         self.app = app
         super().__init__()
 

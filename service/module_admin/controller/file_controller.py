@@ -23,6 +23,7 @@ class FileController:
         request: Request,
         file: UploadFile = File(..., description="待上传的文件"),
     ):
+        """上传文件并返回可用于下载的文件元数据。"""
         metadata = await FileService.upload(file, request)
         return {
             **metadata.model_dump(),
@@ -43,6 +44,7 @@ class FileController:
             description="文件标识",
         ),
     ):
+        """读取文件元数据并返回文件流响应。"""
         metadata = await FileService.get_metadata(file_id, request)
         return await FileService.download(metadata, request)
 
@@ -60,5 +62,6 @@ class FileController:
             description="文件标识",
         ),
     ):
+        """读取文件元数据并删除文件及其数据库记录。"""
         metadata = await FileService.get_metadata(file_id, request)
         await FileService.delete(metadata, request)

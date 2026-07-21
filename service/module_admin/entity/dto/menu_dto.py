@@ -1,4 +1,4 @@
-""" menu_dto.py. """
+"""菜单请求和响应模型。"""
 
 from enum import Enum
 from datetime import datetime
@@ -17,6 +17,7 @@ class MenuType(str, Enum):
 
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
+        """为菜单类型枚举补充中文说明和枚举名称元数据。"""
         schema = handler(core_schema)
         schema["description"] = "菜单类型: F=按钮, L=外链, I=Iframe, C=路由"
         schema["x-enum-varnames"] = [item.name for item in cls]
@@ -25,7 +26,7 @@ class MenuType(str, Enum):
 
 
 class CreateMenuByButtonDto(BaseModel):
-    """CreateMenuByButtonDto."""
+    """新增按钮菜单请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, title="新增按钮菜单请求")
 
@@ -40,7 +41,7 @@ class CreateMenuByButtonDto(BaseModel):
 
 
 class CreateMenuByLinkDto(BaseModel):
-    """CreateMenuByLinkDto."""
+    """新增外链菜单请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, title="新增外链菜单请求")
 
@@ -56,7 +57,7 @@ class CreateMenuByLinkDto(BaseModel):
 
 
 class CreateMenubyIframeDto(BaseModel):
-    """CreateMenubyIframeDto."""
+    """新增 Iframe 菜单请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, title="新增Iframe菜单请求")
 
@@ -76,7 +77,7 @@ class CreateMenubyIframeDto(BaseModel):
 
 
 class CreateMenuByRouterDto(BaseModel):
-    """CreateMenuByRouterDto."""
+    """新增路由菜单请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, title="新增路由菜单请求")
 
@@ -95,7 +96,7 @@ class CreateMenuByRouterDto(BaseModel):
 
 
 class MenuListChildrenDto(BaseModel):
-    """MenuListAllResponseDto."""
+    """菜单树子节点响应模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -118,7 +119,7 @@ class MenuListChildrenDto(BaseModel):
 
 
 class MenuListDto(MenuListChildrenDto):
-    """MenuListChildrenDto."""
+    """菜单列表响应模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -128,7 +129,7 @@ class MenuListDto(MenuListChildrenDto):
 
 
 class UpdMenuDto(BaseModel):
-    """Update menu DTO."""
+    """修改菜单请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, title="修改菜单请求")
 
@@ -150,7 +151,7 @@ class UpdMenuDto(BaseModel):
 
 
 class GetMenuDto(BaseModel):
-    """Get menu detail DTO."""
+    """菜单详情响应模型。"""
 
     model_config = ConfigDict(from_attributes=True, title="菜单详情")
 

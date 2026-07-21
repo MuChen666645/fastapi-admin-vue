@@ -17,6 +17,7 @@ from module_admin.service.dictionary_service import DictionaryService
 
 
 def permission(code: str):
+    """创建字典接口共用的权限依赖列表。"""
     return [Depends(Auth.has_permission(code))]
 
 
@@ -38,6 +39,7 @@ class DictionaryController:
         status: str = Query(default=None, pattern="^[01]$", description="字典状态"),
         params: Params = Depends(),
     ):
+        """分页查询字典类型。"""
         return await DictionaryService.list_types(request, name, status, params)
 
     @dictionary.get(
@@ -47,6 +49,7 @@ class DictionaryController:
         responses={200: {"model": ApiResponseDto[DictTypeDto]}},
     )
     async def get_type(request: Request, dict_id: int = Path(description="字典类型ID")):
+        """查询字典类型详情。"""
         return await DictionaryService.type_detail(dict_id, request)
 
     @dictionary.post(
@@ -56,6 +59,7 @@ class DictionaryController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def create_type(data: DictTypeCreateDto, request: Request):
+        """新增字典类型。"""
         return await DictionaryService.create_type(data, request)
 
     @dictionary.put(
@@ -69,6 +73,7 @@ class DictionaryController:
         request: Request,
         dict_id: int = Path(description="字典类型ID"),
     ):
+        """修改字典类型。"""
         return await DictionaryService.update_type(dict_id, data, request)
 
     @dictionary.delete(
@@ -78,6 +83,7 @@ class DictionaryController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def delete_type(request: Request, dict_id: int = Path(description="字典类型ID")):
+        """删除字典类型。"""
         return await DictionaryService.delete_type(dict_id, request)
 
     @dictionary.get(
@@ -93,6 +99,7 @@ class DictionaryController:
         status: str = Query(default=None, pattern="^[01]$", description="字典状态"),
         params: Params = Depends(),
     ):
+        """分页查询字典数据。"""
         return await DictionaryService.list_data(request, dict_type, status, params)
 
     @dictionary.get(
@@ -102,6 +109,7 @@ class DictionaryController:
         responses={200: {"model": ApiResponseDto[DictDataDto]}},
     )
     async def get_data(request: Request, dict_code: int = Path(description="字典数据ID")):
+        """查询字典数据详情。"""
         return await DictionaryService.data_detail(dict_code, request)
 
     @dictionary.post(
@@ -111,6 +119,7 @@ class DictionaryController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def create_data(data: DictDataCreateDto, request: Request):
+        """新增字典数据。"""
         return await DictionaryService.create_data(data, request)
 
     @dictionary.put(
@@ -124,6 +133,7 @@ class DictionaryController:
         request: Request,
         dict_code: int = Path(description="字典数据ID"),
     ):
+        """修改字典数据。"""
         return await DictionaryService.update_data(dict_code, data, request)
 
     @dictionary.delete(
@@ -133,4 +143,5 @@ class DictionaryController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def delete_data(request: Request, dict_code: int = Path(description="字典数据ID")):
+        """删除字典数据。"""
         return await DictionaryService.delete_data(dict_code, request)

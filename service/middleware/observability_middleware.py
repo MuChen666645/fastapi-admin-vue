@@ -1,4 +1,4 @@
-"""Request correlation and application metrics middleware."""
+"""请求关联和应用指标中间件。"""
 
 import re
 import secrets
@@ -12,11 +12,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 
+# 对外返回的关联标识请求头；值会同时写入 request.state 和结构化日志。
 REQUEST_ID_HEADER = "X-Request-ID"
 TRACE_ID_HEADER = "X-Trace-ID"
 SPAN_ID_HEADER = "X-Span-ID"
 TRACEPARENT_HEADER = "traceparent"
+# 只接受安全字符，防止调用方把控制字符注入日志。
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+# W3C traceparent 的最小格式校验，拒绝全零和保留版本号。
 _TRACEPARENT_PATTERN = re.compile(
     r"^(?P<version>[0-9a-f]{2})-"
     r"(?P<trace_id>[0-9a-f]{32})-"
@@ -27,7 +30,7 @@ _TRACEPARENT_PATTERN = re.compile(
 
 @dataclass(slots=True)
 class ApplicationMetrics:
-    """Prometheus collectors owned by one application instance."""
+    """由一个应用实例独立持有的 Prometheus 收集器。"""
 
     registry: CollectorRegistry
     requests: Counter
@@ -36,6 +39,7 @@ class ApplicationMetrics:
 
     @classmethod
     def create(cls) -> "ApplicationMetrics":
+        """为一个 FastAPI 应用创建隔离的 Prometheus 指标收集器。"""
         registry = CollectorRegistry()
         return cls(
             registry=registry,
@@ -61,14 +65,14 @@ class ApplicationMetrics:
 
 
 def _request_id(value: str | None) -> str:
-    """Accept safe caller IDs and replace invalid values to prevent log injection."""
+    """接受安全的调用方 ID，无效值替换为随机值以防止日志注入。"""
     if value and _REQUEST_ID_PATTERN.fullmatch(value):
         return value
     return uuid.uuid4().hex
 
 
 def _trace_context(value: str | None) -> tuple[str, str, str, str]:
-    """Return a trace ID, span ID, flags, and response traceparent value."""
+    """返回 trace ID、span ID、标志位和响应 traceparent 值。"""
     match = _TRACEPARENT_PATTERN.fullmatch((value or "").lower())
     if match and match.group("version") != "ff":
         trace_id = match.group("trace_id")
@@ -84,14 +88,16 @@ def _trace_context(value: str | None) -> tuple[str, str, str, str]:
 
 
 def _route_path(request: Request) -> str:
+    """返回指标标签使用的路由模板。"""
     route = request.scope.get("route")
     return getattr(route, "path", "__unmatched__")
 
 
 class ObservabilityMiddleware(BaseHTTPMiddleware):
-    """Attach correlation headers and record Prometheus request metrics."""
+    """写入请求关联请求头并记录 Prometheus 请求指标。"""
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        """写入请求关联请求头，并记录耗时和未捕获异常。"""
         request_id = _request_id(request.headers.get(REQUEST_ID_HEADER))
         trace_id, span_id, flags, traceparent = _trace_context(
             request.headers.get(TRACEPARENT_HEADER)

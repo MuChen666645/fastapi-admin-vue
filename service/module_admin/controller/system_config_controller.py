@@ -32,6 +32,7 @@ class SystemConfigController:
         key: str | None = Query(default=None, description="参数键名，支持模糊查询"),
         params: Params = Depends(),
     ):
+        """分页查询系统参数。"""
         return await SystemConfigService.list_configs(request, name, key, params)
 
     @config.get(
@@ -44,6 +45,7 @@ class SystemConfigController:
         request: Request,
         config_key: str = Path(description="参数键名"),
     ):
+        """按参数键名查询参数值。"""
         return await SystemConfigService.value(config_key, request)
 
     @config.get(
@@ -56,6 +58,7 @@ class SystemConfigController:
         request: Request,
         config_id: int = Path(description="参数编号"),
     ):
+        """查询系统参数详情。"""
         return await SystemConfigService.detail(config_id, request)
 
     @config.post(
@@ -65,6 +68,7 @@ class SystemConfigController:
         responses={200: {"model": ApiResponseDto[SystemConfigDto]}},
     )
     async def create(data: SystemConfigCreateDto, request: Request):
+        """新增系统参数。"""
         return await SystemConfigService.create(data, request)
 
     @config.put(
@@ -78,6 +82,7 @@ class SystemConfigController:
         request: Request,
         config_id: int = Path(description="参数编号"),
     ):
+        """修改系统参数。"""
         return await SystemConfigService.update(config_id, data, request)
 
     @config.delete(
@@ -90,4 +95,5 @@ class SystemConfigController:
         request: Request,
         config_id: int = Path(description="参数编号"),
     ):
+        """删除系统参数。"""
         return await SystemConfigService.delete(config_id, request)

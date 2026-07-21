@@ -21,9 +21,11 @@ TaskHandler = Callable[[dict[str, Any]], Any | Awaitable[Any]]
 class JobScheduler:
     """调度数据库中已持久化且由代码注册处理器的任务。"""
 
+    # APScheduler 任务 ID 使用此前缀，便于清理本应用管理的任务。
     JOB_PREFIX = "scheduled-job:"
 
     def __init__(self, session_factory_provider, timezone: str) -> None:
+        """创建延迟解析当前数据库会话工厂的调度器。"""
         self._session_factory_provider = session_factory_provider
         self._scheduler = AsyncIOScheduler(timezone=timezone)
         self._handlers: dict[str, TaskHandler] = {}
@@ -34,6 +36,7 @@ class JobScheduler:
         self._handlers[task_name] = handler
 
     async def start(self) -> None:
+        """启动调度器，并立即同步数据库中的持久化任务。"""
         if self._started:
             return
         self._scheduler.start()
@@ -48,6 +51,7 @@ class JobScheduler:
         await self.refresh()
 
     async def stop(self) -> None:
+        """停止后续调度，不等待已经运行的任务。"""
         if not self._started:
             return
         self._scheduler.shutdown(wait=False)

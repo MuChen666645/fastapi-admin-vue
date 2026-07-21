@@ -1,4 +1,4 @@
-"""Application health probes."""
+"""应用健康检查探针。"""
 
 import asyncio
 
@@ -9,18 +9,18 @@ from config.env import settings
 
 
 class HealthController:
-    """Liveness and dependency readiness probes."""
+    """存活探针和依赖就绪探针。"""
 
     health = APIRouter(prefix="/health", tags=["Health"])
 
     @health.get("/live", summary="Liveness probe")
     async def live() -> dict[str, str]:
-        """Return healthy while the process can serve requests."""
+        """进程可以响应请求时返回健康状态。"""
         return {"status": "ok"}
 
     @health.get("/ready", summary="Readiness probe")
     async def ready(request: Request) -> dict[str, object]:
-        """Verify dependencies needed by business requests."""
+        """检查业务请求依赖的外部服务和数据库版本。"""
         checks: dict[str, str] = {}
 
         app_settings = getattr(request.app.state, "settings", settings)

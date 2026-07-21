@@ -34,7 +34,7 @@ class ApiExceptionInterception:
 
     @staticmethod
     async def all_jwt_error(request: Request, exc: PyJWTError):
-        """JWT error."""
+        """统一处理 JWT 校验异常。"""
         raise HTTPException(
             status_code=401,
             detail=str(exc),
@@ -42,7 +42,7 @@ class ApiExceptionInterception:
 
     @staticmethod
     async def all_verify(request: Request, exc: RequestValidationError):
-        """Verify."""
+        """统一处理请求参数校验异常。"""
         raise HTTPException(
             status_code=422,
             detail=str(exc),
@@ -65,7 +65,7 @@ class ApiExceptionInterception:
 
     @staticmethod
     async def all_exception(request: Request, exc: Exception) -> JSONResponse:
-        """Log unexpected failures and return the public 500 response contract."""
+        """记录未知异常，并返回对外统一的脱敏 500 响应。"""
         logger.opt(exception=(type(exc), exc, exc.__traceback__)).error(
             "Unhandled application error: {} {}",
             request.method,

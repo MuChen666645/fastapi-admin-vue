@@ -1,4 +1,4 @@
-"""Common response DTO."""
+"""通用响应模型。"""
 
 from typing import Generic, TypeVar
 
@@ -9,7 +9,7 @@ DataT = TypeVar("DataT")
 
 
 class ApiResponseDto(BaseModel, Generic[DataT]):
-    """Unified API response DTO."""
+    """统一 API 响应模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 

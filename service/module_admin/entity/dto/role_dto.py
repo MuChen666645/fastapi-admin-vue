@@ -1,4 +1,4 @@
-"""Role request and response DTOs."""
+"""角色请求和响应模型。"""
 
 from datetime import datetime
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RoleDto(BaseModel):
-    """Shared role fields."""
+    """角色请求共用字段。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,7 +21,7 @@ class RoleDto(BaseModel):
 
 
 class CreateRoleDto(RoleDto):
-    """Create role DTO."""
+    """新增角色请求模型。"""
 
     data_scope: str = Field(default="5", pattern="^[1-5]$" , description="数据权限范围")
     menu_ids: list[int] = Field(default_factory=list , description="菜单ID列表")
@@ -32,7 +32,7 @@ class CreateRoleDto(RoleDto):
 
 
 class UpdataRoleDto(RoleDto):
-    """Update role DTO."""
+    """修改角色请求模型。"""
 
     menu_ids: list[int] | None = Field(default=None, description="菜单ID列表")
     data_scope: str | None = Field(default=None, pattern="^[1-5]$", description="数据权限范围")
@@ -40,7 +40,7 @@ class UpdataRoleDto(RoleDto):
 
 
 class BatchUpdateRoleStatusDto(BaseModel):
-    """Batch role status DTO."""
+    """批量修改角色状态请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,7 +49,7 @@ class BatchUpdateRoleStatusDto(BaseModel):
 
 
 class RoleListDto(RoleDto):
-    """Role list response DTO."""
+    """角色列表响应模型。"""
 
     id: int = Field(description="角色ID")
     create_time: datetime = Field(description="创建时间")
@@ -59,7 +59,7 @@ class RoleListDto(RoleDto):
 
 
 class RoleDetailDto(RoleListDto):
-    """Role detail response DTO."""
+    """角色详情响应模型。"""
 
     menu_ids: list[int] = Field(default_factory=list, description="菜单ID列表")
     dept_ids: list[int] = Field(default_factory=list, description="自定义数据权限使用的部门列表")

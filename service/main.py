@@ -1,4 +1,4 @@
-"""Application entry point."""
+"""应用入口。"""
 
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -30,12 +30,13 @@ from module_admin.v1 import AdminAPI
 from module_admin.service.job_scheduler import JobScheduler, TaskHandler
 from utils.fastapi_admin import FastApiAdmin
 
+# 静态资源必须以入口文件位置为基准，避免从其他工作目录启动时失效。
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize runtime clients and release them on shutdown."""
+    """初始化运行时依赖，并按相反顺序释放调度器、MySQL 和 Redis。"""
     logger.info("Starting application")
     app_settings: Settings = getattr(app.state, "settings", settings)
     engine = None
@@ -98,10 +99,9 @@ def create_app(
     app_limiter: Limiter | None = None,
     job_tasks: dict[str, TaskHandler] | None = None,
 ) -> FastAPI:
-    """Create an isolated FastAPI application instance.
+    """创建隔离的 FastAPI 应用实例。
 
-    Runtime factories and overrides are stored on the app instance so tests
-    can create independent applications without mutating module globals.
+    运行时工厂和覆盖项保存在应用实例中，测试可以创建独立应用而不修改模块全局状态。
     """
     configured_settings = app_settings or settings
     application = FastAPI(
@@ -130,7 +130,9 @@ def create_app(
 
     application.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
     async def metrics_endpoint() -> Response:
+        """导出当前应用实例持有的 Prometheus 指标注册表。"""
         return Response(
             content=generate_latest(application.state.metrics.registry),
             media_type=CONTENT_TYPE_LATEST,

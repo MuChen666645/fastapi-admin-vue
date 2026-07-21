@@ -1,4 +1,4 @@
-"""Alembic environment for the async SQLModel metadata."""
+"""异步 SQLModel 元数据的 Alembic 环境。"""
 
 import asyncio
 from logging.config import fileConfig
@@ -32,7 +32,7 @@ target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
-    """Run migrations without creating a database connection."""
+    """不创建数据库连接，使用离线模式生成并执行迁移。"""
     context.configure(
         url=MysqlServe.get_db_url(),
         target_metadata=target_metadata,
@@ -46,6 +46,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """使用同步连接配置 Alembic 并执行迁移。"""
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -57,6 +58,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    """为迁移命令创建短生命周期的异步引擎。"""
     connectable = create_async_engine(
         MysqlServe.get_db_url(),
         poolclass=pool.NullPool,
@@ -70,6 +72,7 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
+    """通过在线异步数据库连接执行迁移。"""
     asyncio.run(run_async_migrations())
 
 

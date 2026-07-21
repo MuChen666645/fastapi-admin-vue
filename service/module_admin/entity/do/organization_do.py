@@ -7,6 +7,8 @@ from utils.time_utils import now_utc8_naive
 
 
 class DepartmentDo(SQLModel, table=True):
+    """部门表，使用 parent_id 和 ancestors 保存部门树。"""
+
     __tablename__ = "departments"
 
     dept_id: int | None = Field(default=None, primary_key=True)
@@ -29,6 +31,8 @@ class DepartmentDo(SQLModel, table=True):
 
 
 class PostDo(SQLModel, table=True):
+    """岗位表，post_code 在数据库中保持唯一。"""
+
     __tablename__ = "posts"
 
     post_id: int | None = Field(default=None, primary_key=True)
@@ -42,6 +46,8 @@ class PostDo(SQLModel, table=True):
 
 
 class UserPostDo(SQLModel, table=True):
+    """用户与岗位的多对多关联表。"""
+
     __tablename__ = "user_post"
 
     user_id: int = Field(

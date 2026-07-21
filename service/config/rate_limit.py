@@ -1,4 +1,4 @@
-"""Shared Redis-backed rate limiting configuration."""
+"""基于共享 Redis 的限流配置。"""
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address

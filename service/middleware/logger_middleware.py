@@ -1,4 +1,4 @@
-"""Structured access logging and database audit logging middleware."""
+"""结构化访问日志和数据库审计日志中间件。"""
 
 import sys
 import time
@@ -16,11 +16,12 @@ from utils.time_utils import now_utc8
 
 
 class LoggerMiddleware(BaseHTTPMiddleware):
-    """Write structured HTTP logs and authenticated operation audit records."""
+    """写入结构化 HTTP 日志和已认证操作审计记录。"""
 
     _logger_configured = False
 
     def __init__(self, app, *args, **kwargs) -> None:
+        """在当前进程中只配置一次结构化日志输出。"""
         super().__init__(app, *args, **kwargs)
         if LoggerMiddleware._logger_configured:
             return
@@ -43,7 +44,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         LoggerMiddleware._logger_configured = True
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        """Log one request and persist an audit record for authenticated users."""
+        """记录一次请求，并为已认证用户持久化审计记录。"""
         started_at = time.perf_counter()
         try:
             response = await call_next(request)
@@ -75,6 +76,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         status_code: int,
         started_at: float,
     ) -> None:
+        """将已认证请求持久化为操作审计记录。"""
         user_id = getattr(request.state, "user_id", None)
         if user_id is None:
             return
@@ -98,6 +100,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     async def _record_exception(request: Request, exc: Exception) -> None:
+        """将异常写入结构化日志和异常审计表。"""
         payload = getattr(request.state, "auth_payload", {})
         logger.bind(
             request_id=getattr(request.state, "request_id", None),

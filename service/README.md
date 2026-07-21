@@ -90,6 +90,30 @@ Controller -> Service -> DAO -> Database
 - `entity/dto`：定义 API 请求与响应数据结构。
 - `entity/do`：定义数据库表模型。
 
+### 运行时流程
+
+```text
+请求
+  -> 关联 ID / 观测中间件
+  -> 日志、限流、统一响应中间件
+  -> 路由依赖注入 MySQL 请求会话
+  -> Controller -> Service -> DAO
+  -> MySQL / Redis / 文件存储
+```
+
+- `main.create_app()` 负责组装中间件、异常处理器、静态资源、分页和后台路由。
+- 应用启动时建立 Redis、MySQL 连接，并按配置启动定时任务；数据库结构由 `scripts.migrate_database` 和 Alembic 管理，不在应用启动阶段执行 DDL。
+- `/health/live` 只表示进程可以响应请求；`/health/ready` 会检查 Redis、MySQL 和 `alembic_version`，所有依赖就绪后才返回成功。
+- 业务请求使用 `request.state.mysql` 的请求级事务；日志审计使用独立会话，避免业务事务回滚时丢失异常记录。
+
+### 注释与文档规范
+
+- 生产代码中的模块、类、功能函数和关键辅助函数使用中文 docstring，优先说明职责、输入输出、事务边界和安全约束。
+- 配置常量、权限常量、缓存 Key 前缀、正则表达式和运行时状态使用紧邻定义的中文行内注释说明用途。
+- Pydantic/SQLModel 字段通过 `title` 或 `description` 说明接口字段；路由通过 `summary` 说明接口用途，详细请求响应结构以 OpenAPI 为准。
+- 注释解释“为什么”以及跨模块约束，不重复翻译显而易见的代码；修改行为时同步更新 docstring 和 README。
+- 新增业务逻辑应遵循 `Controller -> Service -> DAO` 边界，并为权限、数据范围、缓存一致性和资源释放等副作用补充说明。
+
 ## 环境要求
 
 - Python 3.11+
@@ -130,6 +154,32 @@ REDIS_DB=0
 # Aliyun OSS
 ACCESS_KEY_ID=your_access_key_id
 ACCESSKEY_SECRET=your_access_key_secret
+OSS_ENDPOINT=
+OSS_BUCKET=
+OSS_PREFIX=uploads
+
+# File storage
+FILE_STORAGE_BACKEND=local
+FILE_UPLOAD_DIR=uploads
+FILE_MAX_SIZE_BYTES=10485760
+FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
+
+# Scheduler
+SCHEDULER_ENABLED=false
+SCHEDULER_TIMEZONE=Asia/Shanghai
+OSS_ENDPOINT=
+OSS_BUCKET=
+OSS_PREFIX=uploads
+
+# 文件存储
+FILE_STORAGE_BACKEND=local
+FILE_UPLOAD_DIR=uploads
+FILE_MAX_SIZE_BYTES=10485760
+FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
+
+# 定时任务
+SCHEDULER_ENABLED=false
+SCHEDULER_TIMEZONE=Asia/Shanghai
 
 # Optional
 SECRET_KEY=replace_with_a_stable_random_secret
@@ -144,6 +194,7 @@ LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
 READINESS_TIMEOUT_SECONDS=5
 HOSTS=["*"]
+TRUSTED_PROXIES=[]
 ORIGINS=["*"]
 MEDOTHS=["*"]
 HEADERS=["*"]
@@ -294,7 +345,7 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 from main import create_app
 application = create_app()
 
-# Register scheduled task handlers explicitly; task_name in /job must match.
+# 显式注册定时任务处理器，/job 中的 task_name 必须匹配。
 application = create_app(job_tasks={"example.task": lambda args: "ok"})
 
 # 代码格式化
@@ -319,6 +370,10 @@ poetry run cz commit
 - 请求与响应模型使用 Pydantic。
 - 数据表模型使用 SQLModel。
 - 异步接口优先使用 `async/await`。
+- 类、功能函数和关键辅助函数使用中文 docstring，说明职责和重要副作用。
+- 配置常量、权限编码、缓存 Key 和生命周期状态使用中文行内注释。
+- 接口字段使用 `Field(title=..., description=...)`，请求参数使用 `description`，路由使用中文 `summary`。
+- 注释只解释设计原因和跨模块约束；代码行为变化时同步更新 README、OpenAPI 元数据和测试说明。
 - 提交信息建议遵循 Conventional Commits：
 
 ```text
@@ -473,6 +528,30 @@ Controller -> Service -> DAO -> Database
 - `entity/dto`: defines API request and response schemas.
 - `entity/do`: defines database table models.
 
+### Runtime Flow
+
+```text
+Request
+  -> correlation and observability middleware
+  -> logging, rate limiting, and response middleware
+  -> request-scoped MySQL session dependency
+  -> Controller -> Service -> DAO
+  -> MySQL / Redis / file storage
+```
+
+- `main.create_app()` assembles middleware, exception handlers, static files, pagination, and admin routes.
+- Startup creates Redis and MySQL clients and optionally starts the scheduler. Alembic migrations are applied by `scripts.migrate_database`, not by application startup DDL.
+- `/health/live` only reports process liveness. `/health/ready` checks Redis, MySQL, and `alembic_version` before returning success.
+- Business requests use the request-scoped transaction in `request.state.mysql`; audit logs use an independent session so rollback does not hide the failure record.
+
+### Documentation and Comment Rules
+
+- Production modules, classes, functional methods, and important helpers use Chinese docstrings that explain responsibility, inputs/outputs, transaction boundaries, and security constraints.
+- Configuration constants, permission constants, cache-key prefixes, regular expressions, and runtime state use adjacent comments explaining their purpose.
+- Pydantic/SQLModel fields use `title` or `description`; routes use `summary`. The generated OpenAPI document is the source of truth for full schemas.
+- Comments explain why and cross-module constraints rather than restating obvious code. Update docstrings and README when behavior changes.
+- New business logic follows `Controller -> Service -> DAO` boundaries and documents side effects involving permissions, data scope, cache consistency, and resource cleanup.
+
 ## Requirements
 
 - Python 3.11+
@@ -529,6 +608,7 @@ LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
 READINESS_TIMEOUT_SECONDS=5
 HOSTS=["localhost","127.0.0.1"]
+TRUSTED_PROXIES=[]
 ORIGINS=["http://localhost:5173"]
 MEDOTHS=["GET","POST","PUT","DELETE","OPTIONS"]
 HEADERS=["*"]
@@ -727,6 +807,10 @@ poetry run cz commit
 - Use Pydantic for request and response schemas.
 - Use SQLModel for database table models.
 - Prefer `async/await` for async operations.
+- Use Chinese docstrings for classes, functional methods, and important helpers; describe responsibilities and important side effects.
+- Use Chinese inline comments for configuration constants, permission codes, cache keys, and lifecycle state.
+- Use `Field(title=..., description=...)` for API fields, `description` for request parameters, and Chinese route `summary` values.
+- Explain design reasons and cross-module constraints instead of restating obvious code. Update README, OpenAPI metadata, and test notes when behavior changes.
 - Use Conventional Commits:
 
 ```text

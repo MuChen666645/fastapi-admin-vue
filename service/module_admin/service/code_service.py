@@ -1,4 +1,4 @@
-"""Code Services Model."""
+"""验证码业务服务。"""
 
 import hashlib
 import hmac
@@ -14,9 +14,11 @@ from utils.fastapi_admin import FastApiAdmin
 
 
 class CodeService:
-    """Code Services."""
+    """生成、存储和校验图形验证码。"""
 
+    # 验证码记录生命周期短，并与认证 Key 使用不同命名空间。
     CAPTCHA_KEY_PREFIX = "captcha:"
+    # Redis Lua 脚本原子完成 IP 绑定、次数统计和一次性消费。
     _VERIFY_SCRIPT = """
 -- captcha:verify
 local raw = redis.call('GET', KEYS[1])
@@ -52,15 +54,18 @@ return {0, attempts}
 
     @staticmethod
     def _client_ip_hash(request: Request) -> str:
+        """在验证码记录中保存客户端 IP 哈希，避免保存明文地址。"""
         client_ip = Auth.get_client_ip(request) or "unknown"
         return hashlib.sha256(client_ip.encode("utf-8")).hexdigest()
 
     @classmethod
     def _captcha_key(cls, captcha_id: str) -> str:
+        """根据验证码 ID 返回对应的 Redis Key。"""
         return f"{cls.CAPTCHA_KEY_PREFIX}{captcha_id}"
 
     @staticmethod
     def _code_hash(captcha_id: str, code: str) -> str:
+        """生成绑定验证码 ID 和答案的 HMAC。"""
         message = f"captcha:{captcha_id}:{code}".encode("utf-8")
         return hmac.new(
             settings.SECRET_KEY.encode("utf-8"),
@@ -100,7 +105,7 @@ return {0, attempts}
 
     @staticmethod
     async def get_captcha_num_services(request: Request) -> None:
-        """Reject the insecure plaintext numeric captcha endpoint."""
+        """拒绝使用不安全的明文数字验证码接口。"""
         raise HTTPException(
             status_code=410,
             detail="数字验证码接口已停用，请使用图形验证码",

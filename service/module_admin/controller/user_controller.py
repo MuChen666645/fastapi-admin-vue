@@ -1,4 +1,4 @@
-""" User Controller Model. """
+"""用户接口控制器。"""
 
 from datetime import datetime
 from typing import Annotated
@@ -27,12 +27,12 @@ from module_admin.service.user_service import UserService
 
 
 class UserController:
-    """User Controller."""
+    """用户接口控制器。"""
 
     user = APIRouter(tags=["用户模块"], prefix="/user")
 
     def __init__(self, app: FastAPI):
-        """Constructor."""
+        """保存应用实例并完成控制器初始化。"""
         self.app = app
         super().__init__()
 
@@ -44,7 +44,7 @@ class UserController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def create_user(users: RegisterUserRequestByUsernameDto, request: Request):
-        """Create new user."""
+        """创建用户。"""
         return await UserService.create_user_by_username_services(users, request)
 
     @staticmethod
@@ -57,7 +57,7 @@ class UserController:
     async def login_user(
         users: Annotated[LoginUserRequestByUsernameDto, Form()], request: Request
     ):
-        """Login user by username."""
+        """使用用户名登录。"""
         return await UserService.get_user_by_username_services(users, request)
 
     @staticmethod
@@ -70,7 +70,7 @@ class UserController:
     async def login_user_by_phone(
         users: Annotated[LoginUserRequestByPhoneDto, Form()], request: Request
     ):
-        """Login user by phone."""
+        """使用手机号登录。"""
         return await UserService.get_user_by_phone_services(users, request)
 
     @staticmethod
@@ -83,7 +83,7 @@ class UserController:
         request: Request,
         Authorization: str | None = Header(default=None, description="Token"),
     ):
-        """Revoke the current login token."""
+        """撤销当前登录 Token。"""
         return await UserService.logout_services(request, Authorization)
 
     @staticmethod
@@ -94,7 +94,7 @@ class UserController:
         responses={200: {"model": ApiResponseDto[UserInfoDto]}},
     )
     async def get_current_user_info(request: Request):
-        """Get current user info."""
+        """获取当前用户信息。"""
         return await UserService.get_current_user_info_services(request)
 
     @staticmethod
@@ -105,7 +105,7 @@ class UserController:
         responses={200: {"model": ApiResponseDto[list[UserRouteDto]]}},
     )
     async def get_current_user_routes(request: Request):
-        """Get current user frontend routes."""
+        """获取当前用户的前端动态路由。"""
         return await UserService.get_current_user_routes_services(request)
 
     @staticmethod
@@ -118,7 +118,7 @@ class UserController:
     async def batch_update_user_status(
         users: BatchUpdateUserStatusDto, request: Request
     ):
-        """Batch enable or disable users."""
+        """批量启用或停用用户。"""
         return await UserService.batch_update_user_status_services(users, request)
 
     @staticmethod
@@ -129,7 +129,7 @@ class UserController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def batch_delete_users(users: BatchUserIdsDto, request: Request):
-        """Batch delete users."""
+        """批量删除用户。"""
         return await UserService.batch_delete_users_services(users, request)
 
     @staticmethod
@@ -147,7 +147,7 @@ class UserController:
         request: Request,
         user_id: int = Path(description="用户ID"),
     ):
-        """Replace all role bindings for a user."""
+        """替换用户的全部角色关联。"""
         return await UserService.bind_user_roles_services(user_id, roles, request)
 
     @staticmethod
@@ -168,7 +168,7 @@ class UserController:
         end_time: datetime | None = Query(default=None, description="创建结束时间"),
         params: Params = Depends(),
     ):
-        """Query paged users."""
+        """分页查询用户。"""
         return await UserService.list_users_services(
             request,
             username,
@@ -190,7 +190,7 @@ class UserController:
     async def get_user_by_id(
         request: Request, user_id: int = Path(description="用户ID")
     ):
-        """Get user by id."""
+        """按 ID 查询用户。"""
         return await UserService.get_user_by_id_services(user_id, request)
 
     @staticmethod
@@ -203,7 +203,7 @@ class UserController:
     async def delete_user_by_id(
         request: Request, user_id: int = Path(description="用户ID")
     ):
-        """Delete a user by ID."""
+        """按 ID 删除用户。"""
         return await UserService.delete_user_by_id_services(user_id, request)
 
     @staticmethod
@@ -218,7 +218,7 @@ class UserController:
         request: Request,
         user_id: int = Path(description="用户ID"),
     ):
-        """Update user by id."""
+        """按 ID 修改用户信息。"""
         return await UserService.update_user_by_id_services(user_id, users, request)
 
     @staticmethod
@@ -233,7 +233,7 @@ class UserController:
         request: Request,
         user_id: int = Path(description="用户ID"),
     ):
-        """Update user password by id."""
+        """按 ID 修改用户密码。"""
         return await UserService.update_user_password_by_id_services(
             user_id, users, request
         )
@@ -250,5 +250,5 @@ class UserController:
         request: Request,
         user_id: int = Path(description="用户ID"),
     ):
-        """Reset a target user's password as an authorized administrator."""
+        """由有权限的管理员重置目标用户密码。"""
         return await UserService.reset_user_password_services(user_id, users, request)

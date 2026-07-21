@@ -20,6 +20,7 @@ from module_admin.entity.do.file_do import FileMetadataDo
 class FileService:
     """校验、保存、读取和删除上传文件。"""
 
+    # 文件名清洗规则和流式读写块大小是文件安全与内存占用的基础约束。
     _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
     _CHUNK_SIZE = 1024 * 1024
 

@@ -1,4 +1,4 @@
-""" Common method integration."""
+"""后台管理通用工具。"""
 
 import json
 import base64
@@ -15,7 +15,7 @@ from io import BytesIO
 
 
 class FastApiAdmin:
-    """Common method integration."""
+    """FastAPI 管理后台通用工具集合。"""
 
     pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 

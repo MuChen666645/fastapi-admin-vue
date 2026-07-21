@@ -1,4 +1,4 @@
-"""menu controller."""
+"""菜单接口控制器。"""
 
 from fastapi import APIRouter, Body, Depends, FastAPI, Path, Query, Request
 from module_admin.entity.dto.menu_dto import (
@@ -17,12 +17,12 @@ from module_admin.auth.authorization import Auth
 
 
 class MenuController:
-    """menu controller."""
+    """菜单接口控制器。"""
 
     menu = APIRouter(tags=["菜单模块"], prefix="/menu")
 
     def __init__(self, app: FastAPI):
-        """Constructor."""
+        """保存应用实例并完成控制器初始化。"""
         self.app = app
         super().__init__()
 

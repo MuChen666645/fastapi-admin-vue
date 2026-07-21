@@ -47,6 +47,7 @@ class DepartmentController:
         responses={200: {"model": ApiResponseDto[DepartmentDto]}},
     )
     async def get_department(request: Request, dept_id: int = Path(description="部门ID")):
+        """查询部门详情。"""
         return await DepartmentService.detail(dept_id, request)
 
     @dept.post(
@@ -56,6 +57,7 @@ class DepartmentController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def create_department(data: DepartmentCreateDto, request: Request):
+        """新增部门。"""
         return await DepartmentService.create(data, request)
 
     @dept.put(
@@ -69,6 +71,7 @@ class DepartmentController:
         request: Request,
         dept_id: int = Path(description="部门ID"),
     ):
+        """修改部门。"""
         return await DepartmentService.update(dept_id, data, request)
 
     @dept.delete(
@@ -78,6 +81,7 @@ class DepartmentController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def delete_department(request: Request, dept_id: int = Path(description="部门ID")):
+        """删除部门。"""
         return await DepartmentService.delete(dept_id, request)
 
 
@@ -99,6 +103,7 @@ class PostController:
         status: str = Query(default=None, pattern="^[01]$", description="岗位状态"),
         params: Params = Depends(),
     ):
+        """分页查询岗位。"""
         return await PostService.list(request, name, status, params)
 
     @post.get(
@@ -108,6 +113,7 @@ class PostController:
         responses={200: {"model": ApiResponseDto[PostDto]}},
     )
     async def get_post(request: Request, post_id: int = Path(description="岗位ID")):
+        """查询岗位详情。"""
         return await PostService.detail(post_id, request)
 
     @post.post(
@@ -117,6 +123,7 @@ class PostController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def create_post(data: PostCreateDto, request: Request):
+        """新增岗位。"""
         return await PostService.create(data, request)
 
     @post.put(
@@ -130,6 +137,7 @@ class PostController:
         request: Request,
         post_id: int = Path(description="岗位ID"),
     ):
+        """修改岗位。"""
         return await PostService.update(post_id, data, request)
 
     @post.delete(
@@ -139,4 +147,5 @@ class PostController:
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def delete_post(request: Request, post_id: int = Path(description="岗位ID")):
+        """删除岗位。"""
         return await PostService.delete(post_id, request)

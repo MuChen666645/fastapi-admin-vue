@@ -1,4 +1,4 @@
-"""User Service Model"""
+"""用户业务服务。"""
 
 from datetime import datetime
 from typing import Union
@@ -26,14 +26,19 @@ from utils.fastapi_admin import FastApiAdmin
 
 
 class UserService:
+    """编排用户认证、资料管理、角色绑定和路由生成业务。"""
+
+    # 非超级管理员触发保护时统一返回该提示，避免不同入口行为不一致。
     ADMIN_USER_PROTECTION_MESSAGE = "禁止非超级管理员操作超级管理员用户"
 
     @staticmethod
     def _has_admin_role(roles: list) -> bool:
+        """判断角色列表是否包含配置的超级管理员角色。"""
         return Auth.has_admin_role(roles)
 
     @staticmethod
     async def _get_actor_roles(request: Request) -> list:
+        """读取当前请求操作者的已启用角色。"""
         return await Auth.get_actor_roles(request)
 
     @staticmethod
@@ -42,7 +47,7 @@ class UserService:
         request: Request,
         actor_roles: list | None = None,
     ) -> bool:
-        """Reject non-admin mutations targeting any super-admin user."""
+        """拒绝非超级管理员修改任何超级管理员用户。"""
         roles = actor_roles
         if roles is None:
             roles = await UserService._get_actor_roles(request)
@@ -60,6 +65,7 @@ class UserService:
 
     @staticmethod
     def _menu_to_route(menu: dict) -> dict:
+        """将菜单数据转换为前端动态路由节点。"""
         path = menu.get("menu_path") or ""
         route = {
             "id": menu.get("menu_id"),
@@ -83,6 +89,7 @@ class UserService:
 
     @staticmethod
     def _build_route_tree(menus: list) -> list[dict]:
+        """把扁平菜单列表组装成前端需要的路由树。"""
         routes = [UserService._menu_to_route(menu.model_dump()) for menu in menus]
         route_map = {route["id"]: route for route in routes}
         tree = []
@@ -105,6 +112,7 @@ class UserService:
         message: str,
         user_id: int | None = None,
     ) -> None:
+        """记录登录结果，且不让审计存储故障影响认证结果。"""
         try:
             await LogDao.create_login(
                 LoginLogDo(
@@ -118,11 +126,12 @@ class UserService:
                 request,
             )
         except Exception:
-            # Audit storage must never change the authentication result.
+            # 审计存储故障不能改变认证结果。
             return
 
     @staticmethod
     async def _ensure_login_ip_allowed(request: Request, identifier: str) -> None:
+        """检查登录 IP 锁定状态，并记录被拒绝的登录尝试。"""
         try:
             await LoginSecurityService.ensure_ip_allowed(request)
         except HTTPException as exc:
@@ -140,6 +149,7 @@ class UserService:
         identifier: str,
         user_id: int,
     ) -> None:
+        """记录密码错误并在达到阈值时抛出 IP 锁定异常。"""
         try:
             await LoginSecurityService.record_password_failure(request)
         except HTTPException as exc:
@@ -182,6 +192,7 @@ class UserService:
     async def get_user_by_username_services(
         users: LoginUserRequestByUsernameDto, request: Request
     ) -> Union[TokenDto, str]:
+        """校验用户名登录请求并签发登录 Token。"""
         await UserService._ensure_login_ip_allowed(request, users.username)
         user = await UserDao.get_user_by_username(users, request)
         if user is None:
@@ -266,7 +277,7 @@ class UserService:
 
     @staticmethod
     async def get_current_user_info_services(request: Request) -> dict:
-        """Get current login user info."""
+        """获取当前登录用户信息。"""
         user_id = getattr(request.state, "user_id", None)
         if user_id is None:
             raise HTTPException(status_code=401, detail="Not Log In")
@@ -278,7 +289,7 @@ class UserService:
 
     @staticmethod
     async def get_current_user_routes_services(request: Request) -> list[dict]:
-        """Get current login user frontend routes."""
+        """获取当前登录用户的前端动态路由。"""
         user_id = getattr(request.state, "user_id", None)
         if user_id is None:
             raise HTTPException(status_code=401, detail="Not Log In")
@@ -296,7 +307,7 @@ class UserService:
         end_time: datetime | None,
         params: Params,
     ):
-        """Query paged users."""
+        """分页查询用户列表。"""
         return await UserDao.list_users(
             request,
             username,
@@ -345,7 +356,7 @@ class UserService:
     async def reset_user_password_services(
         user_id: int, users: ResetUserPasswordRequestDto, request: Request
     ) -> None:
-        """Reset a visible user's password without requiring the old password."""
+        """在无需旧密码的情况下重置权限范围内用户的密码。"""
         await UserService._ensure_can_manage_users([user_id], request)
         user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
@@ -356,8 +367,7 @@ class UserService:
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
 
-        # A reset invalidates existing sessions so the old credential cannot
-        # remain usable through an already-issued token.
+            # 重置密码会使已有会话失效，避免旧凭据通过已签发 Token 继续使用。
         await Auth.revoke_user_tokens(request, user_id)
         return None
 
@@ -365,7 +375,7 @@ class UserService:
     async def bind_user_roles_services(
         user_id: int, roles: BindUserRolesDto, request: Request
     ) -> None:
-        """Replace all role bindings for a user."""
+        """替换用户的全部角色关联。"""
         target_user = await UserDao.get_user_by_id(user_id, request)
         if target_user is None:
             raise HTTPException(status_code=404, detail="用户不存在")
@@ -425,7 +435,7 @@ class UserService:
     async def batch_update_user_status_services(
         users: BatchUpdateUserStatusDto, request: Request
     ) -> None:
-        """Batch enable or disable users."""
+        """批量启用或停用用户。"""
         await UserService._ensure_can_manage_users(users.user_ids, request)
         result = await UserDao.batch_update_user_status(
             users.user_ids, users.status, request
@@ -438,7 +448,7 @@ class UserService:
     async def batch_delete_users_services(
         users: BatchUserIdsDto, request: Request
     ) -> None:
-        """Batch delete users."""
+        """批量删除用户。"""
         await UserService._ensure_can_manage_users(users.user_ids, request)
         result = await UserDao.batch_delete_users(users.user_ids, request)
         if result is not None:
@@ -447,7 +457,7 @@ class UserService:
 
     @staticmethod
     async def delete_user_by_id_services(user_id: int, request: Request) -> None:
-        """Delete a user by ID."""
+        """按 ID 删除用户。"""
         await UserService._ensure_can_manage_users([user_id], request)
         result = await UserDao.delete_user_by_id(user_id, request)
         if result is not None:
@@ -456,6 +466,6 @@ class UserService:
 
     @staticmethod
     async def logout_services(request: Request, authorization: str | None) -> None:
-        """Revoke the current login token."""
+        """撤销当前登录 Token。"""
         await Auth.revoke_login_token(request, authorization)
         return None

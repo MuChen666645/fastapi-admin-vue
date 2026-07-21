@@ -14,8 +14,11 @@ from utils.time_utils import now_utc8_naive
 
 
 class RoleDao:
+    """持久化角色及其菜单、部门关联记录。"""
+
     @staticmethod
     async def _validate_dept_ids(mysql, dept_ids: list[int]) -> list[int]:
+        """去重部门 ID，并拒绝不存在的部门。"""
         unique_dept_ids = list(dict.fromkeys(dept_ids))
         if not unique_dept_ids:
             return []
@@ -35,7 +38,7 @@ class RoleDao:
 
     @staticmethod
     async def _validate_menu_ids(mysql, menu_ids: list[int]) -> list[int]:
-        """Return unique menu IDs after verifying that every menu exists."""
+        """校验菜单存在性后返回去重的菜单 ID。"""
         unique_menu_ids = list(dict.fromkeys(menu_ids))
         if not unique_menu_ids:
             return []
@@ -110,7 +113,7 @@ class RoleDao:
 
     @staticmethod
     async def get_roles_by_ids(role_ids: list[int], request: Request) -> list[RoleDo]:
-        """Return roles matching the supplied IDs."""
+        """返回与输入 ID 匹配的角色。"""
         unique_role_ids = list(dict.fromkeys(role_ids))
         if not unique_role_ids:
             return []
@@ -215,7 +218,7 @@ class RoleDao:
     async def batch_update_role_status(
         role_ids: list[int], status: str, request: Request
     ) -> Union[str, None]:
-        """Batch update role status."""
+        """批量修改角色状态。"""
         mysql = request.state.mysql
         result = await mysql.execute(select(RoleDo).where(RoleDo.id.in_(role_ids)))
         roles = result.scalars().all()
@@ -234,6 +237,7 @@ class RoleDao:
     async def ger_role_by_all(
         request: Request, name: str, code: str, params: Params
     ) -> Page[RoleListDto]:
+        """按角色名称和编码过滤并分页返回角色列表。"""
         mysql = request.state.mysql
         query = select(RoleDo)
         if name:

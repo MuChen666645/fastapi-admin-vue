@@ -29,7 +29,7 @@ class MenuDao:
         parent_id: int | None,
         menu_type: str,
     ) -> str | None:
-        """Validate the direct parent and its ancestor chain."""
+        """校验直接父菜单及其祖先层级链。"""
         if menu_type == "F" and not parent_id:
             return "按钮必须绑定父菜单"
         if not parent_id:
@@ -63,6 +63,7 @@ class MenuDao:
 
     @staticmethod
     async def _upsert_button_permission(mysql, menu: MenuDo) -> None:
+        """新增或更新按钮菜单对应的权限目录记录。"""
         if menu.menu_type != "F" or not menu.perms:
             return
 
@@ -89,6 +90,7 @@ class MenuDao:
     async def _delete_permission_if_unused(
         mysql, permission_code: str | None, exclude_menu_ids: Iterable[int] = ()
     ) -> None:
+        """当权限标识不再被按钮菜单使用时清理权限目录记录。"""
         if not permission_code or permission_code == "*:*:*":
             return
 

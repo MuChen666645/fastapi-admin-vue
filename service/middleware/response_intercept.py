@@ -6,20 +6,23 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
 
+# 调用方可以用此请求头要求保留原始响应，处理后会移除该请求头。
 SKIP_RESPONSE_WRAPPER_HEADER = "X-Skip-Response-Wrapper"
+# Swagger 资源返回原始 HTML/JSON，不能套用业务响应包装。
 EXCLUDED_PATHS = {"/docs", "/redoc", "/openapi.json"}
 
 
 def _is_json_content_type(content_type: str) -> bool:
+    """识别标准 JSON 和厂商扩展 JSON 媒体类型。"""
     media_type = content_type.partition(";")[0].strip().lower()
     return media_type == "application/json" or media_type.endswith("+json")
 
 
 class ResponseInterceptor(BaseHTTPMiddleware):
-    """Wrap JSON API responses in the service response envelope."""
+    """将 JSON API 响应包装为服务统一响应结构。"""
 
     async def dispatch(self, request: Request, call_next) -> JSONResponse | Response:
-        """Return non-JSON responses unchanged and wrap JSON responses."""
+        """原样返回非 JSON 响应，并包装 JSON 响应。"""
         response = await call_next(request)
         skip_wrapper = response.headers.get(SKIP_RESPONSE_WRAPPER_HEADER) == "1"
         if skip_wrapper:

@@ -1,4 +1,4 @@
-"""Create the initial SQLModel schema.
+"""创建初始 SQLModel 数据库结构。
 
 Revision ID: 0001_initial_schema
 Revises:
@@ -14,7 +14,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Create the schema snapshot for the first application release."""
+    """创建首个应用版本的数据库结构快照。"""
     op.create_table(
         "dict_types",
         sa.Column("dict_id", sa.Integer(), autoincrement=True, nullable=False),
@@ -260,7 +260,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop the schema created by this revision."""
+    """删除本版本迁移创建的数据库结构。"""
     for table_name in (
         "user_role",
         "user_post",

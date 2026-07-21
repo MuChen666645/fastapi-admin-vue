@@ -1,4 +1,4 @@
-"""MySQL connection and request-session configuration."""
+"""MySQL 连接和请求会话配置。"""
 
 from collections.abc import AsyncIterator
 from typing import Union
@@ -13,7 +13,7 @@ from config.env import Settings, settings
 
 
 async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
-    """Bind one database session to the current HTTP request."""
+    """为当前 HTTP 请求绑定一个数据库会话。"""
     session_factory = request.app.state.mysql_session_factory
     async with session_factory() as session:
         request.state.mysql = session
@@ -28,14 +28,14 @@ async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
 
 
 class MysqlServe:
-    """MySQL server configuration."""
+    """MySQL 服务配置。"""
 
     class MysqlError(Exception):
-        """MySQL server error."""
+        """MySQL 连接错误。"""
 
     @staticmethod
     def get_db_url(app_settings: Settings | None = None) -> str:
-        """Build a MySQL URL from the supplied application settings."""
+        """根据应用配置构造 MySQL 连接地址。"""
         app_settings = app_settings or settings
         return (
             f"mysql+aiomysql://{app_settings.MYSQL_USERNAME}:"
@@ -47,10 +47,9 @@ class MysqlServe:
     async def get_mysql_config(
         app_settings: Settings | None = None,
     ) -> Union[tuple[AsyncEngine, sessionmaker]]:
-        """Create and validate the application engine.
+        """创建并校验应用数据库引擎。
 
-        Schema changes are intentionally excluded from startup. They are managed
-        by Alembic so multiple application instances cannot race on DDL.
+        数据库结构变更不在启动阶段执行，由 Alembic 管理，避免多实例并发执行 DDL。
         """
         app_settings = app_settings or settings
         logger.info("Starting MySQL connection")

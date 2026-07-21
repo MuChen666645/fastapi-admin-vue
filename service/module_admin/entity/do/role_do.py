@@ -1,4 +1,4 @@
-"""Role and role authorization domain objects."""
+"""角色及角色授权领域模型。"""
 
 from datetime import datetime
 
@@ -8,7 +8,7 @@ from utils.time_utils import now_utc8_naive
 
 
 class RoleDo(SQLModel, table=True):
-    """Role domain object."""
+    """角色数据库模型。"""
 
     __tablename__ = "roles"
 
@@ -27,7 +27,7 @@ class RoleDo(SQLModel, table=True):
 
 
 class RoleMenuDo(SQLModel, table=True):
-    """Role and menu relation."""
+    """角色与菜单关联模型。"""
 
     __tablename__ = "role_menu"
 
@@ -46,7 +46,7 @@ class RoleMenuDo(SQLModel, table=True):
 
 
 class RoleDeptDo(SQLModel, table=True):
-    """Role and custom data-scope department relation."""
+    """角色与自定义数据权限部门关联模型。"""
 
     __tablename__ = "role_dept"
 

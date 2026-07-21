@@ -1,4 +1,4 @@
-""" User Dto."""
+"""用户相关请求和响应模型。"""
 
 import re
 from datetime import datetime
@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class BaseLoginRequestDto(BaseModel):
-    """Base login request DTO with common fields."""
+    """登录请求共用字段模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -20,7 +20,7 @@ class BaseLoginRequestDto(BaseModel):
 
 
 class LoginUserRequestByUsernameDto(BaseLoginRequestDto):
-    """Login user request DTO using username."""
+    """使用用户名登录的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,7 +29,7 @@ class LoginUserRequestByUsernameDto(BaseLoginRequestDto):
 
 
 class LoginUserRequestByPhoneDto(BaseLoginRequestDto):
-    """Login user request DTO using phone."""
+    """使用手机号登录的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -38,7 +38,7 @@ class LoginUserRequestByPhoneDto(BaseLoginRequestDto):
 
 
 class RegisterUserRequestDto(BaseModel):
-    """Register user request dto."""
+    """不包含用户名的通用用户注册字段。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,13 +51,14 @@ class RegisterUserRequestDto(BaseModel):
 
     @field_validator("phone")
     def validator_phone(cls, val):
+        """校验手机号是否符合中国大陆手机号格式。"""
         if not re.match(r"^1[3-9]\d{9}$", val):
             raise ValueError
         return val
 
 
 class RegisterUserRequestByUsernameDto(RegisterUserRequestDto):
-    """Register user request dto."""
+    """使用用户名注册用户的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,7 +69,7 @@ class RegisterUserRequestByUsernameDto(RegisterUserRequestDto):
 
 
 class UpdateUserRequestDto(BaseModel):
-    """Update user request dto."""
+    """修改用户资料、部门和岗位的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
@@ -85,25 +86,28 @@ class UpdateUserRequestDto(BaseModel):
 
     @field_validator("phone")
     def validator_phone(cls, val):
+        """校验部分更新中提供的手机号。"""
         if val is not None and not re.match(r"^1[3-9]\d{9}$", val):
             raise ValueError
         return val
 
     @field_validator("sex")
     def validator_sex(cls, val):
+        """校验性别字段只能使用约定的枚举值。"""
         if val is not None and val not in {"0", "1"}:
             raise ValueError
         return val
 
     @field_validator("status")
     def validator_status(cls, val):
+        """校验用户状态只能使用启用或停用值。"""
         if val is not None and val not in {"0", "1"}:
             raise ValueError
         return val
 
 
 class UpdateUserPasswordRequestDto(BaseModel):
-    """Update user password request dto."""
+    """用户自助修改密码的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -112,13 +116,14 @@ class UpdateUserPasswordRequestDto(BaseModel):
 
     @field_validator("old_password", "new_password")
     def validator_password(cls, val):
+        """拒绝空白密码，避免无效密码进入业务层。"""
         if not val or not val.strip():
             raise ValueError
         return val
 
 
 class ResetUserPasswordRequestDto(BaseModel):
-    """Administrator reset-password request DTO."""
+    """管理员重置用户密码的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
@@ -126,13 +131,14 @@ class ResetUserPasswordRequestDto(BaseModel):
 
     @field_validator("password")
     def validator_password(cls, val):
+        """拒绝空白的新密码。"""
         if not val or not val.strip():
             raise ValueError
         return val
 
 
 class BatchUserIdsDto(BaseModel):
-    """Batch user operation request DTO."""
+    """批量用户操作请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -140,19 +146,20 @@ class BatchUserIdsDto(BaseModel):
 
 
 class BatchUpdateUserStatusDto(BatchUserIdsDto):
-    """Batch update user status request DTO."""
+    """批量修改用户状态请求模型。"""
 
     status: str = Field(..., description="状态,0禁用,1正常")
 
     @field_validator("status")
     def validator_status(cls, val):
+        """校验批量修改状态只能使用启用或停用值。"""
         if val not in {"0", "1"}:
             raise ValueError
         return val
 
 
 class BindUserRolesDto(BaseModel):
-    """Bind roles to a user request DTO."""
+    """绑定用户角色的请求模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -160,7 +167,7 @@ class BindUserRolesDto(BaseModel):
 
 
 class TokenDto(BaseModel):
-    """Token DTO."""
+    """访问令牌响应模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -168,7 +175,7 @@ class TokenDto(BaseModel):
 
 
 class ResponseUserInfoDto(BaseModel):
-    """Response user DTO."""
+    """用户信息响应模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -187,7 +194,7 @@ class ResponseUserInfoDto(BaseModel):
 
 
 class UserInfoUserDto(BaseModel):
-    """User info response user data."""
+    """用户信息中的用户数据。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -207,7 +214,7 @@ class UserInfoUserDto(BaseModel):
 
 
 class UserInfoRoleDto(BaseModel):
-    """User info response role data."""
+    """用户信息中的角色数据。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -221,7 +228,7 @@ class UserInfoRoleDto(BaseModel):
 
 
 class UserInfoDto(BaseModel):
-    """User info response DTO."""
+    """当前用户信息响应模型。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -233,7 +240,7 @@ class UserInfoDto(BaseModel):
 
 
 class UserRouteMetaDto(BaseModel):
-    """Current user frontend route meta."""
+    """当前用户前端路由元数据。"""
 
     title: str = Field(description="菜单标题")
     icon: str | None = Field(default=None, description="菜单图标")
@@ -242,7 +249,7 @@ class UserRouteMetaDto(BaseModel):
 
 
 class UserRouteDto(BaseModel):
-    """Current user frontend route menu."""
+    """当前用户前端路由菜单。"""
 
     path: str = Field(description="路由路径")
     name: str = Field(description="路由名称")

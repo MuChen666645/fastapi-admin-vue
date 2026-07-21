@@ -1,4 +1,4 @@
-"""Redis connection configuration."""
+"""Redis 连接配置。"""
 
 from fastapi import FastAPI
 import redis.asyncio as aioredis
@@ -9,14 +9,14 @@ from config.env import Settings, settings
 
 
 class RedisServe:
-    """Redis server configuration."""
+    """Redis 服务配置。"""
 
     class RedisError(Exception):
-        """Redis connection error."""
+        """Redis 连接错误。"""
 
     @classmethod
     async def get_redis_server(cls, app_settings: Settings | None = None):
-        """Create a Redis client and fail startup if the connection is unusable."""
+        """创建 Redis 客户端，连接不可用时让应用启动失败。"""
         app_settings = app_settings or settings
         logger.info("Starting Redis connection")
         redis: Redis = aioredis.from_url(
@@ -38,7 +38,7 @@ class RedisServe:
 
     @classmethod
     async def close_redis_server(cls, app: FastAPI):
-        """Close Redis during application shutdown."""
+        """应用关闭时释放 Redis 连接。"""
         logger.info("Closing Redis connection")
         redis = getattr(app.state, "redis", None)
         if redis:

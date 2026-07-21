@@ -32,6 +32,7 @@ class NoticeController:
         ),
         params: Params = Depends(),
     ):
+        """分页查询通知公告。"""
         return await NoticeService.list_notices(
             request, title, notice_type, status, params
         )
@@ -43,6 +44,7 @@ class NoticeController:
         responses={200: {"model": ApiResponseDto[NoticeDto]}},
     )
     async def create(data: NoticeCreateDto, request: Request):
+        """新增通知公告。"""
         return await NoticeService.create(data, request)
 
     @notice.get(
@@ -55,6 +57,7 @@ class NoticeController:
         request: Request,
         notice_id: int = Path(description="公告编号"),
     ):
+        """查询通知公告详情。"""
         return await NoticeService.detail(notice_id, request)
 
     @notice.put(
@@ -68,6 +71,7 @@ class NoticeController:
         request: Request,
         notice_id: int = Path(description="公告编号"),
     ):
+        """修改通知公告。"""
         return await NoticeService.update(notice_id, data, request)
 
     @notice.delete(
@@ -80,4 +84,5 @@ class NoticeController:
         request: Request,
         notice_id: int = Path(description="公告编号"),
     ):
+        """删除通知公告。"""
         return await NoticeService.delete(notice_id, request)

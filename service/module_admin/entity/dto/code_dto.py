@@ -1,10 +1,10 @@
-"""Captcha request and response DTOs."""
+"""验证码请求和响应模型。"""
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class CaptchaImageDto(BaseModel):
-    """Captcha identifier and rendered image."""
+    """验证码标识和渲染后的图片。"""
 
     model_config = ConfigDict(from_attributes=True)
 

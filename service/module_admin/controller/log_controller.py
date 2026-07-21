@@ -1,4 +1,4 @@
-"""System log and online-session management endpoints."""
+"""系统日志和在线会话管理接口。"""
 
 from datetime import datetime
 
@@ -21,11 +21,14 @@ from module_admin.service.log_service import LogService
 
 
 class LogController:
+    """提供登录、操作、异常日志和在线会话管理接口。"""
+
     log = APIRouter(prefix="/log", tags=["日志管理"])
     online = APIRouter(prefix="/online", tags=["在线用户管理"])
 
     @staticmethod
     async def _list(log_type: str, query: LogQueryDto, params: Params, request: Request):
+        """将带类型的日志查询委托给日志服务。"""
         return await LogService.list_logs(log_type, query, params, request)
 
     @staticmethod
@@ -36,6 +39,7 @@ class LogController:
         start_time: datetime | None,
         end_time: datetime | None,
     ) -> LogQueryDto:
+        """构造所有日志列表接口共用的过滤条件 DTO。"""
         return LogQueryDto(
             username=username,
             status=status,
@@ -64,6 +68,7 @@ class LogController:
         end_time: datetime | None = Query(default=None, description="查询结束时间"),
         params: Params = Depends(),
     ):
+        """分页查询登录日志。"""
         query = LogController._build_log_query(
             username, status, path, start_time, end_time
         )
@@ -89,6 +94,7 @@ class LogController:
         end_time: datetime | None = Query(default=None, description="查询结束时间"),
         params: Params = Depends(),
     ):
+        """分页查询操作日志。"""
         query = LogController._build_log_query(
             username, status, path, start_time, end_time
         )
@@ -114,6 +120,7 @@ class LogController:
         end_time: datetime | None = Query(default=None, description="查询结束时间"),
         params: Params = Depends(),
     ):
+        """分页查询异常日志。"""
         query = LogController._build_log_query(
             username, status, path, start_time, end_time
         )
@@ -136,6 +143,7 @@ class LogController:
             description="日志类型：login登录日志、operation操作日志、exception异常日志",
         ),
     ):
+        """按日志类型批量删除日志。"""
         await LogService.delete_logs(log_type, data.ids, request)
 
     @online.get(
@@ -155,6 +163,7 @@ class LogController:
         ),
         params: Params = Depends(),
     ):
+        """分页查询当前数据权限范围内的在线会话。"""
         query = OnlineQueryDto(username=username, ip_address=ip_address)
         return await LogService.list_online_users(query, params, request)
 
@@ -170,6 +179,7 @@ class LogController:
             min_length=64, max_length=64, description="Token会话ID"
         ),
     ):
+        """强制指定 Token 会话下线。"""
         if not await Auth.revoke_token_by_id(request, token_id):
             raise HTTPException(status_code=404, detail="Token 不存在或已过期")
 
@@ -183,5 +193,6 @@ class LogController:
         request: Request,
         user_id: int = Path(description="需要强制下线的用户ID"),
     ):
+        """强制指定用户的全部可见会话下线。"""
         revoked_count = await Auth.revoke_user_tokens(request, user_id)
         return {"user_id": user_id, "revoked_token_count": revoked_count}

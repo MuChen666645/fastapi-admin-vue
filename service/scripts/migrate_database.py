@@ -1,4 +1,4 @@
-"""Apply database migrations, including the legacy schema baseline."""
+"""执行数据库迁移，并处理旧版数据库基线。"""
 
 import asyncio
 
@@ -12,7 +12,7 @@ from config.mysql_serve import MysqlServe
 
 
 async def _database_state() -> tuple[bool, str | None]:
-    """Return whether this is a legacy database and its Alembic version."""
+    """返回数据库是否为旧版结构以及当前 Alembic 版本。"""
     engine = create_async_engine(MysqlServe.get_db_url(), pool_pre_ping=True)
     try:
         async with engine.connect() as connection:
@@ -35,12 +35,12 @@ async def _database_state() -> tuple[bool, str | None]:
 
 
 def _alembic_config() -> Config:
-    """Load the repository Alembic configuration."""
+    """加载项目根目录下的 Alembic 配置。"""
     return Config(str(PROJECT_ROOT / "alembic.ini"))
 
 
 def main() -> None:
-    """Baseline legacy installations and apply all pending migrations."""
+    """为旧版安装标记基线，并应用全部待执行迁移。"""
     is_legacy, _ = asyncio.run(_database_state())
     config = _alembic_config()
     if is_legacy:

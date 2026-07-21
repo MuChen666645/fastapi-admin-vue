@@ -1,4 +1,4 @@
-"""Permission DAO."""
+"""权限数据访问层。"""
 
 from fastapi import Request
 from sqlalchemy import or_
@@ -13,12 +13,13 @@ from module_admin.entity.do.user_do import UserDo, UserRoleDo
 
 
 class PermissionDao:
-    """Permission query methods."""
+    """权限查询方法。"""
 
     @staticmethod
     async def has_permission(
         user_id: int, permission_code: str, request: Request
     ) -> bool:
+        """先检查超级管理员通配权限，再检查精确菜单权限。"""
         mysql = request.state.mysql
         wildcard_stmt = (
             select(PermissionDo.id)

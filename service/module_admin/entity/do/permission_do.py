@@ -1,4 +1,4 @@
-"""Permission domain objects."""
+"""权限领域模型。"""
 
 from datetime import datetime
 
@@ -7,7 +7,7 @@ from utils.time_utils import now_utc8_naive
 
 
 class PermissionDo(SQLModel, table=True):
-    """Permission control table."""
+    """权限目录表。"""
 
     __tablename__ = "permissions"
 

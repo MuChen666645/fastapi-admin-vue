@@ -1,4 +1,4 @@
-"""Role-based data-scope resolution and reusable SQL filters."""
+"""基于角色的数据权限解析和可复用 SQL 过滤条件。"""
 
 from dataclasses import dataclass
 
@@ -14,14 +14,14 @@ from module_admin.entity.do.user_do import UserDo, UserRoleDo
 
 @dataclass(frozen=True)
 class DataScope:
-    """Resolved union of all enabled roles assigned to one actor."""
+    """一个操作者所有启用角色的数据权限并集。"""
 
     actor_user_id: int
     all_data: bool
     department_ids: frozenset[int]
 
     def user_id_clause(self, column):
-        """Build a predicate for a user ID column, including the actor."""
+        """为用户 ID 字段构造包含操作者本人的过滤条件。"""
         if self.all_data:
             return true()
         conditions = [column == self.actor_user_id]
@@ -34,7 +34,7 @@ class DataScope:
         return or_(*conditions)
 
     def department_id_clause(self, column):
-        """Build a predicate for department records."""
+        """为部门记录构造数据权限过滤条件。"""
         if self.all_data:
             return true()
         if not self.department_ids:
@@ -42,7 +42,7 @@ class DataScope:
         return column.in_(self.department_ids)
 
     def post_id_clause(self, column):
-        """Build a predicate for posts assigned to visible users."""
+        """为分配给可见用户的岗位构造过滤条件。"""
         if self.all_data:
             return true()
         visible_users = select(UserDo.id).where(self.user_id_clause(UserDo.id))
@@ -52,8 +52,9 @@ class DataScope:
 
 
 class DataScopeService:
-    """Resolve role data scope and expose common access checks."""
+    """解析角色数据权限并提供通用访问检查。"""
 
+    # 数据权限编码与数据库种子及 OpenAPI 请求字段保持一致。
     ALL = "1"
     CUSTOM_DEPARTMENT = "2"
     CURRENT_DEPARTMENT = "3"
@@ -62,12 +63,13 @@ class DataScopeService:
 
     @staticmethod
     def _department_descendant_clause(column, department_id: int):
-        """Match a department ID as a complete ancestry segment."""
+        """按完整祖先片段匹配部门 ID，避免子串误匹配。"""
         ancestry = func.concat(",", column, ",")
         return ancestry.contains(f",{department_id},")
 
     @staticmethod
     async def resolve(request: Request) -> DataScope:
+        """解析并缓存操作者所有启用角色的数据权限并集。"""
         cached_scope = getattr(request.state, "data_scope", None)
         if cached_scope is not None:
             return cached_scope
@@ -150,6 +152,7 @@ class DataScopeService:
 
     @staticmethod
     async def can_access_user(user_id: int, request: Request) -> bool:
+        """检查当前操作者是否可以访问或修改用户。"""
         scope = await DataScopeService.resolve(request)
         if scope.all_data:
             return True
@@ -163,6 +166,7 @@ class DataScopeService:
 
     @staticmethod
     async def can_access_department(dept_id: int, request: Request) -> bool:
+        """检查部门是否属于操作者可见的数据范围。"""
         scope = await DataScopeService.resolve(request)
         if scope.all_data:
             return True
@@ -176,6 +180,7 @@ class DataScopeService:
 
     @staticmethod
     async def can_access_post(post_id: int, request: Request) -> bool:
+        """检查岗位是否关联到操作者可见的用户。"""
         scope = await DataScopeService.resolve(request)
         if scope.all_data:
             return True
@@ -189,7 +194,7 @@ class DataScopeService:
 
     @staticmethod
     async def can_mutate_post(post_id: int, request: Request) -> bool:
-        """Allow post writes only when every assigned user is in scope."""
+        """仅当岗位关联的所有用户都在权限范围内时允许写入。"""
         scope = await DataScopeService.resolve(request)
         if scope.all_data:
             return True
@@ -206,6 +211,7 @@ class DataScopeService:
 
     @staticmethod
     async def filter_user_ids(request: Request, user_ids: list[int]) -> set[int]:
+        """从输入用户 ID 中筛选当前操作者可见的 ID。"""
         unique_user_ids = list(dict.fromkeys(user_ids))
         if not unique_user_ids:
             return set()
@@ -225,6 +231,7 @@ class DataScopeService:
 
     @staticmethod
     async def filter_post_ids(request: Request, post_ids: list[int]) -> set[int]:
+        """从输入岗位 ID 中筛选当前操作者可见的 ID。"""
         unique_post_ids = list(dict.fromkeys(post_ids))
         if not unique_post_ids:
             return set()

@@ -15,15 +15,19 @@ from utils.time_utils import UTC8, now_utc8
 
 
 class Auth:
-    """JWT authentication and route authorization."""
+    """JWT 认证和接口权限校验。"""
 
+    # Token 使用此算法签名，并按 Token 哈希值缓存。
     ALGORITHM = "HS256"
+    # Redis Key 在所有应用进程之间共享。
     TOKEN_REDIS_PREFIX = "auth:token:"
     TOKEN_INDEX_KEY = "auth:token:index"
+    # Redis 不可用时使用，例如隔离单元测试场景。
     _token_cache: dict[str, dict] = {}
 
     @staticmethod
     def create_token(data: dict) -> str:
+        """为 JWT 增加签发时间、过期时间和唯一 Token ID 后签名。"""
         jwt_data = data.copy()
         issued_at = datetime.now(timezone.utc)
         exp = issued_at + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -32,7 +36,7 @@ class Auth:
 
     @staticmethod
     async def create_login_token(data: dict, request: Request) -> str:
-        """Create token and cache it in memory and Redis."""
+        """创建 Token，并将其缓存到进程内存和 Redis。"""
         token = Auth.create_token(data)
         payload = Auth._decode_token(token)
         payload.update(
@@ -48,6 +52,7 @@ class Auth:
 
     @staticmethod
     async def verify_token(request: Request, Authorization: str | None) -> dict:
+        """校验请求头、缓存记录、签名、有效期和用户 ID。"""
         if not Authorization:
             raise HTTPException(status_code=401, detail="Not Log In")
 
@@ -76,6 +81,7 @@ class Auth:
         request: Request,
         Authorization: str | None = Header(default=None, description="Token"),
     ) -> dict:
+        """认证请求并将已启用用户写入请求状态。"""
         payload = await Auth.verify_token(request, Authorization)
         user_id = Auth._get_user_id(payload)
         user = await Auth._get_enabled_user(request, user_id)
@@ -89,11 +95,12 @@ class Auth:
         request: Request,
         Authorization: str | None = Header(default=None, description="Token"),
     ) -> dict:
+        """为登录状态依赖提供统一的认证校验入口。"""
         return await Auth.router_auth(request, Authorization)
 
     @staticmethod
     def has_admin_role(roles: list) -> bool:
-        """Return whether the supplied roles include the reserved admin role."""
+        """判断角色列表是否包含配置的保留管理员角色。"""
         admin_role_code = settings.ADMIN_ROLE_CODE.strip().casefold()
         return any(
             str(role.code).strip().casefold() == admin_role_code
@@ -102,7 +109,7 @@ class Auth:
 
     @staticmethod
     async def get_actor_roles(request: Request) -> list:
-        """Load the enabled roles for the authenticated request actor."""
+        """加载当前认证请求操作者的已启用角色。"""
         actor_user_id = getattr(request.state, "user_id", None)
         if actor_user_id is None:
             raise HTTPException(status_code=401, detail="Not Log In")
@@ -115,19 +122,20 @@ class Auth:
     async def revoke_login_token(
         request: Request, Authorization: str | None
     ) -> None:
-        """Validate and revoke the current login token."""
+        """校验并撤销当前登录 Token。"""
         await Auth.verify_token(request, Authorization)
         token = Auth._parse_authorization(Authorization)
         await Auth._delete_token_cache(request, token)
 
     @staticmethod
     def has_permission(permission_code: str):
-        """Create a route dependency for button-level permission checks."""
+        """创建用于按钮级权限校验的路由依赖。"""
 
         async def permission_dependency(
             request: Request,
             Authorization: str | None = Header(default=None, description="Token"),
         ) -> dict:
+            """校验登录状态和指定按钮权限，返回认证载荷。"""
             from module_admin.dao.permission_dao import PermissionDao
 
             payload = await Auth.router_auth(request, Authorization)
@@ -141,6 +149,7 @@ class Auth:
 
     @staticmethod
     def _parse_authorization(Authorization: str) -> str:
+        """从裸 Token 或 Bearer 格式的授权值中提取原始 Token。"""
         parts = Authorization.strip().split()
         if len(parts) == 1:
             return parts[0]
@@ -150,15 +159,18 @@ class Auth:
 
     @staticmethod
     def _decode_token(token: str) -> dict:
+        """解码并校验已签名的 JWT 载荷。"""
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[Auth.ALGORITHM])
 
     @staticmethod
     def _get_token_cache_key(token: str) -> str:
+        """构造 Redis Key，避免在 Key 中保存原始 JWT。"""
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         return f"{Auth.TOKEN_REDIS_PREFIX}{token_hash}"
 
     @staticmethod
     def _get_payload_ttl(payload: dict) -> int:
+        """返回 JWT 剩余有效秒数，无效过期值返回零。"""
         exp = payload.get("exp")
         if exp is None:
             return 0
@@ -169,6 +181,7 @@ class Auth:
 
     @staticmethod
     async def _cache_token(request: Request, token: str, payload: dict) -> None:
+        """在 JWT 有效期内将 Token 缓存到进程内存和 Redis。"""
         ttl = Auth._get_payload_ttl(payload)
         if ttl <= 0:
             return
@@ -186,6 +199,7 @@ class Auth:
 
     @staticmethod
     def _get_memory_payload(token: str) -> dict | None:
+        """读取进程缓存，并延迟删除已经过期的 Token。"""
         cache_key = Auth._get_token_cache_key(token)
         cache_data = Auth._token_cache.get(cache_key)
         if cache_data is None:
@@ -198,6 +212,7 @@ class Auth:
 
     @staticmethod
     async def _get_redis_payload(request: Request, token: str) -> dict | None:
+        """从 Redis 读取、校验并刷新 Token 载荷缓存。"""
         redis = getattr(request.app.state, "redis", None)
         if redis is None:
             return None
@@ -229,6 +244,7 @@ class Auth:
 
     @staticmethod
     async def _get_cached_payload(request: Request, token: str) -> dict | None:
+        """根据应用状态选择 Redis 或进程内存进行 Token 校验。"""
         redis = getattr(request.app.state, "redis", None)
         if redis is not None:
             payload = await Auth._get_redis_payload(request, token)
@@ -239,11 +255,13 @@ class Auth:
 
     @staticmethod
     async def _delete_token_cache(request: Request, token: str) -> None:
+        """从所有已配置缓存中删除一个 Token。"""
         cache_key = Auth._get_token_cache_key(token)
         await Auth._delete_cache_key(request, cache_key)
 
     @staticmethod
     async def _delete_cache_key(request: Request, cache_key: str) -> None:
+        """删除哈希 Token Key 及其有序集合索引记录。"""
         Auth._token_cache.pop(cache_key, None)
         redis = getattr(request.app.state, "redis", None)
         if redis is not None:
@@ -252,23 +270,26 @@ class Auth:
 
     @staticmethod
     async def _add_token_to_index(redis, cache_key: str, ttl: int) -> None:
+        """按过期时间建立 Token 索引，控制在线会话查询范围。"""
         now = time.time()
         await redis.zremrangebyscore(Auth.TOKEN_INDEX_KEY, "-inf", now)
         await redis.zadd(Auth.TOKEN_INDEX_KEY, {cache_key: now + ttl})
 
     @staticmethod
     async def _remove_token_from_index(redis, cache_key: str) -> None:
+        """从 Redis 过期索引中删除一个 Token Key。"""
         await redis.zrem(Auth.TOKEN_INDEX_KEY, cache_key)
 
     @staticmethod
     async def _read_token_index(redis) -> set[str]:
+        """清理过期索引记录并返回当前有效的 Token Key。"""
         now = time.time()
         await redis.zremrangebyscore(Auth.TOKEN_INDEX_KEY, "-inf", now)
         return set(await redis.zrangebyscore(Auth.TOKEN_INDEX_KEY, now, "+inf"))
 
     @staticmethod
     async def list_online_tokens(request: Request) -> list[dict]:
-        """Return active login sessions without exposing raw JWT values."""
+        """返回活跃登录会话，但不暴露原始 JWT 值。"""
         redis = getattr(request.app.state, "redis", None)
         if redis is not None:
             cache_keys = await Auth._read_token_index(redis)
@@ -308,6 +329,7 @@ class Auth:
 
     @staticmethod
     async def revoke_token_by_id(request: Request, token_id: str) -> bool:
+        """通过操作者数据权限校验后撤销一个会话。"""
         cache_key = f"{Auth.TOKEN_REDIS_PREFIX}{token_id}"
         sessions = await Auth.list_online_tokens(request)
         target = next(
@@ -329,6 +351,7 @@ class Auth:
 
     @staticmethod
     async def revoke_user_tokens(request: Request, user_id: int) -> int:
+        """撤销指定用户在当前操作者权限范围内的全部会话。"""
         sessions = await Auth.list_online_tokens(request)
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
@@ -345,6 +368,7 @@ class Auth:
 
     @staticmethod
     def get_client_ip(request: Request) -> str | None:
+        """解析客户端 IP，仅信任受信代理转发的请求头。"""
         client = getattr(request, "client", None)
         peer_ip = client.host if client else None
         if peer_ip is None or not Auth._is_trusted_proxy(peer_ip):
@@ -369,6 +393,7 @@ class Auth:
 
     @staticmethod
     def _is_trusted_proxy(address: str) -> bool:
+        """检查地址是否属于已配置的代理网络。"""
         try:
             ip = ipaddress.ip_address(address)
         except ValueError:
@@ -383,6 +408,7 @@ class Auth:
 
     @staticmethod
     def _get_user_id(payload: dict) -> int:
+        """从已校验的 Token 载荷中解析必需的数字用户 ID。"""
         user_id = payload.get("user_id")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid Token")
@@ -393,6 +419,7 @@ class Auth:
 
     @staticmethod
     async def _get_enabled_user(request: Request, user_id: int):
+        """加载目标用户，并拒绝不存在或已停用的账号。"""
         from module_admin.entity.do.user_do import UserDo
 
         mysql = request.state.mysql

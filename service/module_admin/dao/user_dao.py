@@ -1,4 +1,4 @@
-""" User Dao Model."""
+"""用户数据访问层。"""
 
 from datetime import datetime
 from typing import Union
@@ -25,7 +25,7 @@ from utils.time_utils import now_utc8_naive
 
 
 class UserDao:
-    """User Dao."""
+    """用户数据访问对象。"""
 
     @staticmethod
     async def create_user_by_username(
@@ -133,7 +133,7 @@ class UserDao:
     async def get_user_roles(
         user_id: int, request: Request, enabled_only: bool = True
     ) -> list[RoleDo]:
-        """Return roles assigned through both current and legacy relations."""
+        """返回当前关联表和旧角色字段共同关联的角色。"""
         mysql = request.state.mysql
         legacy_role_id = (
             select(UserDo.role_id).where(UserDo.id == user_id).scalar_subquery()
@@ -151,7 +151,7 @@ class UserDao:
 
     @staticmethod
     async def get_roles_by_ids(role_ids: list[int], request: Request) -> list[RoleDo]:
-        """Return roles matching the supplied IDs."""
+        """返回与输入 ID 匹配的角色。"""
         unique_role_ids = list(dict.fromkeys(role_ids))
         if not unique_role_ids:
             return []
@@ -164,7 +164,7 @@ class UserDao:
     async def get_admin_user_ids(
         user_ids: list[int], request: Request
     ) -> set[int]:
-        """Return users assigned the reserved admin role through any relation."""
+        """返回通过任一关联方式拥有保留管理员角色的用户 ID。"""
         unique_user_ids = list(dict.fromkeys(user_ids))
         if not unique_user_ids:
             return set()
@@ -192,7 +192,7 @@ class UserDao:
 
     @staticmethod
     async def get_user_info(user_id: int, request: Request) -> Union[dict, None]:
-        """Get user, roles and permissions by user id."""
+        """按用户 ID 查询用户、角色和权限信息。"""
         mysql = request.state.mysql
         user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
@@ -259,7 +259,7 @@ class UserDao:
         end_time: datetime | None,
         params: Params,
     ):
-        """Query users with pagination."""
+        """按条件分页查询用户。"""
         scope = await DataScopeService.resolve(request)
         query = select(
             UserDo.id,
@@ -296,7 +296,7 @@ class UserDao:
 
     @staticmethod
     async def get_user_route_menus(user_id: int, request: Request) -> list[MenuDo]:
-        """Get enabled route menus visible to a user."""
+        """查询用户可见且已启用的路由菜单。"""
         mysql = request.state.mysql
         user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
@@ -375,7 +375,7 @@ class UserDao:
     async def bind_user_roles(
         user_id: int, role_ids: list[int], request: Request
     ) -> Union[str, None]:
-        """Replace all role bindings for a user."""
+        """替换用户的全部角色关联。"""
         mysql = request.state.mysql
         user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
@@ -410,7 +410,7 @@ class UserDao:
     async def batch_update_user_status(
         user_ids: list[int], status: str, request: Request
     ) -> Union[str, None]:
-        """Batch enable or disable users."""
+        """批量启用或停用用户。"""
         mysql = request.state.mysql
         unique_user_ids = list(dict.fromkeys(user_ids))
         scope = await DataScopeService.resolve(request)
@@ -438,7 +438,7 @@ class UserDao:
     async def batch_delete_users(
         user_ids: list[int], request: Request
     ) -> Union[str, None]:
-        """Delete users and their role bindings in one transaction."""
+        """在一个事务中删除用户及其角色关联。"""
         mysql = request.state.mysql
         unique_user_ids = list(dict.fromkeys(user_ids))
         scope = await DataScopeService.resolve(request)
@@ -468,7 +468,7 @@ class UserDao:
     async def delete_user_by_id(
         user_id: int, request: Request
     ) -> Union[str, None]:
-        """Delete a user and all role bindings."""
+        """删除一个用户及其全部角色关联。"""
         mysql = request.state.mysql
         user = await UserDao.get_user_by_id(user_id, request)
         if user is None:

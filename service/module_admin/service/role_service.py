@@ -1,4 +1,4 @@
-""" Role Service. """
+"""角色业务服务。"""
 
 from fastapi import HTTPException, Request
 from fastapi_pagination import Page, Params
@@ -12,8 +12,9 @@ from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
 
 
 class RoleService:
-    """Role Service."""
+    """处理角色 CRUD、权限关联和数据权限配置。"""
 
+    # 角色权限和数据范围属于全局安全配置，只允许超级管理员修改。
     ROLE_PERMISSION_MUTATION_MESSAGE = (
         "Only super administrators can modify role permissions"
     )
@@ -22,6 +23,7 @@ class RoleService:
 
     @staticmethod
     def _is_admin_code(role_code: str | None) -> bool:
+        """将角色编码与配置的保留管理员编码进行比较。"""
         return bool(
             role_code
             and role_code.strip().casefold()
@@ -30,6 +32,7 @@ class RoleService:
 
     @staticmethod
     def _reject_admin_role(role_code: str | None) -> None:
+        """拒绝创建、重命名或修改保留管理员角色的请求。"""
         if RoleService._is_admin_code(role_code):
             raise HTTPException(status_code=403, detail="超级管理员角色禁止修改")
 
@@ -40,7 +43,7 @@ class RoleService:
         permission_change: bool = False,
         global_mutation: bool = False,
     ) -> bool:
-        """Prevent non-admins from changing effective role permissions."""
+        """阻止非管理员修改会影响实际授权的角色配置。"""
         actor_roles = await Auth.get_actor_roles(request)
         if Auth.has_admin_role(actor_roles):
             return True
@@ -69,6 +72,7 @@ class RoleService:
     def _validate_data_scope(
         data_scope: str | None, dept_ids: list[int] | None
     ) -> None:
+        """校验数据权限模式和自定义部门的必填约束。"""
         if data_scope is not None and data_scope not in RoleService.VALID_DATA_SCOPES:
             raise HTTPException(status_code=400, detail="Invalid data scope")
         if data_scope == "2" and not dept_ids:
@@ -239,7 +243,7 @@ class RoleService:
     async def batch_update_role_status_services(
         roles: BatchUpdateRoleStatusDto, request: Request
     ) -> None:
-        """Batch enable or disable roles."""
+        """批量启用或停用角色。"""
         unique_role_ids = list(dict.fromkeys(roles.role_ids))
         role_models = await RoleDao.get_roles_by_ids(unique_role_ids, request)
         role_map = {role.id: role for role in role_models}

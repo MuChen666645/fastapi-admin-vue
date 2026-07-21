@@ -1,1 +1,1 @@
-"""Operational scripts for the service."""
+"""服务运维脚本。"""

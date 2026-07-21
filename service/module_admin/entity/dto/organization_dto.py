@@ -14,6 +14,7 @@ class StatusMixin(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, value: str) -> str:
+        """仅允许组织记录使用启用或停用状态。"""
         if value not in {"0", "1"}:
             raise ValueError("状态只能是0或1")
         return value
@@ -47,6 +48,7 @@ class DepartmentUpdateDto(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, value: str | None) -> str | None:
+        """校验部门部分更新中的可选状态值。"""
         if value is not None and value not in {"0", "1"}:
             raise ValueError("状态只能是0或1")
         return value
@@ -83,6 +85,7 @@ class PostUpdateDto(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, value: str | None) -> str | None:
+        """校验岗位部分更新中的可选状态值。"""
         if value is not None and value not in {"0", "1"}:
             raise ValueError("状态只能是0或1")
         return value

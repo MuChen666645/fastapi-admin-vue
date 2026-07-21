@@ -1,4 +1,4 @@
-"""User Do Model"""
+"""用户数据库模型。"""
 
 from sqlmodel import SQLModel, Field
 from datetime import datetime
@@ -6,7 +6,7 @@ from utils.time_utils import now_utc8_naive
 
 
 class UserDo(SQLModel, table=True):
-    """User Do Model."""
+    """用户数据库模型。"""
 
     __tablename__ = "users"
     id: int = Field(primary_key=True, description="用户ID")
@@ -46,7 +46,7 @@ class UserDo(SQLModel, table=True):
 
 
 class UserRoleDo(SQLModel, table=True):
-    """User and Role Do Model."""
+    """用户与角色关联模型。"""
 
     __tablename__ = "user_role"
     user_id: int = Field(

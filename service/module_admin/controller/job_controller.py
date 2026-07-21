@@ -36,6 +36,7 @@ class JobController:
         ),
         params: Params = Depends(),
     ):
+        """分页查询已配置的定时任务。"""
         return await JobService.list_jobs(request, name, status, params)
 
     @job.post(
@@ -45,6 +46,7 @@ class JobController:
         responses={200: {"model": ApiResponseDto[ScheduledJobDto]}},
     )
     async def create(data: ScheduledJobCreateDto, request: Request):
+        """新增持久化定时任务。"""
         return await JobService.create(data, request)
 
     @job.get(
@@ -57,6 +59,7 @@ class JobController:
         request: Request,
         job_id: int = Path(description="任务编号"),
     ):
+        """查询定时任务详情。"""
         return await JobService.detail(job_id, request)
 
     @job.put(
@@ -70,6 +73,7 @@ class JobController:
         request: Request,
         job_id: int = Path(description="任务编号"),
     ):
+        """修改定时任务配置。"""
         return await JobService.update(job_id, data, request)
 
     @job.delete(
@@ -82,6 +86,7 @@ class JobController:
         request: Request,
         job_id: int = Path(description="任务编号"),
     ):
+        """删除定时任务。"""
         return await JobService.delete(job_id, request)
 
     @job.post(
@@ -94,6 +99,7 @@ class JobController:
         request: Request,
         job_id: int = Path(description="任务编号"),
     ):
+        """立即执行一次已注册处理器对应的任务。"""
         return await JobService.run_now(job_id, request)
 
     @job.get(
@@ -107,4 +113,5 @@ class JobController:
         job_id: int = Path(description="任务编号"),
         params: Params = Depends(),
     ):
+        """分页查询指定任务的执行日志。"""
         return await JobService.list_logs(job_id, request, params)

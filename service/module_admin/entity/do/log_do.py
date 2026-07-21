@@ -1,4 +1,4 @@
-"""Persistent system log models."""
+"""持久化系统日志模型。"""
 
 from datetime import datetime
 
@@ -8,7 +8,7 @@ from utils.time_utils import now_utc8_naive
 
 
 class LoginLogDo(SQLModel, table=True):
-    """A login attempt, whether successful or not."""
+    """一次登录尝试记录，无论成功或失败都会保存。"""
 
     __tablename__ = "login_logs"
 
@@ -29,7 +29,7 @@ class LoginLogDo(SQLModel, table=True):
 
 
 class OperationLogDo(SQLModel, table=True):
-    """An authenticated API operation."""
+    """一次已认证 API 操作记录。"""
 
     __tablename__ = "operation_logs"
 
@@ -52,7 +52,7 @@ class OperationLogDo(SQLModel, table=True):
 
 
 class ExceptionLogDo(SQLModel, table=True):
-    """An unhandled API exception."""
+    """一次未处理 API 异常记录。"""
 
     __tablename__ = "exception_logs"
 

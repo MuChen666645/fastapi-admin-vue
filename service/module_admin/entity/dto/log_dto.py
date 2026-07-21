@@ -1,4 +1,4 @@
-"""Log management DTOs."""
+"""日志管理请求和响应模型。"""
 
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,6 +17,8 @@ class LogQueryDto(BaseModel):
 
 
 class LoginLogDto(BaseModel):
+    """登录日志响应模型。"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(description="登录日志ID", title="登录日志ID")
@@ -30,6 +32,8 @@ class LoginLogDto(BaseModel):
 
 
 class OperationLogDto(BaseModel):
+    """操作日志响应模型。"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(description="操作日志ID", title="操作日志ID")
@@ -45,6 +49,8 @@ class OperationLogDto(BaseModel):
 
 
 class ExceptionLogDto(BaseModel):
+    """异常日志响应模型。"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(description="异常日志ID", title="异常日志ID")
@@ -60,10 +66,14 @@ class ExceptionLogDto(BaseModel):
 
 
 class BatchLogIdsDto(BaseModel):
+    """批量删除日志请求模型。"""
+
     ids: list[int] = Field(min_length=1, description="待删除的日志ID列表")
 
 
 class OnlineSessionDto(BaseModel):
+    """在线会话响应，不包含原始 JWT。"""
+
     token_id: str = Field(description="Token会话ID，不包含原始Token", title="Token会话ID")
     user_id: int | str = Field(description="用户ID", title="用户ID")
     username: str | None = Field(default=None, description="用户名", title="用户名")
@@ -81,5 +91,7 @@ class OnlineQueryDto(BaseModel):
 
 
 class ForceLogoutUserResultDto(BaseModel):
+    """强制用户下线操作的结果模型。"""
+
     user_id: int = Field(description="被强制下线的用户ID", title="被强制下线的用户ID")
     revoked_token_count: int = Field(ge=0, description="已撤销的Token数量", title="已撤销的Token数量")

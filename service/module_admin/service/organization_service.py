@@ -20,11 +20,13 @@ class DepartmentService:
 
     @staticmethod
     async def list(request: Request, name: str | None, status: str | None):
+        """返回当前操作者可见的部门树。"""
         items = await OrganizationDao.list_departments(request, name, status)
         return FastApiAdmin.create_three(items, "dept_id", "parent_id")
 
     @staticmethod
     async def detail(dept_id: int, request: Request):
+        """返回一个部门，不存在时抛出 404 异常。"""
         item = await OrganizationDao.get_by_id(DepartmentDo, dept_id, request)
         if item is None:
             raise HTTPException(status_code=404, detail="部门不存在")
@@ -32,14 +34,17 @@ class DepartmentService:
 
     @staticmethod
     async def create(data, request: Request):
+        """完成部门层级校验后创建部门。"""
         _raise_if_error(await OrganizationDao.create_department(data, request))
 
     @staticmethod
     async def update(dept_id: int, data, request: Request):
+        """修改部门并保持部门层级约束。"""
         _raise_if_error(await OrganizationDao.update_department(dept_id, data, request))
 
     @staticmethod
     async def delete(dept_id: int, request: Request):
+        """仅在没有受保护子孙节点时删除部门。"""
         _raise_if_error(await OrganizationDao.delete_department(dept_id, request))
 
 
@@ -50,10 +55,12 @@ class PostService:
     async def list(
         request: Request, name: str | None, status: str | None, params: Params
     ):
+        """分页返回岗位列表。"""
         return await OrganizationDao.list_posts(request, name, status, params)
 
     @staticmethod
     async def detail(post_id: int, request: Request):
+        """返回一个岗位，不存在时抛出 404 异常。"""
         item = await OrganizationDao.get_by_id(PostDo, post_id, request)
         if item is None:
             raise HTTPException(status_code=404, detail="岗位不存在")
@@ -61,12 +68,15 @@ class PostService:
 
     @staticmethod
     async def create(data, request: Request):
+        """完成唯一性和数据权限校验后创建岗位。"""
         _raise_if_error(await OrganizationDao.create_post(data, request))
 
     @staticmethod
     async def update(post_id: int, data, request: Request):
+        """完成数据权限写校验后修改岗位。"""
         _raise_if_error(await OrganizationDao.update_post(post_id, data, request))
 
     @staticmethod
     async def delete(post_id: int, request: Request):
+        """完成数据权限写校验后删除岗位。"""
         _raise_if_error(await OrganizationDao.delete_post(post_id, request))

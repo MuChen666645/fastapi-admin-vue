@@ -1,4 +1,4 @@
-""" Code Controller Model."""
+"""验证码接口控制器。"""
 
 from fastapi import APIRouter, FastAPI, Request, Query
 from module_admin.entity.dto.code_dto import CaptchaImageDto
@@ -9,7 +9,7 @@ from config.rate_limit import limiter
 
 
 class CodeController(APIRouter):
-    """Code Controller Class."""
+    """验证码接口控制器。"""
 
     code = APIRouter(prefix="/captcha", tags=["验证码模块"])
 
@@ -37,7 +37,7 @@ class CodeController(APIRouter):
         responses={410: {"model": ApiResponseDto[None]}},
     )
     async def get_captcha_num(request: Request):
-        """Reject requests to the insecure plaintext captcha endpoint."""
+        """拒绝访问不安全的明文数字验证码接口。"""
         return await CodeService.get_captcha_num_services(request)
 
     @staticmethod
