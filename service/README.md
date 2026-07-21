@@ -139,8 +139,9 @@ OPENAPI_URL=/openapi.json
 # MySQL
 MYSQL_HOST=127.0.0.1
 MYSQL_POST=3306
-MYSQL_USERNAME=root
+MYSQL_USERNAME=fastapi_app
 MYSQL_PASSWORD=your_mysql_password
+MYSQL_ROOT_PASSWORD=your_mysql_root_password
 MYSQL_DATABASES=fastapi_admin
 TIMEZONE=Asia/Shanghai
 
@@ -202,6 +203,8 @@ CREDENTIALS=false
 ```
 
 > 注意：`MYSQL_POST`、`REDIS_POST`、`MEDOTHS`、`ACCESSKEY_SECRET` 是当前代码中的实际配置项名称，请保持一致。
+
+> Compose 固定使用 `fastapi-mysql` 和 `fastapi-redis` 作为服务名。`MYSQL_PASSWORD` 用于应用账号 `MYSQL_USERNAME`，`MYSQL_ROOT_PASSWORD` 仅用于 MySQL root 健康检查和管理操作；Compose 首次初始化时会创建应用账号。
 
 > 除 `DATABASE_SCHEMA_VERSION` 等代码不变量外，部署参数不再提供代码级默认值。请复制对应的 `.example` 文件并填写所有值；更换 `SECRET_KEY` 会使已签发的 JWT 失效。
 
@@ -582,8 +585,9 @@ OPENAPI_URL=/openapi.json
 # MySQL
 MYSQL_HOST=127.0.0.1
 MYSQL_POST=3306
-MYSQL_USERNAME=root
+MYSQL_USERNAME=fastapi_app
 MYSQL_PASSWORD=your_mysql_password
+MYSQL_ROOT_PASSWORD=your_mysql_root_password
 MYSQL_DATABASES=fastapi_admin
 TIMEZONE=Asia/Shanghai
 
@@ -619,6 +623,8 @@ CREDENTIALS=false
 ```
 
 > Note: `MYSQL_POST`, `REDIS_POST`, `MEDOTHS`, and `ACCESSKEY_SECRET` are the actual setting names used by the current codebase. Keep them unchanged unless the code is updated.
+
+> Compose uses `fastapi-mysql` and `fastapi-redis` as fixed service names. `MYSQL_PASSWORD` belongs to the application account `MYSQL_USERNAME`; `MYSQL_ROOT_PASSWORD` is reserved for MySQL root health checks and administration. Compose creates the application account on first initialization.
 
 > Except for code invariants such as `DATABASE_SCHEMA_VERSION`, deployment settings have no code-level defaults. Copy the matching `.example` file and fill every value. A `SECRET_KEY` change invalidates previously issued JWTs.
 

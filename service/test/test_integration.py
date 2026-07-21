@@ -13,6 +13,8 @@ from starlette.requests import Request
 
 from config.env import settings
 from module_admin.auth.authorization import Auth
+from module_admin.dao.organization_dao import OrganizationDao
+from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
                                            OperationLogDo)
 from module_admin.entity.do.organization_do import DepartmentDo
@@ -207,6 +209,144 @@ def test_reset_password_through_real_services() -> None:
             finally:
                 await Auth.revoke_user_tokens(admin_request, case.admin_user_id)
                 await Auth.revoke_user_tokens(target_request, case.target_user_id)
+                await _cleanup_reset_password_case(
+                    app.state.mysql_session_factory, case
+                )
+
+    anyio.run(run)
+
+
+def test_department_move_does_not_update_prefix_collision_in_real_mysql() -> None:
+    """验证移动部门时不会修改 ID 前缀相同的无关分支。"""
+
+    if os.getenv("RUN_INTEGRATION_TESTS") != "1":
+        pytest.skip("RUN_INTEGRATION_TESTS=1 is required")
+
+    async def run() -> None:
+        async with app.router.lifespan_context(app):
+            app.dependency_overrides.clear()
+            case = await _seed_reset_password_case(app.state.mysql_session_factory)
+            admin_request = _request_for_token()
+            while True:
+                short_id = 100_000 + uuid.uuid4().int % 80_000
+                long_id = short_id * 10
+                department_ids = [
+                    short_id,
+                    long_id,
+                    short_id + 1,
+                    short_id + 2,
+                    short_id + 3,
+                    long_id + 1,
+                ]
+                async with app.state.mysql_session_factory() as session:
+                    existing = await session.execute(
+                        select(DepartmentDo.dept_id).where(
+                            DepartmentDo.dept_id.in_(department_ids)
+                        )
+                    )
+                    if not set(existing.scalars().all()):
+                        break
+
+            old_parent_id, new_parent_id = short_id + 1, short_id + 2
+            moving_child_id = short_id + 3
+            unrelated_child_id = long_id + 1
+            try:
+                async with app.state.mysql_session_factory() as session:
+                    session.add_all(
+                        [
+                            DepartmentDo(
+                                dept_id=old_parent_id,
+                                parent_id=None,
+                                ancestors="0",
+                                dept_name="integration-old-parent",
+                            ),
+                            DepartmentDo(
+                                dept_id=new_parent_id,
+                                parent_id=None,
+                                ancestors="0",
+                                dept_name="integration-new-parent",
+                            ),
+                        ]
+                    )
+                    await session.flush()
+                    session.add_all(
+                        [
+                            DepartmentDo(
+                                dept_id=short_id,
+                                parent_id=old_parent_id,
+                                ancestors=f"0,{old_parent_id}",
+                                dept_name="integration-moving",
+                            ),
+                            DepartmentDo(
+                                dept_id=long_id,
+                                parent_id=old_parent_id,
+                                ancestors=f"0,{old_parent_id}",
+                                dept_name="integration-unrelated",
+                            ),
+                        ]
+                    )
+                    await session.flush()
+                    session.add_all(
+                        [
+                            DepartmentDo(
+                                dept_id=moving_child_id,
+                                parent_id=short_id,
+                                ancestors=f"0,{old_parent_id},{short_id}",
+                                dept_name="integration-moving-child",
+                            ),
+                            DepartmentDo(
+                                dept_id=unrelated_child_id,
+                                parent_id=long_id,
+                                ancestors=f"0,{old_parent_id},{long_id}",
+                                dept_name="integration-unrelated-child",
+                            ),
+                        ]
+                    )
+                    await session.commit()
+
+                admin_request.state.user_id = case.admin_user_id
+                async with app.state.mysql_session_factory() as session:
+                    admin_request.state.mysql = session
+                    result = await OrganizationDao.update_department(
+                        short_id,
+                        DepartmentUpdateDto(parent_id=new_parent_id),
+                        admin_request,
+                    )
+                    assert result is None
+                    await session.commit()
+
+                    records = await session.execute(
+                        select(DepartmentDo).where(
+                            DepartmentDo.dept_id.in_(department_ids)
+                        )
+                    )
+                    departments = {
+                        department.dept_id: department
+                        for department in records.scalars().all()
+                    }
+                    assert departments[short_id].ancestors == f"0,{new_parent_id}"
+                    assert departments[moving_child_id].ancestors == (
+                        f"0,{new_parent_id},{short_id}"
+                    )
+                    assert departments[unrelated_child_id].ancestors == (
+                        f"0,{old_parent_id},{long_id}"
+                    )
+            finally:
+                async with app.state.mysql_session_factory() as session:
+                    for department_id in (
+                        moving_child_id,
+                        unrelated_child_id,
+                        short_id,
+                        long_id,
+                        new_parent_id,
+                        old_parent_id,
+                    ):
+                        await session.execute(
+                            delete(DepartmentDo).where(
+                                DepartmentDo.dept_id == department_id
+                            )
+                        )
+                    await session.commit()
                 await _cleanup_reset_password_case(
                     app.state.mysql_session_factory, case
                 )

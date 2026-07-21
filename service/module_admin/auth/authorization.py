@@ -1,5 +1,6 @@
 """权限模块."""
 
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 import hashlib
 import ipaddress
@@ -22,8 +23,9 @@ class Auth:
     # Redis Key 在所有应用进程之间共享。
     TOKEN_REDIS_PREFIX = "auth:token:"
     TOKEN_INDEX_KEY = "auth:token:index"
-    # Redis 不可用时使用，例如隔离单元测试场景。
-    _token_cache: dict[str, dict] = {}
+    # Redis 不可用时使用的有界降级缓存，避免进程内存无限增长。
+    MAX_MEMORY_TOKEN_CACHE_SIZE = 2048
+    _token_cache: OrderedDict[str, dict] = OrderedDict()
 
     @staticmethod
     def create_token(data: dict) -> str:
@@ -36,7 +38,7 @@ class Auth:
 
     @staticmethod
     async def create_login_token(data: dict, request: Request) -> str:
-        """创建 Token，并将其缓存到进程内存和 Redis。"""
+        """创建 Token，并将其缓存到 Redis 或降级到进程内存。"""
         token = Auth.create_token(data)
         payload = Auth._decode_token(token)
         payload.update(
@@ -181,21 +183,25 @@ class Auth:
 
     @staticmethod
     async def _cache_token(request: Request, token: str, payload: dict) -> None:
-        """在 JWT 有效期内将 Token 缓存到进程内存和 Redis。"""
+        """优先将 Token 写入 Redis，Redis 不可用时写入有界进程缓存。"""
         ttl = Auth._get_payload_ttl(payload)
         if ttl <= 0:
             return
 
         cache_key = Auth._get_token_cache_key(token)
-        Auth._token_cache[cache_key] = {
-            "payload": payload,
-            "expire_at": time.time() + ttl,
-        }
-
         redis = getattr(request.app.state, "redis", None)
         if redis is not None:
             await redis.set(cache_key, json.dumps(payload), ex=ttl)
             await Auth._add_token_to_index(redis, cache_key, ttl)
+            return
+
+        Auth._token_cache[cache_key] = {
+            "payload": payload,
+            "expire_at": time.time() + ttl,
+        }
+        Auth._token_cache.move_to_end(cache_key)
+        while len(Auth._token_cache) > Auth.MAX_MEMORY_TOKEN_CACHE_SIZE:
+            Auth._token_cache.popitem(last=False)
 
     @staticmethod
     def _get_memory_payload(token: str) -> dict | None:
@@ -208,6 +214,7 @@ class Auth:
         if cache_data.get("expire_at", 0) <= time.time():
             Auth._token_cache.pop(cache_key, None)
             return None
+        Auth._token_cache.move_to_end(cache_key)
         return cache_data.get("payload")
 
     @staticmethod
@@ -236,10 +243,6 @@ class Auth:
             await Auth._remove_token_from_index(redis, cache_key)
             return None
 
-        Auth._token_cache[cache_key] = {
-            "payload": payload,
-            "expire_at": time.time() + ttl,
-        }
         return payload
 
     @staticmethod

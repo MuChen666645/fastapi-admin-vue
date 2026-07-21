@@ -94,7 +94,11 @@ class OrganizationDao:
             new_ancestors = f"{parent.ancestors},{parent.dept_id}".strip(",") if parent else "0"
             new_prefix = f"{new_ancestors},{dept_id}"
             child_result = await mysql.execute(
-                select(DepartmentDo).where(DepartmentDo.ancestors.contains(str(dept_id)))
+                select(DepartmentDo).where(
+                    DataScopeService._department_descendant_clause(
+                        DepartmentDo.ancestors, dept_id
+                    )
+                )
             )
             for child in child_result.scalars().all():
                 child.ancestors = child.ancestors.replace(old_prefix, new_prefix, 1)

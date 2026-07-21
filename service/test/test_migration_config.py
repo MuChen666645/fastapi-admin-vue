@@ -65,3 +65,22 @@ def test_migration_entrypoint_and_schema_readiness_are_configured() -> None:
     assert "MysqlServe.DB_URL" not in migration_source
     assert "service_completed_successfully" in compose
     assert "alembic_version" in health_source
+
+
+def test_compose_and_deployment_profiles_use_matching_service_credentials() -> None:
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "fastapi-mysql:" in compose
+    assert "fastapi-redis:" in compose
+    assert (
+        "MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}"
+        in compose
+    )
+    assert "MYSQL_USER: ${MYSQL_USERNAME:?MYSQL_USERNAME is required}" in compose
+    assert "MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}" in compose
+
+    for filename in (".env.staging.example", ".env.production.example"):
+        environment = (ROOT / filename).read_text(encoding="utf-8")
+        assert "MYSQL_HOST=fastapi-mysql" in environment
+        assert "REDIS_HOST=fastapi-redis" in environment
+        assert "MYSQL_ROOT_PASSWORD=REPLACE_WITH_" in environment

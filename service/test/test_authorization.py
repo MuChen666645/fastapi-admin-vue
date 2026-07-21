@@ -50,7 +50,7 @@ def test_redis_revocation_invalidates_other_worker_memory_cache() -> None:
     async def run() -> None:
         request = SimpleNamespace(app=app)
         token = await Auth.create_login_token({"user_id": 9}, request)
-        assert Auth._get_memory_payload(token) is not None
+        assert Auth._get_memory_payload(token) is None
 
         await app.state.redis.delete(Auth._get_token_cache_key(token))
 
@@ -58,6 +58,31 @@ def test_redis_revocation_invalidates_other_worker_memory_cache() -> None:
             await Auth.verify_token(request, token)
         assert exception.value.detail == "Token Not Found"
         assert Auth._get_memory_payload(token) is None
+
+    anyio.run(run)
+
+
+def test_memory_token_cache_is_bounded_without_redis() -> None:
+    async def run() -> None:
+        request = SimpleNamespace(
+            app=SimpleNamespace(state=SimpleNamespace(redis=None))
+        )
+        original_limit = Auth.MAX_MEMORY_TOKEN_CACHE_SIZE
+        Auth.MAX_MEMORY_TOKEN_CACHE_SIZE = 2
+        Auth._token_cache.clear()
+        tokens = []
+        try:
+            for user_id in range(3):
+                tokens.append(
+                    await Auth.create_login_token({"user_id": user_id}, request)
+                )
+
+            assert len(Auth._token_cache) == 2
+            assert Auth._get_memory_payload(tokens[0]) is None
+            assert Auth._get_memory_payload(tokens[2])["user_id"] == 2
+        finally:
+            Auth.MAX_MEMORY_TOKEN_CACHE_SIZE = original_limit
+            Auth._token_cache.clear()
 
     anyio.run(run)
 
