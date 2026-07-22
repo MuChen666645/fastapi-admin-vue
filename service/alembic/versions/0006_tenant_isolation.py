@@ -1,8 +1,8 @@
 """增加租户边界并为历史数据建立默认租户。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0006_tenant_isolation"
 down_revision = "0005_auth_security"

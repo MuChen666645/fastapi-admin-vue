@@ -3,8 +3,8 @@
 import asyncio
 
 from sqlalchemy import inspect, text
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import command
 from alembic.config import Config

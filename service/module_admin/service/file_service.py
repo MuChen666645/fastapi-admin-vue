@@ -6,7 +6,7 @@ import json
 import re
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -14,6 +14,7 @@ import oss2
 from fastapi import HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from loguru import logger
+from sqlmodel import select
 
 from config.env import PROJECT_ROOT, Settings, settings
 from module_admin.entity.do.file_do import FileChunkUploadDo, FileMetadataDo
@@ -26,6 +27,44 @@ class FileService:
     # 文件名清洗规则和流式读写块大小是文件安全与内存占用的基础约束。
     _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
     _CHUNK_SIZE = 1024 * 1024
+
+    @classmethod
+    async def cleanup_expired_chunks(
+        cls, session_factory, app_settings: Settings
+    ) -> int:
+        """清理过期分片记录及孤立的临时文件目录。"""
+        root = Path(app_settings.FILE_UPLOAD_DIR)
+        if not root.is_absolute():
+            root = PROJECT_ROOT / root
+        root = root.resolve()
+        chunk_root = root / ".chunks"
+        cutoff = datetime.now() - timedelta(
+            seconds=app_settings.FILE_CHUNK_TTL_SECONDS
+        )
+        removed = 0
+        async with session_factory() as session:
+            result = await session.execute(
+                select(FileChunkUploadDo).where(
+                    FileChunkUploadDo.updated_at < cutoff
+                )
+            )
+            for item in result.scalars().all():
+                shutil.rmtree(chunk_root / item.upload_id, ignore_errors=True)
+                await session.delete(item)
+                removed += 1
+            if removed:
+                await session.commit()
+
+        if chunk_root.is_dir():
+            for candidate in chunk_root.iterdir():
+                if (
+                    candidate.is_dir()
+                    and not candidate.is_symlink()
+                    and datetime.fromtimestamp(candidate.stat().st_mtime) < cutoff
+                ):
+                    shutil.rmtree(candidate, ignore_errors=True)
+                    removed += 1
+        return removed
 
     @staticmethod
     def _settings(request: Request) -> Settings:

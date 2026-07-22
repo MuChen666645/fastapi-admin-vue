@@ -1,20 +1,20 @@
 """菜单业务服务。"""
 
-from fastapi import HTTPException, Request
-from module_admin.dao.menu_dao import MenuDao
-from module_admin.entity.dto.menu_dto import (
-    CreateMenuByButtonDto,
-    CreateMenuByLinkDto,
-    CreateMenubyIframeDto,
-    CreateMenuByRouterDto,
-    GetMenuDto,
-    UpdMenuDto,
-)
-from utils.fastapi_admin import FastApiAdmin
 from typing import List
-from module_admin.entity.dto.menu_dto import MenuListDto
+
+from fastapi import HTTPException, Request
+
 from module_admin.auth.authorization import Auth
-from module_admin.service.permission_audit_service import PermissionAuditService
+from module_admin.dao.menu_dao import MenuDao
+from module_admin.entity.dto.menu_dto import (CreateMenuByButtonDto,
+                                              CreateMenubyIframeDto,
+                                              CreateMenuByLinkDto,
+                                              CreateMenuByRouterDto,
+                                              GetMenuDto, MenuListDto,
+                                              UpdMenuDto)
+from module_admin.service.permission_audit_service import \
+    PermissionAuditService
+from utils.fastapi_admin import FastApiAdmin
 
 
 class MenuService:

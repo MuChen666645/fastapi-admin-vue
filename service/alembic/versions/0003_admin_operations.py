@@ -1,8 +1,8 @@
 """新增文件管理、系统参数、通知公告和定时任务表。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0003_admin_operations"
 down_revision = "0002_role_data_scope"

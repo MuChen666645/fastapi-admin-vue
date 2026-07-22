@@ -1,8 +1,8 @@
 """增加用户敏感字段权限目录。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0011_field_permissions"
 down_revision = "0010_permission_change_audit"

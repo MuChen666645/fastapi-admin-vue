@@ -3,26 +3,24 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
+from alembic import context
 from config.mysql_serve import MysqlServe
-from module_admin.entity.do import (
-    dictionary_do as _dictionary_do,
-    file_do as _file_do,
-    job_do as _job_do,
-    log_do as _log_do,
-    menu_do as _menu_do,
-    notice_do as _notice_do,
-    organization_do as _organization_do,
-    permission_do as _permission_do,
-    role_do as _role_do,
-    system_config_do as _system_config_do,
-    user_do as _user_do,
-)
+from module_admin.entity.do import dictionary_do as _dictionary_do
+from module_admin.entity.do import file_do as _file_do
+from module_admin.entity.do import job_do as _job_do
+from module_admin.entity.do import log_do as _log_do
+from module_admin.entity.do import menu_do as _menu_do
+from module_admin.entity.do import notice_do as _notice_do
+from module_admin.entity.do import organization_do as _organization_do
+from module_admin.entity.do import permission_do as _permission_do
+from module_admin.entity.do import role_do as _role_do
+from module_admin.entity.do import system_config_do as _system_config_do
+from module_admin.entity.do import user_do as _user_do
 
 config = context.config
 if config.config_file_name is not None:

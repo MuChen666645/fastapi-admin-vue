@@ -76,8 +76,9 @@ def test_migration_entrypoint_expands_alembic_version_column() -> None:
     ).read_text(encoding="utf-8")
 
     assert "VARCHAR(64)" in migration_source
-    assert "if \"timeout_seconds\" not in columns" in scheduler_migration
-    assert "if \"max_retries\" not in columns" in scheduler_migration
+    assert '"timeout_seconds" not in columns' in scheduler_migration
+    assert '"max_retries" not in columns' in scheduler_migration
+    assert "context.is_offline_mode()" in scheduler_migration
 
 
 def test_compose_and_deployment_profiles_use_matching_service_credentials() -> None:

@@ -76,6 +76,7 @@ def test_lifespan_initializes_and_releases_runtime_dependencies(
         MysqlServe, "get_mysql_config", staticmethod(get_mysql_config)
     )
     monkeypatch.setattr(FastApiAdmin, "start_serve", staticmethod(start_serve))
+
     async def run() -> None:
         async with lifespan(app):
             assert app.state.redis is redis

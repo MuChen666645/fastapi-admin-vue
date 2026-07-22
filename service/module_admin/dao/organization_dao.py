@@ -193,7 +193,6 @@ class OrganizationDao:
     @staticmethod
     async def update_post(post_id: int, data, request: Request):
         """修改岗位。"""
-        mysql = request.state.mysql
         if not await DataScopeService.can_mutate_post(post_id, request):
             return "No data permission"
         post = await OrganizationDao.get_by_id(PostDo, post_id, request)

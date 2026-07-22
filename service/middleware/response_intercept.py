@@ -1,10 +1,10 @@
 """响应拦截中间件."""
 
 import json
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
-
 
 # 调用方可以用此请求头要求保留原始响应，处理后会移除该请求头。
 SKIP_RESPONSE_WRAPPER_HEADER = "X-Skip-Response-Wrapper"

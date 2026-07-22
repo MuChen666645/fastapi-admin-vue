@@ -5,7 +5,7 @@ import base64
 import hashlib
 import os
 import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from cryptography.fernet import Fernet

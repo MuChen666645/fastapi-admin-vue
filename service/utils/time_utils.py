@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta, timezone
 
-
 # 应用统一使用东八区，数据库 DATETIME 写入时再去除时区信息。
 UTC8 = timezone(timedelta(hours=8), name="UTC+08:00")
 

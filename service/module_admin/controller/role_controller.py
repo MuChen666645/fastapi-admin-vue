@@ -1,18 +1,16 @@
 """ 角色模块控制器. """
 
-from fastapi import APIRouter, Depends, FastAPI, File, Path, Query, Request, UploadFile
-from module_admin.service.role_service import RoleService
-from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.entity.dto.role_dto import (
-    BatchUpdateRoleStatusDto,
-    CreateRoleDto,
-    RoleDetailDto,
-    RoleListDto,
-    UpdataRoleDto,
-)
-from module_admin.auth.authorization import Auth
+from fastapi import (APIRouter, Depends, FastAPI, File, Path, Query, Request,
+                     UploadFile)
 from fastapi_pagination import Page, Params
+
+from module_admin.auth.authorization import Auth
+from module_admin.entity.dto.response_dto import ApiResponseDto
+from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
+                                              CreateRoleDto, RoleDetailDto,
+                                              RoleListDto, UpdataRoleDto)
 from module_admin.service.excel_service import ExcelService
+from module_admin.service.role_service import RoleService
 
 
 class RoleController:

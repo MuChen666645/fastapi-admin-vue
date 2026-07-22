@@ -1,9 +1,9 @@
 """Redis 连接配置。"""
 
-from fastapi import FastAPI
 import redis.asyncio as aioredis
-from redis.asyncio import Redis
+from fastapi import FastAPI
 from loguru import logger
+from redis.asyncio import Redis
 
 from config.env import Settings, settings
 

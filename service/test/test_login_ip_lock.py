@@ -1,5 +1,6 @@
 """Login IP lockout tests."""
 
+from test.conftest import app, create_async_client
 from types import SimpleNamespace
 
 import anyio
@@ -8,13 +9,10 @@ from fastapi import HTTPException
 
 from config.env import settings
 from module_admin.dao.user_dao import UserDao
-from module_admin.entity.dto.user_dto import (
-    LoginUserRequestByPhoneDto,
-    LoginUserRequestByUsernameDto,
-)
+from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
+                                              LoginUserRequestByUsernameDto)
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.user_service import UserService
-from test.conftest import app, create_async_client
 from utils.fastapi_admin import FastApiAdmin
 
 

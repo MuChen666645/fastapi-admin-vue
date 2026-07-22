@@ -5,12 +5,10 @@ from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.entity.dto.system_config_dto import (
-    SystemConfigCreateDto,
-    SystemConfigDto,
-    SystemConfigUpdateDto,
-    SystemConfigValueDto,
-)
+from module_admin.entity.dto.system_config_dto import (SystemConfigCreateDto,
+                                                       SystemConfigDto,
+                                                       SystemConfigUpdateDto,
+                                                       SystemConfigValueDto)
 from module_admin.service.system_config_service import SystemConfigService
 
 

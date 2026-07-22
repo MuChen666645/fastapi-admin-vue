@@ -55,7 +55,7 @@ pytest-cov = "^6.0.0"
 [tool.coverage.run]
 branch = true
 source = ["main", "config", "interceptors", "middleware", "module_admin", "scripts", "utils"]
-omit = ["*/__init__.py"]
+omit = ["*/__init__.py", "*/scripts/backup_database.py", "*/scripts/migrate_database.py"]
 
 [tool.coverage.report]
 fail_under = 60

@@ -1,8 +1,8 @@
 """增加自动同步的 API 权限目录。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0007_api_permission_catalog"
 down_revision = "0006_tenant_isolation"

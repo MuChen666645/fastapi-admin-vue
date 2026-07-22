@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from openpyxl import Workbook, load_workbook
 from sqlmodel import select
 
+from module_admin.dao.permission_dao import PermissionDao
 from module_admin.dao.role_dao import RoleDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
@@ -14,7 +15,8 @@ from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.entity.dto.role_dto import CreateRoleDto
 from module_admin.entity.dto.user_dto import RegisterUserRequestByUsernameDto
-from module_admin.service.password_policy import PasswordPolicyError, validate_password
+from module_admin.service.password_policy import (PasswordPolicyError,
+                                                  validate_password)
 from utils.fastapi_admin import FastApiAdmin
 
 
@@ -78,11 +80,28 @@ class ExcelService:
             .where(cls._tenant_filter(UserDo, request))
             .order_by(UserDo.id)
         )
+        actor_user_id = getattr(request.state, "user_id", None)
+        field_permissions = {
+            field_name: False
+            if actor_user_id is None
+            else await PermissionDao.has_field_permission(
+                int(actor_user_id), "user", field_name, request
+            )
+            for field_name in ("email", "phone", "avatar")
+        }
         return cls._download(
             "users.xlsx",
-            ["username", "email", "phone", "nickname", "status", "dept_id"],
+            ["username", "email", "phone", "avatar", "nickname", "status", "dept_id"],
             [
-                [item.username, item.email, item.phone, item.nickname, item.status, item.dept_id]
+                [
+                    item.username,
+                    item.email if field_permissions["email"] else None,
+                    item.phone if field_permissions["phone"] else None,
+                    item.avatar if field_permissions["avatar"] else None,
+                    item.nickname,
+                    item.status,
+                    item.dept_id,
+                ]
                 for item in result.scalars().all()
             ],
         )

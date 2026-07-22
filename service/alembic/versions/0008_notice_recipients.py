@@ -1,8 +1,8 @@
 """增加通知收件人和已读状态。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0008_notice_recipients"
 down_revision = "0007_api_permission_catalog"

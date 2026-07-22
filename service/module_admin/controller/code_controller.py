@@ -1,11 +1,12 @@
 """验证码接口控制器。"""
 
-from fastapi import APIRouter, FastAPI, Request, Query
+from fastapi import APIRouter, FastAPI, Query, Request
+
+from config.env import settings
+from config.rate_limit import limiter
 from module_admin.entity.dto.code_dto import CaptchaImageDto
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.code_service import CodeService
-from config.env import settings
-from config.rate_limit import limiter
 
 
 class CodeController(APIRouter):

@@ -1,7 +1,7 @@
 """菜单请求和响应模型。"""
 
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field

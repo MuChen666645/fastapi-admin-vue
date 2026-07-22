@@ -11,7 +11,6 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-
 # 对外返回的关联标识请求头；值会同时写入 request.state 和结构化日志。
 REQUEST_ID_HEADER = "X-Request-ID"
 TRACE_ID_HEADER = "X-Trace-ID"

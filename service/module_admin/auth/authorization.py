@@ -1,13 +1,13 @@
 """权限模块."""
 
-from collections import OrderedDict
-from datetime import datetime, timedelta, timezone
 import hashlib
 import ipaddress
 import json
 import secrets
 import time
 import uuid
+from collections import OrderedDict
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import Header, HTTPException, Request
@@ -28,8 +28,9 @@ class Auth:
     REFRESH_REVOKED_PREFIX = "auth:refresh:revoked:"
     # Redis 不可用时使用的有界降级缓存，避免进程内存无限增长。
     MAX_MEMORY_TOKEN_CACHE_SIZE = 2048
+    MAX_MEMORY_REFRESH_CACHE_SIZE = 2048
     _token_cache: OrderedDict[str, dict] = OrderedDict()
-    _refresh_cache: dict[str, dict] = {}
+    _refresh_cache: OrderedDict[str, dict] = OrderedDict()
 
     # Redis 中一次性消费旧 Refresh Token 并写入新 Token，防止并发重放。
     _ROTATE_REFRESH_SCRIPT = """
@@ -193,7 +194,10 @@ return {1, raw}
         if redis is not None:
             await redis.set(key, "1", ex=ttl)
             return
-        Auth._refresh_cache[key] = {"payload": {"revoked": True}, "expire_at": time.time() + ttl}
+        Auth._store_memory_refresh_payload(
+            key,
+            {"payload": {"revoked": True}, "expire_at": time.time() + ttl},
+        )
 
     @staticmethod
     async def router_auth(
@@ -327,10 +331,25 @@ return {1, raw}
         if redis is not None:
             await redis.set(key, json.dumps(payload), ex=ttl)
             return
-        Auth._refresh_cache[key] = {
-            "payload": payload,
-            "expire_at": time.time() + ttl,
-        }
+        Auth._store_memory_refresh_payload(
+            key,
+            {
+                "payload": payload,
+                "expire_at": time.time() + ttl,
+            },
+        )
+
+    @staticmethod
+    def _store_memory_refresh_payload(key: str, value: dict) -> None:
+        """写入有界刷新令牌降级缓存并清理过期条目。"""
+        now = time.time()
+        for cached_key, cached_value in list(Auth._refresh_cache.items()):
+            if cached_value.get("expire_at", 0) <= now:
+                Auth._refresh_cache.pop(cached_key, None)
+        Auth._refresh_cache[key] = value
+        Auth._refresh_cache.move_to_end(key)
+        while len(Auth._refresh_cache) > Auth.MAX_MEMORY_REFRESH_CACHE_SIZE:
+            Auth._refresh_cache.popitem(last=False)
 
     @staticmethod
     async def _is_refresh_family_revoked(request: Request, family_id: str) -> bool:
@@ -343,6 +362,7 @@ return {1, raw}
         if cached is None or cached.get("expire_at", 0) <= time.time():
             Auth._refresh_cache.pop(key, None)
             return False
+        Auth._refresh_cache.move_to_end(key)
         return True
 
     @staticmethod
@@ -359,6 +379,7 @@ return {1, raw}
                 if raw is not None:
                     cached = {"payload": json.loads(raw), "expire_at": time.time() + 1}
             if cached is None or cached.get("expire_at", 0) <= time.time():
+                Auth._refresh_cache.pop(old_key, None)
                 raise HTTPException(status_code=401, detail="Invalid Refresh Token")
             payload = dict(cached["payload"])
             family_id = payload.get("family_id")
@@ -597,7 +618,8 @@ return {1, raw}
             return False
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import DataScopeService
+            from module_admin.service.data_scope_service import \
+                DataScopeService
 
             if not await DataScopeService.can_access_user(
                 int(target["user_id"]), request
@@ -612,7 +634,8 @@ return {1, raw}
         sessions = await Auth.list_online_tokens(request)
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import DataScopeService
+            from module_admin.service.data_scope_service import \
+                DataScopeService
 
             if not await DataScopeService.can_access_user(user_id, request):
                 return 0

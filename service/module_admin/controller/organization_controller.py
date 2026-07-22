@@ -4,16 +4,14 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.organization_dto import (
-    DepartmentCreateDto,
-    DepartmentDto,
-    DepartmentUpdateDto,
-    PostCreateDto,
-    PostDto,
-    PostUpdateDto,
-)
+from module_admin.entity.dto.organization_dto import (DepartmentCreateDto,
+                                                      DepartmentDto,
+                                                      DepartmentUpdateDto,
+                                                      PostCreateDto, PostDto,
+                                                      PostUpdateDto)
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.service.organization_service import DepartmentService, PostService
+from module_admin.service.organization_service import (DepartmentService,
+                                                       PostService)
 
 
 def permission(code: str):

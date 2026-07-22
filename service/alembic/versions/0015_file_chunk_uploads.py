@@ -1,8 +1,8 @@
 """创建文件分片上传会话表。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0015_file_chunk_uploads"
 down_revision = "0014_tenant_operational_data"

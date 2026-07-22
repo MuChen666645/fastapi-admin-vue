@@ -4,12 +4,10 @@ from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
 from prometheus_client import generate_latest
 
-from middleware.observability_middleware import (
-    ApplicationMetrics,
-    ObservabilityMiddleware,
-    TRACEPARENT_HEADER,
-)
 from main import create_app
+from middleware.observability_middleware import (TRACEPARENT_HEADER,
+                                                 ApplicationMetrics,
+                                                 ObservabilityMiddleware)
 
 
 def test_observability_propagates_request_and_trace_context() -> None:

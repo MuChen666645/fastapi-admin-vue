@@ -1,8 +1,8 @@
 """为运营数据表补充租户边界。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0014_tenant_operational_data"
 down_revision = "0013_role_permissions"

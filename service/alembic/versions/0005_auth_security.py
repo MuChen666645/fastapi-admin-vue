@@ -1,8 +1,8 @@
 """增加密码生命周期、MFA 和密码找回数据结构。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0005_auth_security"
 down_revision = "0004_role_code_unique"

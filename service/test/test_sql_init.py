@@ -1,6 +1,5 @@
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 SQL_DIR = Path(__file__).parents[1] / "assets" / "sql"
 SCHEMA_SQL_PATH = SQL_DIR / "schema-upgrade.sql"

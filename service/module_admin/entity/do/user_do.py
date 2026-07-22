@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, Text
 from sqlmodel import Field, SQLModel
+
 from utils.time_utils import now_utc8_naive
 
 

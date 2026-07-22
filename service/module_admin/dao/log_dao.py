@@ -4,7 +4,8 @@ from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlmodel import delete, select
 
-from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
+                                           OperationLogDo)
 from module_admin.service.data_scope_service import DataScopeService
 
 

@@ -1,8 +1,8 @@
 """增加外部身份提供商映射字段。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0012_external_identity"
 down_revision = "0011_field_permissions"

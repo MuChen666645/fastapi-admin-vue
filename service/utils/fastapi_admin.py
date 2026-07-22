@@ -1,18 +1,19 @@
 """后台管理通用工具。"""
 
-import json
 import base64
+import json
+import os
 import random
 import secrets
-import os
-import sys
 import string
-from typing import Union
+import sys
 from datetime import datetime
-from passlib.context import CryptContext
-from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from pathlib import Path
+from typing import Union
+
+from passlib.context import CryptContext
+from PIL import Image, ImageDraw, ImageFont
 
 
 class FastApiAdmin:

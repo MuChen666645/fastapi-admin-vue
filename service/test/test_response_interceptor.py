@@ -5,10 +5,8 @@ from fastapi.responses import StreamingResponse
 from httpx import ASGITransport, AsyncClient
 
 from interceptors.http_intercept import ApiExceptionInterception
-from middleware.response_intercept import (
-    ResponseInterceptor,
-    SKIP_RESPONSE_WRAPPER_HEADER,
-)
+from middleware.response_intercept import (SKIP_RESPONSE_WRAPPER_HEADER,
+                                           ResponseInterceptor)
 
 
 def run_async(coroutine):

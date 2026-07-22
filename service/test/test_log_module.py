@@ -1,3 +1,4 @@
+from test.conftest import app, create_async_client
 from types import SimpleNamespace
 
 import anyio
@@ -8,9 +9,8 @@ from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
 from module_admin.entity.do.log_do import LoginLogDo
 from module_admin.entity.dto.log_dto import OnlineQueryDto
-from module_admin.service.user_service import UserService
 from module_admin.service.log_service import LogService
-from test.conftest import app, create_async_client
+from module_admin.service.user_service import UserService
 
 
 class FailingSession:

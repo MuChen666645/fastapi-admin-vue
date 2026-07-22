@@ -114,6 +114,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = Field(min_length=1)
     RATE_LIMIT_LOGIN: str = Field(min_length=1)
     RATE_LIMIT_CAPTCHA: str = Field(min_length=1)
+    RATE_LIMIT_REFRESH_TOKEN: str = Field(default="30/minute", min_length=1)
+    RATE_LIMIT_PASSWORD_RESET: str = Field(default="5/minute", min_length=1)
+    RATE_LIMIT_EXTERNAL_AUTH: str = Field(default="10/minute", min_length=1)
     CAPTCHA_TTL_SECONDS: int = Field(gt=0)
     CAPTCHA_MAX_VERIFY_ATTEMPTS: int = Field(gt=0)
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(gt=0)
@@ -159,6 +162,7 @@ class Settings(BaseSettings):
     FILE_CONTENT_SNIFF_ENABLED: bool = True
     FILE_VIRUS_SCAN_ENABLED: bool = False
     FILE_REDACTION_ENABLED: bool = False
+    FILE_CHUNK_TTL_SECONDS: int = Field(default=86400, gt=0)
     FILE_SENSITIVE_PATTERNS: list[str] = Field(
         default=[
             r"(?<!\d)1[3-9]\d{9}(?!\d)",
@@ -217,6 +221,9 @@ class Settings(BaseSettings):
     OIDC_CLIENT_SECRET: str = ""
     OIDC_REDIRECT_URI: str = ""
     OIDC_SCOPES: str = "openid profile email"
+    OIDC_ISSUER: str = ""
+    OIDC_AUDIENCE: str = ""
+    OIDC_JWKS_URL: str = ""
     LDAP_ENABLED: bool = False
     LDAP_SERVER_URL: str = ""
     LDAP_BASE_DN: str = ""
@@ -245,6 +252,7 @@ class Settings(BaseSettings):
             "ACCESSKEY_SECRET",
             "BACKUP_ENCRYPTION_KEY",
             "SMTP_PASSWORD",
+            "PASSWORD_RESET_SMS_WEBHOOK",
             "OIDC_CLIENT_SECRET",
             "LDAP_BIND_PASSWORD",
             "ALERT_WEBHOOK_URL",
@@ -296,6 +304,13 @@ class Settings(BaseSettings):
             not self.OSS_ENDPOINT or not self.OSS_BUCKET
         ):
             raise ValueError("OSS_ENDPOINT and OSS_BUCKET are required for OSS storage")
+        if self.OIDC_ENABLED and not all(
+            (self.OIDC_ISSUER, self.OIDC_AUDIENCE, self.OIDC_JWKS_URL)
+        ):
+            raise ValueError(
+                "OIDC_ISSUER, OIDC_AUDIENCE, and OIDC_JWKS_URL are required "
+                "when OIDC is enabled"
+            )
         return self
 
 

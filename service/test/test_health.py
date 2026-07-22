@@ -1,13 +1,12 @@
-from test.conftest import FakeRedis, create_async_client
-
 import asyncio
+from test.conftest import FakeRedis, create_async_client
 
 import anyio
 import pytest
 import redis.asyncio as aioredis
 
-from config.redis_serve import RedisServe
 from config.env import settings
+from config.redis_serve import RedisServe
 
 
 class ReadyResult:

@@ -10,15 +10,15 @@ from fastapi_pagination import Page, Params
 from config.env import settings
 from config.rate_limit import limiter
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.entity.dto.mfa_dto import MfaCodeDto, MfaSetupDto
+from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               BatchUserIdsDto,
                                               BindUserRolesDto,
-                                              LoginUserRequestByPhoneDto,
-                                              LoginUserRequestByUsernameDto,
                                               ConfirmPasswordResetRequestDto,
                                               ForgotPasswordRequestDto,
+                                              LoginUserRequestByPhoneDto,
+                                              LoginUserRequestByUsernameDto,
                                               RefreshTokenRequestDto,
                                               RegisterUserRequestByUsernameDto,
                                               ResetUserPasswordRequestDto,
@@ -27,9 +27,9 @@ from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               UpdateUserRequestDto,
                                               UserInfoDto, UserInfoUserDto,
                                               UserRouteDto)
-from module_admin.service.user_service import UserService
-from module_admin.service.password_reset_service import PasswordResetService
 from module_admin.service.excel_service import ExcelService
+from module_admin.service.password_reset_service import PasswordResetService
+from module_admin.service.user_service import UserService
 
 
 class UserController:
@@ -85,6 +85,7 @@ class UserController:
         summary="轮换刷新令牌",
         responses={200: {"model": ApiResponseDto[TokenDto]}},
     )
+    @limiter.limit(settings.RATE_LIMIT_REFRESH_TOKEN)
     async def refresh_token(users: RefreshTokenRequestDto, request: Request):
         """消费旧 Refresh Token 并签发新的令牌对。"""
         return await UserService.refresh_token_services(users, request)
@@ -95,6 +96,7 @@ class UserController:
         summary="申请找回密码",
         responses={200: {"model": ApiResponseDto[dict]}},
     )
+    @limiter.limit(settings.RATE_LIMIT_PASSWORD_RESET)
     async def forgot_password(
         data: ForgotPasswordRequestDto,
         request: Request,
@@ -108,6 +110,7 @@ class UserController:
         summary="确认找回密码",
         responses={200: {"model": ApiResponseDto[dict]}},
     )
+    @limiter.limit(settings.RATE_LIMIT_PASSWORD_RESET)
     async def confirm_password_reset(
         data: ConfirmPasswordResetRequestDto,
         request: Request,

@@ -1,7 +1,5 @@
 """从 FastAPI 路由同步 API 权限目录。"""
 
-from datetime import datetime
-
 from fastapi.routing import APIRoute
 from sqlmodel import select
 

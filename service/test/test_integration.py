@@ -14,13 +14,13 @@ from starlette.requests import Request
 from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.organization_dao import OrganizationDao
-from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
                                            OperationLogDo)
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
+from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from utils.fastapi_admin import FastApiAdmin
 
 pytestmark = pytest.mark.integration

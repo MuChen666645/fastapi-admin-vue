@@ -4,12 +4,9 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.notice_dto import (
-    NoticeCreateDto,
-    NoticeDto,
-    NoticeInboxDto,
-    NoticeUpdateDto,
-)
+from module_admin.entity.dto.notice_dto import (NoticeCreateDto, NoticeDto,
+                                                NoticeInboxDto,
+                                                NoticeUpdateDto)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.notice_service import NoticeService
 

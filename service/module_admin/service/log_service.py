@@ -5,7 +5,8 @@ from fastapi_pagination import create_page
 
 from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
-from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
+                                           OperationLogDo)
 from module_admin.service.data_scope_service import DataScopeService
 
 

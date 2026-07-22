@@ -6,7 +6,8 @@ from fastapi import Request
 from sqlalchemy import func
 from sqlmodel import select
 
-from module_admin.entity.do.permission_audit_do import PermissionChangeVersionDo
+from module_admin.entity.do.permission_audit_do import \
+    PermissionChangeVersionDo
 
 
 class PermissionAuditService:

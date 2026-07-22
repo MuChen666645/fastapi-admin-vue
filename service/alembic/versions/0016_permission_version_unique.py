@@ -2,7 +2,6 @@
 
 from alembic import op
 
-
 revision = "0016_permission_version_unique"
 down_revision = "0015_file_chunk_uploads"
 branch_labels = None

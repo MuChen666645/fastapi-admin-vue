@@ -1,8 +1,8 @@
 """定时任务管理业务服务。"""
 
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import HTTPException, Request
 from fastapi_pagination import Params
-from apscheduler.triggers.cron import CronTrigger
 
 from module_admin.dao.job_dao import JobDao
 

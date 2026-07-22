@@ -26,11 +26,9 @@ from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
 from module_admin.service.code_service import CodeService
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.mfa_service import MfaService
-from module_admin.service.password_policy import (
-    PasswordPolicyError,
-    matches_history,
-    validate_password,
-)
+from module_admin.service.password_policy import (PasswordPolicyError,
+                                                  matches_history,
+                                                  validate_password)
 from utils.fastapi_admin import FastApiAdmin
 from utils.time_utils import now_utc8_naive
 
@@ -418,9 +416,12 @@ class UserService:
         user = user_info.get("user")
         if not isinstance(user, dict):
             return user_info
+        actor_user_id = getattr(request.state, "user_id", None)
+        if actor_user_id is None:
+            return user_info
         for field_name in ("email", "phone", "avatar"):
             if not await PermissionDao.has_field_permission(
-                int(user["id"]), "user", field_name, request
+                int(actor_user_id), "user", field_name, request
             ):
                 user[field_name] = None
         return user_info
@@ -458,7 +459,7 @@ class UserService:
         params: Params,
     ):
         """分页查询用户列表。"""
-        return await UserDao.list_users(
+        page = await UserDao.list_users(
             request,
             username,
             phone,
@@ -468,6 +469,29 @@ class UserService:
             end_time,
             params,
         )
+        actor_user_id = getattr(request.state, "user_id", None)
+        if actor_user_id is None:
+            field_permissions = {
+                field_name: False for field_name in ("email", "phone", "avatar")
+            }
+        else:
+            field_permissions = {
+                field_name: await PermissionDao.has_field_permission(
+                    int(actor_user_id), "user", field_name, request
+                )
+                for field_name in ("email", "phone", "avatar")
+            }
+        items = [
+            {
+                **item,
+                **{
+                    field_name: item.get(field_name) if allowed else None
+                    for field_name, allowed in field_permissions.items()
+                },
+            }
+            for item in page.items
+        ]
+        return page.model_copy(update={"items": items})
 
     @staticmethod
     async def update_user_by_id_services(

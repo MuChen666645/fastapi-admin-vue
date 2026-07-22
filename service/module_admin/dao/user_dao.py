@@ -15,12 +15,8 @@ from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
                                                     UserPostDo)
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo, RoleMenuDo
-from module_admin.entity.do.user_do import (
-    PasswordResetTokenDo,
-    UserDo,
-    UserPasswordHistoryDo,
-    UserRoleDo,
-)
+from module_admin.entity.do.user_do import (PasswordResetTokenDo, UserDo,
+                                            UserPasswordHistoryDo, UserRoleDo)
 from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
                                               LoginUserRequestByUsernameDto,
                                               RegisterUserRequestByUsernameDto,
@@ -31,6 +27,12 @@ from utils.time_utils import now_utc8_naive
 
 class UserDao:
     """用户数据访问对象。"""
+
+    @staticmethod
+    def _tenant_filter(request: Request, model):
+        """为用户相关查询生成当前租户过滤条件。"""
+        tenant_id = getattr(request.state, "tenant_id", None)
+        return model.tenant_id == tenant_id if tenant_id is not None else True
 
     @staticmethod
     async def create_user_by_username(
@@ -130,29 +132,36 @@ class UserDao:
 
     @staticmethod
     async def get_user_by_identifier(
-        identifier: str, request: Request
+        identifier: str, request: Request, tenant_id: int | None = None
     ) -> Union[UserDo, None]:
         """按用户名、邮箱或手机号查找用户。"""
+        tenant_filter = UserDo.tenant_id == tenant_id if tenant_id is not None else True
         result = await request.state.mysql.execute(
             select(UserDo).where(
                 or_(
                     UserDo.username == identifier,
                     UserDo.email == identifier,
                     UserDo.phone == identifier,
-                )
+                ),
+                tenant_filter,
             )
         )
         return result.scalars().first()
 
     @staticmethod
     async def get_user_by_external_subject(
-        provider: str, subject: str, request: Request
+        provider: str,
+        subject: str,
+        request: Request,
+        tenant_id: int | None = None,
     ) -> UserDo | None:
         """按外部身份提供商和主体标识查找用户。"""
+        tenant_filter = UserDo.tenant_id == tenant_id if tenant_id is not None else True
         result = await request.state.mysql.execute(
             select(UserDo).where(
                 UserDo.auth_provider == provider,
                 UserDo.auth_subject == subject,
+                tenant_filter,
             )
         )
         return result.scalars().first()
@@ -231,7 +240,10 @@ class UserDao:
         if not unique_role_ids:
             return []
         result = await request.state.mysql.execute(
-            select(RoleDo).where(RoleDo.id.in_(unique_role_ids))
+            select(RoleDo).where(
+                RoleDo.id.in_(unique_role_ids),
+                UserDao._tenant_filter(request, RoleDo),
+            )
         )
         return list(result.scalars().all())
 
@@ -250,6 +262,7 @@ class UserDao:
             .where(
                 UserRoleDo.user_id.in_(unique_user_ids),
                 RoleDo.code == settings.ADMIN_ROLE_CODE,
+                UserDao._tenant_filter(request, RoleDo),
             )
         )
         legacy_admins = (
@@ -258,6 +271,8 @@ class UserDao:
             .where(
                 UserDo.id.in_(unique_user_ids),
                 RoleDo.code == settings.ADMIN_ROLE_CODE,
+                UserDao._tenant_filter(request, UserDo),
+                UserDao._tenant_filter(request, RoleDo),
             )
         )
         result = await request.state.mysql.execute(
@@ -310,9 +325,10 @@ class UserDao:
                 .select_from(MenuDo)
                 .join(RoleMenuDo, RoleMenuDo.menu_id == MenuDo.menu_id)
                 .where(
-                RoleMenuDo.role_id.in_(role_ids),
-                MenuDo.status == "1",
-                MenuDo.tenant_id == getattr(request.state, "tenant_id", MenuDo.tenant_id),
+                    RoleMenuDo.role_id.in_(role_ids),
+                    MenuDo.status == "1",
+                    MenuDo.tenant_id
+                    == getattr(request.state, "tenant_id", MenuDo.tenant_id),
                     MenuDo.perms.is_not(None),
                     MenuDo.perms != "",
                 )
@@ -353,7 +369,10 @@ class UserDao:
             UserDo.avatar,
             UserDo.update_time,
             UserDo.status,
-        ).where(scope.user_id_clause(UserDo.id)).order_by(UserDo.id)
+        ).where(
+            scope.user_id_clause(UserDo.id),
+            UserDao._tenant_filter(request, UserDo),
+        ).order_by(UserDo.id)
         if username:
             query = query.where(UserDo.username.contains(username))
         if phone:
@@ -446,7 +465,6 @@ class UserDao:
         user_id: int, password: str, request: Request
     ) -> Union[str, None]:
         """根据用户ID修改用户密码."""
-        mysql = request.state.mysql
         user_db = await UserDao.get_user_by_id(user_id, request)
         if user_db is None:
             return "用户不存在"
@@ -497,7 +515,10 @@ class UserDao:
         unique_role_ids = list(dict.fromkeys(role_ids))
         if unique_role_ids:
             result = await mysql.execute(
-                select(RoleDo.id).where(RoleDo.id.in_(unique_role_ids))
+                select(RoleDo.id).where(
+                    RoleDo.id.in_(unique_role_ids),
+                    UserDao._tenant_filter(request, RoleDo),
+                )
             )
             existing_role_ids = set(result.scalars().all())
             missing_role_ids = [
@@ -531,6 +552,7 @@ class UserDao:
             select(UserDo).where(
                 UserDo.id.in_(unique_user_ids),
                 scope.user_id_clause(UserDo.id),
+                UserDao._tenant_filter(request, UserDo),
             )
         )
         users = result.scalars().all()
@@ -559,6 +581,7 @@ class UserDao:
             select(UserDo.id).where(
                 UserDo.id.in_(unique_user_ids),
                 scope.user_id_clause(UserDo.id),
+                UserDao._tenant_filter(request, UserDo),
             )
         )
         existing_user_ids = set(result.scalars().all())
@@ -574,7 +597,12 @@ class UserDao:
         await mysql.execute(
             delete(UserPostDo).where(UserPostDo.user_id.in_(unique_user_ids))
         )
-        await mysql.execute(delete(UserDo).where(UserDo.id.in_(unique_user_ids)))
+        await mysql.execute(
+            delete(UserDo).where(
+                UserDo.id.in_(unique_user_ids),
+                UserDao._tenant_filter(request, UserDo),
+            )
+        )
         return None
 
     @staticmethod

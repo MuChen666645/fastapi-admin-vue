@@ -1,8 +1,8 @@
 """为数据库备份接口补充权限目录。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0017_backup_permissions"
 down_revision = "0016_permission_version_unique"

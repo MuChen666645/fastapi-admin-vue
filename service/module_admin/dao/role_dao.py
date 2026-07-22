@@ -9,12 +9,8 @@ from config.env import settings
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
-from module_admin.entity.do.role_do import (
-    RoleDeptDo,
-    RoleDo,
-    RoleMenuDo,
-    RolePermissionDo,
-)
+from module_admin.entity.do.role_do import (RoleDeptDo, RoleDo, RoleMenuDo,
+                                            RolePermissionDo)
 from module_admin.entity.dto.role_dto import (CreateRoleDto, RoleListDto,
                                               UpdataRoleDto)
 from utils.time_utils import now_utc8_naive

@@ -4,6 +4,7 @@ import json
 import os
 import uuid
 from dataclasses import dataclass, field
+from test.conftest import app
 
 import anyio
 import pytest
@@ -14,19 +15,19 @@ from starlette.requests import Request
 from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
-from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
+from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
+                                           OperationLogDo)
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.notice_do import NoticeDo
-from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
+from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
+                                                    UserPostDo)
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.system_config_do import SystemConfigDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
-from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.service.code_service import CodeService
-from test.conftest import app
 from utils.fastapi_admin import FastApiAdmin
-
 
 pytestmark = [
     pytest.mark.integration,

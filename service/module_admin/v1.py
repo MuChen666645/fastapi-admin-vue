@@ -2,25 +2,26 @@
 
 from fastapi import Depends, FastAPI
 from starlette.middleware.cors import CORSMiddleware
+
 from config.env import Settings, settings
 from config.mysql_serve import bind_request_mysql_session
-from module_admin.controller.health_controller import HealthController
-from module_admin.controller.user_controller import UserController
-from module_admin.controller.code_controller import CodeController
-from module_admin.controller.role_controller import RoleController
-from module_admin.controller.menu_contorller import MenuController
-from module_admin.controller.organization_controller import (
-    DepartmentController,
-    PostController,
-)
-from module_admin.controller.dictionary_controller import DictionaryController
-from module_admin.controller.log_controller import LogController
-from module_admin.controller.file_controller import FileController
-from module_admin.controller.job_controller import JobController
-from module_admin.controller.notice_controller import NoticeController
-from module_admin.controller.system_config_controller import SystemConfigController
-from module_admin.controller.external_auth_controller import ExternalAuthController
 from module_admin.controller.backup_controller import BackupController
+from module_admin.controller.code_controller import CodeController
+from module_admin.controller.dictionary_controller import DictionaryController
+from module_admin.controller.external_auth_controller import \
+    ExternalAuthController
+from module_admin.controller.file_controller import FileController
+from module_admin.controller.health_controller import HealthController
+from module_admin.controller.job_controller import JobController
+from module_admin.controller.log_controller import LogController
+from module_admin.controller.menu_contorller import MenuController
+from module_admin.controller.notice_controller import NoticeController
+from module_admin.controller.organization_controller import (
+    DepartmentController, PostController)
+from module_admin.controller.role_controller import RoleController
+from module_admin.controller.system_config_controller import \
+    SystemConfigController
+from module_admin.controller.user_controller import UserController
 
 
 class AdminAPI:

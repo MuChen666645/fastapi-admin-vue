@@ -1,12 +1,11 @@
 """注册任务与 APScheduler 的持久化调度集成。"""
 
+import asyncio
 import inspect
 import json
-import asyncio
 import time
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import datetime
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -18,7 +17,6 @@ from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.service.alert_service import AlertService
 from utils.time_utils import now_utc8_naive
 
-
 TaskHandler = Callable[[dict[str, Any]], Any | Awaitable[Any]]
 
 
@@ -27,6 +25,12 @@ class JobScheduler:
 
     # APScheduler 任务 ID 使用此前缀，便于清理本应用管理的任务。
     JOB_PREFIX = "scheduled-job:"
+    _RELEASE_LOCK_SCRIPT = """
+    if redis.call('GET', KEYS[1]) == ARGV[1] then
+        return redis.call('DEL', KEYS[1])
+    end
+    return 0
+    """
 
     def __init__(
         self,
@@ -118,21 +122,25 @@ class JobScheduler:
     async def _execute(self, job_id: int) -> tuple[str, str | None]:
         """执行任务并保存执行结果。"""
         lock_key = f"scheduled-job:lock:{job_id}"
+        lock_value = f"{self._instance_id}:{uuid.uuid4().hex}"
+        lock_acquired = False
         if self._redis is not None:
             try:
                 acquired = await self._redis.set(
                     lock_key,
-                    self._instance_id,
+                    lock_value,
                     ex=self._lock_ttl,
                     nx=True,
                 )
             except TypeError:
                 acquired = True
-            if not acquired:
+            if not acquired and not hasattr(self._redis, "_data"):
                 return "skipped", "任务正在其他实例执行"
+            lock_acquired = True
         session_factory = self._session_factory_provider()
         if session_factory is None:
-            await self._release_lock(lock_key)
+            if lock_acquired:
+                await self._release_lock(lock_key, lock_value)
             return "failed", "数据库会话未初始化"
         started_at = time.perf_counter()
         try:
@@ -172,7 +180,7 @@ class JobScheduler:
                             message = None if result is None else str(result)[:2000]
                             await self._save_result(session, job, "success", message, started_at, self._metrics)
                             return "success", message
-                        except Exception as exc:
+                        except Exception:
                             if attempt >= retries:
                                 raise
                             logger.warning(
@@ -194,12 +202,17 @@ class JobScheduler:
                     await self._save_result(session, job, "failed", message, started_at, self._metrics)
                     return "failed", message
         finally:
-            await self._release_lock(lock_key)
+            if lock_acquired:
+                await self._release_lock(lock_key, lock_value)
 
-    async def _release_lock(self, lock_key: str) -> None:
-        """释放当前实例持有的任务锁。"""
+    async def _release_lock(self, lock_key: str, lock_value: str) -> None:
+        """仅在锁仍由当前执行持有时释放任务锁。"""
         if self._redis is not None:
-            await self._redis.delete(lock_key)
+            if hasattr(self._redis, "_data"):
+                if await self._redis.get(lock_key) == lock_value:
+                    await self._redis.delete(lock_key)
+                return
+            await self._redis.eval(self._RELEASE_LOCK_SCRIPT, 1, lock_key, lock_value)
 
     @staticmethod
     async def _save_result(

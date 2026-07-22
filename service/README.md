@@ -172,6 +172,7 @@ FILE_PRESIGN_TTL_SECONDS=300
 FILE_CONTENT_SNIFF_ENABLED=true
 FILE_VIRUS_SCAN_ENABLED=false
 FILE_REDACTION_ENABLED=false
+FILE_CHUNK_TTL_SECONDS=86400
 CLAMAV_HOST=clamav
 CLAMAV_PORT=3310
 FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
@@ -202,6 +203,9 @@ OIDC_CLIENT_ID=
 OIDC_CLIENT_SECRET=
 OIDC_REDIRECT_URI=
 OIDC_SCOPES=openid profile email
+OIDC_ISSUER=
+OIDC_AUDIENCE=
+OIDC_JWKS_URL=
 LDAP_ENABLED=false
 LDAP_SERVER_URL=
 LDAP_BASE_DN=
@@ -224,6 +228,9 @@ ADMIN_ROLE_CODE=admin
 RATE_LIMIT_DEFAULT=300/minute
 RATE_LIMIT_LOGIN=10/minute
 RATE_LIMIT_CAPTCHA=30/minute
+RATE_LIMIT_REFRESH_TOKEN=30/minute
+RATE_LIMIT_PASSWORD_RESET=5/minute
+RATE_LIMIT_EXTERNAL_AUTH=10/minute
 CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
@@ -553,7 +560,7 @@ Authorization: Bearer <access_token>
 
 ### 5. 接口请求过快被限制
 
-项目默认对每个 IP 限制 `300/minute`，允许后台页面并发加载；用户名和手机号登录限制为 `10/minute`，验证码获取及校验限制为 `30/minute`。可通过 `RATE_LIMIT_DEFAULT`、`RATE_LIMIT_LOGIN` 和 `RATE_LIMIT_CAPTCHA` 环境变量调整。
+项目默认对每个 IP 限制 `300/minute`，允许后台页面并发加载；用户名和手机号登录限制为 `10/minute`，验证码获取及校验限制为 `30/minute`。刷新 Token、密码找回和外部认证分别使用独立限流：`RATE_LIMIT_REFRESH_TOKEN`、`RATE_LIMIT_PASSWORD_RESET`、`RATE_LIMIT_EXTERNAL_AUTH`。可通过这些环境变量调整。
 
 同一 IP 在 `LOGIN_IP_LOCK_SECONDS` 秒内连续输错密码达到 `LOGIN_MAX_FAILED_ATTEMPTS` 次后，将禁止用户名和手机号登录，锁定时间同为 `LOGIN_IP_LOCK_SECONDS` 秒。默认连续错误 5 次锁定 300 秒，密码校验正确会清除尚未触发锁定的失败计数。
 
@@ -573,7 +580,7 @@ Authorization: Bearer <access_token>
 - 密码策略由 `PASSWORD_*` 配置控制，包括最小长度、大小写/数字/特殊字符、历史密码数量、最大有效期和首次改密。
 - IP 和账号维度均支持失败登录锁定，配置项为 `LOGIN_MAX_FAILED_ATTEMPTS`、`LOGIN_IP_LOCK_SECONDS`、`LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS` 和 `LOGIN_ACCOUNT_LOCK_SECONDS`。
 - `POST /user/password/forgot` 和 `/user/password/reset` 支持邮箱或短信找回密码。生产环境必须配置 SMTP 或短信 Webhook，接口不会在响应中返回明文找回令牌。
-- 可选 OIDC/OAuth 和 LDAP 登录，配置 `OIDC_*` 或 `LDAP_*` 后使用 `/auth/oidc/start`、`/auth/oidc/callback` 和 `/auth/ldap/login`。
+- 可选 OIDC/OAuth 和 LDAP 登录，配置 `OIDC_*` 或 `LDAP_*` 后使用 `/auth/oidc/start`、`/auth/oidc/callback` 和 `/auth/ldap/login`。OIDC 必须配置 `OIDC_ISSUER`、`OIDC_AUDIENCE`、`OIDC_JWKS_URL`，回调会校验签名、发行方、受众、Nonce、PKCE 和 `email_verified`；外部登录仍需提交 MFA 验证码。
 
 ### 租户与权限
 
@@ -586,7 +593,8 @@ Authorization: Bearer <access_token>
 
 - 文件支持内容签名识别、可选 ClamAV 扫描、OSS 预签名 URL、本地/OSS 存储、分片上传和文本脱敏。
 - 当 `FILE_VIRUS_SCAN_ENABLED=true` 时，必须提供可访问的 ClamAV 服务，并通过 `CLAMAV_HOST`/`CLAMAV_PORT` 配置地址；默认 Compose 文件不包含 ClamAV 容器。
-- 分片流程：`POST /file/chunk/init`、`PUT /file/chunk/{upload_id}/{chunk_index}`、`POST /file/chunk/complete`。
+- 分片流程：`POST /file/chunk/init`、`PUT /file/chunk/{upload_id}/{chunk_index}`、`POST /file/chunk/complete`。未完成的分片记录和临时目录会按 `FILE_CHUNK_TTL_SECONDS` 定期清理。
+- 系统参数中 `secret`、`password`、`sensitive` 类型会加密存储，列表、详情和按键查询只返回掩码；请勿将敏感值写入日志或提交到环境示例文件。
 - 文本脱敏接口为 `GET /file/redacted/{file_id}`，需显式启用 `FILE_REDACTION_ENABLED`。
 - 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
 - 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /notice/inbox/list`、`POST /notice/{notice_id}/read`。
@@ -784,6 +792,7 @@ FILE_PRESIGN_TTL_SECONDS=300
 FILE_CONTENT_SNIFF_ENABLED=true
 FILE_VIRUS_SCAN_ENABLED=false
 FILE_REDACTION_ENABLED=false
+FILE_CHUNK_TTL_SECONDS=86400
 CLAMAV_HOST=clamav
 CLAMAV_PORT=3310
 FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
@@ -814,6 +823,9 @@ OIDC_CLIENT_ID=
 OIDC_CLIENT_SECRET=
 OIDC_REDIRECT_URI=
 OIDC_SCOPES=openid profile email
+OIDC_ISSUER=
+OIDC_AUDIENCE=
+OIDC_JWKS_URL=
 LDAP_ENABLED=false
 LDAP_SERVER_URL=
 LDAP_BASE_DN=
@@ -828,6 +840,9 @@ ADMIN_ROLE_CODE=admin
 RATE_LIMIT_DEFAULT=300/minute
 RATE_LIMIT_LOGIN=10/minute
 RATE_LIMIT_CAPTCHA=30/minute
+RATE_LIMIT_REFRESH_TOKEN=30/minute
+RATE_LIMIT_PASSWORD_RESET=5/minute
+RATE_LIMIT_EXTERNAL_AUTH=10/minute
 CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
@@ -1179,7 +1194,7 @@ If the header is correct but the API still returns 401, also check:
 
 ### 5. Requests are rate-limited
 
-The default per-IP limit is `300/minute`, which permits concurrent admin-page requests. Username and phone login endpoints use `10/minute`, while captcha creation and verification use `30/minute`. Override these values with `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_LOGIN`, and `RATE_LIMIT_CAPTCHA`.
+The default per-IP limit is `300/minute`, which permits concurrent admin-page requests. Username and phone login endpoints use `10/minute`, while captcha creation and verification use `30/minute`. Refresh-token, password-recovery, and external-auth endpoints have independent limits controlled by `RATE_LIMIT_REFRESH_TOKEN`, `RATE_LIMIT_PASSWORD_RESET`, and `RATE_LIMIT_EXTERNAL_AUTH`.
 
 When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures within `LOGIN_IP_LOCK_SECONDS`, both username and phone login are blocked for `LOGIN_IP_LOCK_SECONDS`. The defaults are five failures and a 300-second lock. A correct password clears a failure counter that has not yet triggered a lock.
 
@@ -1193,7 +1208,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - `PASSWORD_*` settings control minimum length, character classes, password history, maximum age, and first-login password changes.
 - Failed-login locking supports both IP and account dimensions through `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_IP_LOCK_SECONDS`, `LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS`, and `LOGIN_ACCOUNT_LOCK_SECONDS`.
 - `POST /user/password/forgot` and `/user/password/reset` support email or SMS password recovery. Production must configure SMTP or an SMS webhook; recovery tokens are never returned in the response.
-- Optional OIDC/OAuth and LDAP login use `/auth/oidc/start`, `/auth/oidc/callback`, and `/auth/ldap/login` when the corresponding `OIDC_*` or `LDAP_*` settings are configured.
+- Optional OIDC/OAuth and LDAP login use `/auth/oidc/start`, `/auth/oidc/callback`, and `/auth/ldap/login` when the corresponding `OIDC_*` or `LDAP_*` settings are configured. OIDC requires `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URL`; callbacks validate the signature, issuer, audience, nonce, PKCE, and `email_verified`, and external login still requires an MFA code.
 
 ### Tenants and permissions
 
@@ -1206,7 +1221,8 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 
 - Files support signature detection, optional ClamAV scanning, OSS presigned URLs, local/OSS storage, chunked upload, and text redaction.
 - When `FILE_VIRUS_SCAN_ENABLED=true`, provide a reachable ClamAV service and configure `CLAMAV_HOST`/`CLAMAV_PORT`; the default Compose file does not include a ClamAV container.
-- The chunked upload flow is `POST /file/chunk/init`, `PUT /file/chunk/{upload_id}/{chunk_index}`, then `POST /file/chunk/complete`.
+- The chunked upload flow is `POST /file/chunk/init`, `PUT /file/chunk/{upload_id}/{chunk_index}`, then `POST /file/chunk/complete`. Incomplete chunk records and temporary directories are periodically removed according to `FILE_CHUNK_TTL_SECONDS`.
+- System-config values of type `secret`, `password`, or `sensitive` are encrypted at rest and returned as a mask in list, detail, and value responses. Do not log sensitive values or commit them to environment examples.
 - Text redaction is exposed through `GET /file/redacted/{file_id}` and requires `FILE_REDACTION_ENABLED=true`.
 - Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
 - Notices support recipients, inbox queries, unread filtering, and read state through `GET /notice/inbox/list` and `POST /notice/{notice_id}/read`.

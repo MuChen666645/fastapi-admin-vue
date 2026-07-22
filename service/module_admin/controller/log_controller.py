@@ -2,20 +2,16 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request, Query
+from fastapi import (APIRouter, Body, Depends, HTTPException, Path, Query,
+                     Request)
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.log_dto import (
-    BatchLogIdsDto,
-    ExceptionLogDto,
-    ForceLogoutUserResultDto,
-    LoginLogDto,
-    LogQueryDto,
-    OnlineQueryDto,
-    OnlineSessionDto,
-    OperationLogDto,
-)
+from module_admin.entity.dto.log_dto import (BatchLogIdsDto, ExceptionLogDto,
+                                             ForceLogoutUserResultDto,
+                                             LoginLogDto, LogQueryDto,
+                                             OnlineQueryDto, OnlineSessionDto,
+                                             OperationLogDto)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.log_service import LogService
 

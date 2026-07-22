@@ -6,7 +6,6 @@ from sqlalchemy import select
 
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo
-from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.entity.dto.user_dto import RegisterUserRequestByUsernameDto
 from module_admin.service.data_scope_service import DataScope, DataScopeService

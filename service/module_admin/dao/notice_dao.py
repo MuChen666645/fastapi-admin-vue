@@ -1,9 +1,8 @@
 """通知公告数据访问操作。"""
 
 from fastapi import Request
-from fastapi_pagination import Params
+from fastapi_pagination import Params, create_page
 from fastapi_pagination.ext.sqlmodel import paginate
-from fastapi_pagination import create_page
 from sqlalchemy import and_, exists, func, or_
 from sqlmodel import select
 

@@ -43,14 +43,27 @@ jobs:
       - name: Validate migrations
         env:
           APP_ENV: development
+          DEBUG: "true"
           MYSQL_HOST: 127.0.0.1
+          MYSQL_POST: 3306
           MYSQL_USERNAME: ci
           MYSQL_PASSWORD: ci-password
           MYSQL_DATABASES: ci
+          TIMEZONE: Asia/Shanghai
           REDIS_HOST: 127.0.0.1
+          REDIS_POST: 6379
+          REDIS_PASSWORD: ""
+          REDIS_USERNAME: ""
+          REDIS_DB: 0
           SECRET_KEY: ci-only-secret-key-that-is-long-enough
           ACCESS_KEY_ID: ci
           ACCESSKEY_SECRET: ci
+          HOSTS: '["testserver", "127.0.0.1", "localhost"]'
+          TRUSTED_PROXIES: '[]'
+          ORIGINS: '["http://127.0.0.1"]'
+          MEDOTHS: '["GET", "POST", "PUT", "DELETE", "OPTIONS"]'
+          HEADERS: '["*"]'
+          CREDENTIALS: "false"
         run: poetry run alembic upgrade head --sql > migration.sql
 
       - name: Run unit tests

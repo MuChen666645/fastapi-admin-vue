@@ -11,8 +11,6 @@ from starlette.responses import JSONResponse
 from middleware.response_intercept import SKIP_RESPONSE_WRAPPER_HEADER
 
 
-
-
 class ApiExceptionInterception:
     """HTTP异常拦截器."""
 

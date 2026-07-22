@@ -1,12 +1,13 @@
 """Rate limiting configuration tests."""
 
+from test.conftest import create_async_client
+
 import anyio
 import pytest
 
 from config.env import settings
 from config.rate_limit import limiter
 from module_admin.service.user_service import UserService
-from test.conftest import create_async_client
 
 
 def _route_limits(endpoint_name: str):

@@ -15,10 +15,8 @@ from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.dto.role_dto import CreateRoleDto
-from module_admin.entity.dto.user_dto import (
-    LoginUserRequestByPhoneDto,
-    LoginUserRequestByUsernameDto,
-)
+from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
+                                              LoginUserRequestByUsernameDto)
 from module_admin.service.code_service import CodeService
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.user_service import UserService

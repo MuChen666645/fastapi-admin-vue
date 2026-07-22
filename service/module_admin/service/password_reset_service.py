@@ -17,10 +17,8 @@ from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo
-from module_admin.entity.dto.user_dto import (
-    ConfirmPasswordResetRequestDto,
-    ForgotPasswordRequestDto,
-)
+from module_admin.entity.dto.user_dto import (ConfirmPasswordResetRequestDto,
+                                              ForgotPasswordRequestDto)
 from module_admin.service.user_service import UserService
 from utils.fastapi_admin import FastApiAdmin
 from utils.time_utils import now_utc8_naive

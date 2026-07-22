@@ -8,8 +8,8 @@ import secrets
 import time
 from urllib.parse import quote
 
-from fastapi import HTTPException, Request
 from cryptography.fernet import Fernet, InvalidToken
+from fastapi import HTTPException, Request
 
 from config.env import settings
 from module_admin.entity.dto.mfa_dto import MfaSetupDto

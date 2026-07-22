@@ -1,8 +1,8 @@
 """增加权限变更版本审计。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0010_permission_change_audit"
 down_revision = "0009_scheduler_execution_controls"

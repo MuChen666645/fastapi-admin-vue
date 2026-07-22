@@ -9,7 +9,8 @@ from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
 from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
                                               CreateRoleDto, RoleListDto,
                                               UpdataRoleDto)
-from module_admin.service.permission_audit_service import PermissionAuditService
+from module_admin.service.permission_audit_service import \
+    PermissionAuditService
 
 
 class RoleService:

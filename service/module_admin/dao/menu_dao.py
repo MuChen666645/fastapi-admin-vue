@@ -1,21 +1,20 @@
 """菜单模块物理层."""
 
+from typing import Iterable, List
+
 from fastapi import Request
 from sqlalchemy import delete
-from module_admin.entity.dto.menu_dto import (
-    CreateMenuByButtonDto,
-    CreateMenuByLinkDto,
-    CreateMenubyIframeDto,
-    CreateMenuByRouterDto,
-    MenuListDto,
-    GetMenuDto,
-    UpdMenuDto,
-)
+from sqlmodel import select
+
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleMenuDo
-from sqlmodel import select
-from typing import Iterable, List
+from module_admin.entity.dto.menu_dto import (CreateMenuByButtonDto,
+                                              CreateMenubyIframeDto,
+                                              CreateMenuByLinkDto,
+                                              CreateMenuByRouterDto,
+                                              GetMenuDto, MenuListDto,
+                                              UpdMenuDto)
 from utils.time_utils import now_utc8_naive
 
 

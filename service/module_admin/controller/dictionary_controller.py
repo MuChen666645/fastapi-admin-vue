@@ -4,14 +4,12 @@ from fastapi import APIRouter, Depends, File, Path, Query, Request, UploadFile
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.dictionary_dto import (
-    DictDataCreateDto,
-    DictDataDto,
-    DictDataUpdateDto,
-    DictTypeCreateDto,
-    DictTypeDto,
-    DictTypeUpdateDto,
-)
+from module_admin.entity.dto.dictionary_dto import (DictDataCreateDto,
+                                                    DictDataDto,
+                                                    DictDataUpdateDto,
+                                                    DictTypeCreateDto,
+                                                    DictTypeDto,
+                                                    DictTypeUpdateDto)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.dictionary_service import DictionaryService
 from module_admin.service.excel_service import ExcelService

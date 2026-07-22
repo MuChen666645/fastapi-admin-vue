@@ -1,8 +1,8 @@
 """创建角色与字段权限目录的关联表。"""
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "0013_role_permissions"
 down_revision = "0012_external_identity"

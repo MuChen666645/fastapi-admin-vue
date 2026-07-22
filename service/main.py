@@ -1,7 +1,8 @@
 """应用入口。"""
 
+import asyncio
 from collections.abc import Awaitable, Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Any
 
@@ -21,19 +22,31 @@ from config.rate_limit import limiter
 from config.redis_serve import RedisServe
 from interceptors.http_intercept import ApiExceptionInterception
 from middleware.logger_middleware import LoggerMiddleware
-from middleware.observability_middleware import (
-    ApplicationMetrics,
-    ObservabilityMiddleware,
-)
+from middleware.observability_middleware import (ApplicationMetrics,
+                                                 ObservabilityMiddleware)
 from middleware.response_intercept import ResponseInterceptor
 from middleware.telemetry import configure_telemetry
-from module_admin.v1 import AdminAPI
+from module_admin.service.file_service import FileService
 from module_admin.service.job_scheduler import JobScheduler, TaskHandler
 from module_admin.service.permission_sync_service import PermissionSyncService
+from module_admin.v1 import AdminAPI
 from utils.fastapi_admin import FastApiAdmin
 
 # 静态资源必须以入口文件位置为基准，避免从其他工作目录启动时失效。
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+async def _file_chunk_cleanup_loop(session_factory, app_settings: Settings) -> None:
+    """定期清理中断的分片上传，避免临时文件长期占用磁盘。"""
+    interval = min(max(app_settings.FILE_CHUNK_TTL_SECONDS // 2, 60), 3600)
+    while True:
+        try:
+            await FileService.cleanup_expired_chunks(session_factory, app_settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("清理过期分片上传失败")
+        await asyncio.sleep(interval)
 
 
 @asynccontextmanager
@@ -43,6 +56,7 @@ async def lifespan(app: FastAPI):
     app_settings: Settings = getattr(app.state, "settings", settings)
     engine = None
     scheduler = None
+    chunk_cleanup_task = None
     redis_factory = getattr(app.state, "redis_factory", None)
     mysql_factory = getattr(app.state, "mysql_factory", None)
     startup_hook = getattr(app.state, "startup_hook", None)
@@ -66,6 +80,9 @@ async def lifespan(app: FastAPI):
         app.state.mysql_engine = engine
         app.state.mysql_session_factory = session_factory
         await PermissionSyncService.sync(app, session_factory)
+        chunk_cleanup_task = asyncio.create_task(
+            _file_chunk_cleanup_loop(session_factory, app_settings)
+        )
         if app_settings.SCHEDULER_ENABLED:
             scheduler = JobScheduler(
                 lambda: app.state.mysql_session_factory,
@@ -85,6 +102,10 @@ async def lifespan(app: FastAPI):
         logger.info("Application startup complete")
         yield
     finally:
+        if chunk_cleanup_task is not None:
+            chunk_cleanup_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await chunk_cleanup_task
         if scheduler is not None:
             await scheduler.stop()
             app.state.scheduler = None

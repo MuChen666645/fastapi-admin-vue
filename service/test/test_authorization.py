@@ -1,12 +1,12 @@
+from test.conftest import app
 from types import SimpleNamespace
 
 import anyio
 import pytest
 from fastapi import HTTPException
 
-from module_admin.auth.authorization import Auth
 from config.env import settings
-from test.conftest import app
+from module_admin.auth.authorization import Auth
 
 
 def test_revoke_login_token() -> None:
