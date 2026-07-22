@@ -40,6 +40,9 @@ class LogDao:
             filters.append(time_column >= query.start_time)
         if query.end_time:
             filters.append(time_column <= query.end_time)
+        tenant_id = getattr(request.state, "tenant_id", None)
+        if tenant_id is not None and hasattr(model, "tenant_id"):
+            filters.append(model.tenant_id == tenant_id)
 
         mysql = request.state.mysql
         scope = await DataScopeService.resolve(request)
@@ -56,6 +59,7 @@ class LogDao:
             delete(model).where(
                 model.id.in_(set(ids)),
                 scope.user_id_clause(model.user_id),
+                model.tenant_id == getattr(request.state, "tenant_id", model.tenant_id),
             )
         )
 

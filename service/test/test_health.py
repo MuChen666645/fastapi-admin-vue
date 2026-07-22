@@ -7,6 +7,7 @@ import pytest
 import redis.asyncio as aioredis
 
 from config.redis_serve import RedisServe
+from config.env import settings
 
 
 class ReadyResult:
@@ -18,7 +19,7 @@ class ReadyResult:
 
 
 class ReadySession:
-    def __init__(self, schema_version: str = "0002_role_data_scope"):
+    def __init__(self, schema_version: str = settings.DATABASE_SCHEMA_VERSION):
         self.schema_version = schema_version
 
     async def __aenter__(self):
@@ -34,7 +35,7 @@ class ReadySession:
 
 
 class ReadySessionFactory:
-    def __init__(self, schema_version: str = "0002_role_data_scope"):
+    def __init__(self, schema_version: str = settings.DATABASE_SCHEMA_VERSION):
         self.schema_version = schema_version
 
     def __call__(self):

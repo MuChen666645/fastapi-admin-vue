@@ -1,13 +1,15 @@
 """用户业务服务。"""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Union
 
 from fastapi import HTTPException, Request
 from fastapi_pagination import Params
 
+from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
+from module_admin.dao.permission_dao import PermissionDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.log_do import LoginLogDo
 from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
@@ -15,6 +17,7 @@ from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               BindUserRolesDto,
                                               LoginUserRequestByPhoneDto,
                                               LoginUserRequestByUsernameDto,
+                                              RefreshTokenRequestDto,
                                               RegisterUserRequestByUsernameDto,
                                               ResetUserPasswordRequestDto,
                                               TokenDto,
@@ -22,7 +25,14 @@ from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               UpdateUserRequestDto)
 from module_admin.service.code_service import CodeService
 from module_admin.service.login_security_service import LoginSecurityService
+from module_admin.service.mfa_service import MfaService
+from module_admin.service.password_policy import (
+    PasswordPolicyError,
+    matches_history,
+    validate_password,
+)
 from utils.fastapi_admin import FastApiAdmin
+from utils.time_utils import now_utc8_naive
 
 
 class UserService:
@@ -117,6 +127,7 @@ class UserService:
             await LogDao.create_login(
                 LoginLogDo(
                     user_id=user_id,
+                    tenant_id=getattr(request.state, "tenant_id", None),
                     username=username,
                     ip_address=Auth.get_client_ip(request),
                     user_agent=request.headers.get("user-agent"),
@@ -144,6 +155,24 @@ class UserService:
             raise
 
     @staticmethod
+    async def _ensure_login_account_allowed(
+        request: Request, identifier: int | str
+    ) -> None:
+        """检查账号锁定状态，并记录被拒绝的登录尝试。"""
+        if not getattr(request, "app", None):
+            return
+        try:
+            await LoginSecurityService.ensure_account_allowed(request, identifier)
+        except HTTPException as exc:
+            await UserService._record_login(
+                request,
+                str(identifier),
+                "0",
+                str(exc.detail),
+            )
+            raise
+
+    @staticmethod
     async def _reject_invalid_password(
         request: Request,
         identifier: str,
@@ -152,6 +181,7 @@ class UserService:
         """记录密码错误并在达到阈值时抛出 IP 锁定异常。"""
         try:
             await LoginSecurityService.record_password_failure(request)
+            await LoginSecurityService.record_password_failure(request, user_id)
         except HTTPException as exc:
             await UserService._record_login(
                 request,
@@ -171,6 +201,26 @@ class UserService:
         raise HTTPException(status_code=401, detail="密码错误")
 
     @staticmethod
+    async def _validate_new_password(
+        password: str, user, request: Request
+    ) -> None:
+        """执行密码策略和历史密码校验。"""
+        try:
+            validate_password(password, getattr(user, "username", None))
+        except PasswordPolicyError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        if settings.PASSWORD_HISTORY_COUNT <= 0:
+            return
+        history = await UserDao.get_password_history(user.id, request)
+        if matches_history(
+            password,
+            (item.password_hash for item in history),
+            FastApiAdmin.verify_password,
+        ):
+            raise HTTPException(status_code=400, detail="新密码不能重复使用历史密码")
+
+    @staticmethod
     async def _ensure_user_enabled(
         request: Request, user, identifier: str
     ) -> None:
@@ -186,6 +236,41 @@ class UserService:
             raise HTTPException(status_code=403, detail="用户已停用")
 
     @staticmethod
+    async def _create_token_response(user, request: Request) -> TokenDto:
+        """为用户创建访问令牌和刷新令牌。"""
+        password_changed_at_value = getattr(user, "password_changed_at", None)
+        if (
+            settings.PASSWORD_MAX_AGE_DAYS > 0
+            and password_changed_at_value is not None
+            and password_changed_at_value
+            < now_utc8_naive() - timedelta(days=settings.PASSWORD_MAX_AGE_DAYS)
+        ):
+            user.must_change_password = True
+        password_changed_at = (
+            password_changed_at_value.isoformat()
+            if password_changed_at_value is not None
+            else None
+        )
+        access_token, refresh_token = await Auth.create_login_token_pair(
+            {
+                "user_id": user.id,
+                "username": user.username,
+                "tenant_id": getattr(user, "tenant_id", None),
+                "password_changed_at": password_changed_at,
+                "must_change_password": bool(
+                    getattr(user, "must_change_password", False)
+                ),
+            },
+            request,
+        )
+        return TokenDto(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            must_change_password=bool(getattr(user, "must_change_password", False)),
+        )
+
+    @staticmethod
     async def create_user_by_username_services(
         users: RegisterUserRequestByUsernameDto, request: Request
     ) -> None:
@@ -196,6 +281,10 @@ class UserService:
             users (RegisterUserRequestByUsernameDto): 包含用户名和密码的用户注册请求对象.
             request (Request): 请求对象.
         """
+        try:
+            validate_password(users.password, users.username)
+        except PasswordPolicyError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         users.password = FastApiAdmin.password_hash(users.password)
         try:
             await UserDao.create_user_by_username(users, request)
@@ -213,6 +302,7 @@ class UserService:
         if user is None:
             await UserService._record_login(request, users.username, "0", "用户名不存在")
             raise HTTPException(status_code=404, detail="用户名不存在")
+        await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):
             await UserService._reject_invalid_password(
                 request,
@@ -220,6 +310,7 @@ class UserService:
                 user.id,
             )
         await LoginSecurityService.clear_password_failures(request)
+        await LoginSecurityService.clear_password_failures(request, user.id)
         await CodeService.verify_captcha_services(
             users.captcha_id,
             users.captcha,
@@ -227,13 +318,11 @@ class UserService:
         )
         await UserService._ensure_login_ip_allowed(request, users.username)
         await UserService._ensure_user_enabled(request, user, users.username)
-        token = await Auth.create_login_token(
-            {"user_id": user.id, "username": user.username}, request
-        )
+        await MfaService.verify_login(user, users.mfa_code)
         await UserService._record_login(
             request, user.username, "1", "登录成功", user.id
         )
-        return TokenDto(access_token=token)
+        return await UserService._create_token_response(user, request)
 
     @staticmethod
     async def get_user_by_phone_services(
@@ -252,6 +341,7 @@ class UserService:
         if user is None:
             await UserService._record_login(request, users.phone, "0", "用户不存在")
             raise HTTPException(status_code=404, detail="用户不存在")
+        await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):
             await UserService._reject_invalid_password(
                 request,
@@ -259,6 +349,7 @@ class UserService:
                 user.id,
             )
         await LoginSecurityService.clear_password_failures(request)
+        await LoginSecurityService.clear_password_failures(request, user.id)
         await CodeService.verify_captcha_services(
             users.captcha_id,
             users.captcha,
@@ -266,13 +357,42 @@ class UserService:
         )
         await UserService._ensure_login_ip_allowed(request, users.phone)
         await UserService._ensure_user_enabled(request, user, users.phone)
-        token = await Auth.create_login_token(
-            {"user_id": str(user.id), "username": user.username}, request
-        )
+        await MfaService.verify_login(user, users.mfa_code)
         await UserService._record_login(
             request, user.username, "1", "登录成功", user.id
         )
-        return TokenDto(access_token=token)
+        return await UserService._create_token_response(user, request)
+
+    @staticmethod
+    async def refresh_token_services(
+        users: RefreshTokenRequestDto, request: Request
+    ) -> TokenDto:
+        """轮换 Refresh Token 并返回新的令牌对。"""
+        access_token, refresh_token, must_change = await Auth.refresh_login_token(
+            users.refresh_token,
+            request,
+        )
+        return TokenDto(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            must_change_password=must_change,
+        )
+
+    @staticmethod
+    async def setup_mfa_services(request: Request):
+        """初始化当前用户 MFA。"""
+        return await MfaService.setup(request)
+
+    @staticmethod
+    async def enable_mfa_services(code: str, request: Request) -> None:
+        """启用当前用户 MFA。"""
+        await MfaService.enable(code, request)
+
+    @staticmethod
+    async def disable_mfa_services(code: str, request: Request) -> None:
+        """关闭当前用户 MFA。"""
+        await MfaService.disable(code, request)
 
     @staticmethod
     async def get_user_by_id_services(
@@ -290,6 +410,19 @@ class UserService:
         user_info = await UserDao.get_user_info(user_id, request)
         if user_info is None:
             raise HTTPException(status_code=404, detail="用户不存在")
+        return await UserService._sanitize_user_info(user_info, request)
+
+    @staticmethod
+    async def _sanitize_user_info(user_info: dict, request: Request) -> dict:
+        """按字段权限隐藏用户敏感字段。"""
+        user = user_info.get("user")
+        if not isinstance(user, dict):
+            return user_info
+        for field_name in ("email", "phone", "avatar"):
+            if not await PermissionDao.has_field_permission(
+                int(user["id"]), "user", field_name, request
+            ):
+                user[field_name] = None
         return user_info
 
     @staticmethod
@@ -302,7 +435,7 @@ class UserService:
         user_info = await UserDao.get_user_info(user_id, request)
         if user_info is None:
             raise HTTPException(status_code=404, detail="User Not Found")
-        return user_info
+        return await UserService._sanitize_user_info(user_info, request)
 
     @staticmethod
     async def get_current_user_routes_services(request: Request) -> list[dict]:
@@ -360,6 +493,7 @@ class UserService:
             raise HTTPException(status_code=401, detail="旧密码错误")
         if users.old_password == users.new_password:
             raise HTTPException(status_code=400, detail="新密码不能与旧密码相同")
+        await UserService._validate_new_password(users.new_password, user, request)
         new_password = FastApiAdmin.password_hash(users.new_password)
         result = await UserDao.update_user_password_by_id(
             user_id, new_password, request
@@ -368,6 +502,31 @@ class UserService:
             raise HTTPException(status_code=404, detail=result)
         await Auth.revoke_user_tokens(request, user_id)
         return None
+
+    @staticmethod
+    async def change_current_password_services(
+        users: UpdateUserPasswordRequestDto, request: Request
+    ) -> None:
+        """允许已登录账号完成强制改密或自助改密。"""
+        user_id = getattr(request.state, "user_id", None)
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Not Log In")
+        user = await UserDao.get_user_by_id(user_id, request)
+        if user is None:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        if not FastApiAdmin.verify_password(users.old_password, user.password):
+            raise HTTPException(status_code=401, detail="旧密码错误")
+        if users.old_password == users.new_password:
+            raise HTTPException(status_code=400, detail="新密码不能与旧密码相同")
+        await UserService._validate_new_password(users.new_password, user, request)
+        result = await UserDao.update_user_password_by_id(
+            user_id,
+            FastApiAdmin.password_hash(users.new_password),
+            request,
+        )
+        if result is not None:
+            raise HTTPException(status_code=404, detail=result)
+        await Auth.revoke_user_tokens(request, user_id)
 
     @staticmethod
     async def reset_user_password_services(
@@ -379,6 +538,7 @@ class UserService:
         if user is None:
             raise HTTPException(status_code=404, detail="用户不存在")
 
+        await UserService._validate_new_password(users.password, user, request)
         password = FastApiAdmin.password_hash(users.password)
         result = await UserDao.update_user_password_by_id(user_id, password, request)
         if result is not None:

@@ -24,3 +24,25 @@ class FileUploadResultDto(FileMetadataDto):
     """包含下载接口路径的上传结果。"""
 
     download_url: str = Field(title="文件下载接口路径", description="文件下载接口路径")
+
+
+class FileChunkInitDto(BaseModel):
+    """分片上传初始化参数。"""
+
+    filename: str = Field(min_length=1, max_length=255, description="文件名")
+    content_type: str | None = Field(default=None, max_length=255, description="文件类型")
+    total_size: int = Field(gt=0, description="文件总大小")
+    total_chunks: int = Field(gt=0, le=10000, description="分片总数")
+
+
+class FileChunkCompleteDto(BaseModel):
+    """分片上传完成参数。"""
+
+    upload_id: str = Field(min_length=36, max_length=36, description="上传会话")
+
+
+class FilePresignedUrlDto(BaseModel):
+    """文件临时访问地址。"""
+
+    url: str = Field(description="临时访问地址")
+    expires_in: int = Field(description="有效秒数")

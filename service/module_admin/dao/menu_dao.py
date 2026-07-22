@@ -20,6 +20,10 @@ from utils.time_utils import now_utc8_naive
 
 
 class MenuDao:
+    @staticmethod
+    def _tenant_filter(request: Request):
+        tenant_id = getattr(request.state, "tenant_id", None)
+        return MenuDo.tenant_id == tenant_id if tenant_id is not None else True
     """菜单模块物理层."""
 
     @staticmethod
@@ -28,6 +32,7 @@ class MenuDao:
         menu_id: int | None,
         parent_id: int | None,
         menu_type: str,
+        tenant_id: int | None = None,
     ) -> str | None:
         """校验直接父菜单及其祖先层级链。"""
         if menu_type == "F" and not parent_id:
@@ -38,6 +43,8 @@ class MenuDao:
             return "父菜单不能是当前菜单"
 
         parent = await mysql.get(MenuDo, parent_id)
+        if parent is not None and tenant_id is not None and parent.tenant_id != tenant_id:
+            parent = None
         if parent is None:
             return "父菜单不存在"
         if parent.menu_type == "F":
@@ -57,6 +64,8 @@ class MenuDao:
             if not ancestor_id:
                 break
             current = await mysql.get(MenuDo, ancestor_id)
+            if current is not None and tenant_id is not None and current.tenant_id != tenant_id:
+                current = None
             if current is None:
                 return "父菜单层级不存在"
         return None
@@ -119,7 +128,7 @@ class MenuDao:
     ) -> List[MenuListDto]:
         """获取菜单列表."""
         mysql = request.state.mysql
-        stmt = select(MenuDo)
+        stmt = select(MenuDo).where(MenuDao._tenant_filter(request))
         if menu_name:
             stmt = stmt.where(MenuDo.menu_name == menu_name)
         if status is not None:
@@ -133,6 +142,7 @@ class MenuDao:
         """校验父节点并在同一事务中创建菜单及按钮权限。"""
         mysql = request.state.mysql
         menu_data = menus.model_dump()
+        menu_data["tenant_id"] = getattr(request.state, "tenant_id", None)
         parent_id = menu_data.get("parent_id") or None
         menu_data["parent_id"] = parent_id
 
@@ -141,12 +151,16 @@ class MenuDao:
             menu_id=None,
             parent_id=parent_id,
             menu_type=menus.menu_type,
+            tenant_id=getattr(request.state, "tenant_id", None),
         )
         if parent_error is not None:
             return parent_error
 
         duplicate_result = await mysql.execute(
-            select(MenuDo.menu_id).where(MenuDo.menu_name == menus.menu_name).limit(1)
+            select(MenuDo.menu_id).where(
+                MenuDo.menu_name == menus.menu_name,
+                MenuDao._tenant_filter(request),
+            ).limit(1)
         )
         if duplicate_result.scalars().first() is not None:
             return "菜单名称已存在"
@@ -216,7 +230,10 @@ class MenuDao:
                 GetMenuDto: 菜单详情.
         """
         mysql = request.state.mysql
-        stmt = select(MenuDo).where(MenuDo.menu_id == menu_id)
+        stmt = select(MenuDo).where(
+            MenuDo.menu_id == menu_id,
+            MenuDao._tenant_filter(request),
+        )
         result = await mysql.execute(stmt)
         menu = result.scalars().first()
         return menu
@@ -235,6 +252,9 @@ class MenuDao:
         """
         mysql = request.state.mysql
         menu_db = await mysql.get(MenuDo, menu_id)
+        tenant_id = getattr(request.state, "tenant_id", None)
+        if menu_db is not None and tenant_id is not None and menu_db.tenant_id != tenant_id:
+            menu_db = None
         if menu_db is None:
             return "菜单不存在"
 
@@ -250,6 +270,7 @@ class MenuDao:
             menu_id=menu_id,
             parent_id=effective_parent_id,
             menu_type=effective_menu_type,
+            tenant_id=getattr(request.state, "tenant_id", None),
         )
         if parent_error is not None:
             return parent_error
@@ -257,7 +278,10 @@ class MenuDao:
         if effective_menu_type == "F":
             child_result = await mysql.execute(
                 select(MenuDo.menu_id)
-                .where(MenuDo.parent_id == menu_id)
+                .where(
+                    MenuDo.parent_id == menu_id,
+                    MenuDao._tenant_filter(request),
+                )
                 .limit(1)
             )
             if child_result.scalars().first() is not None:
@@ -281,10 +305,15 @@ class MenuDao:
         """根据菜单ID删除菜单."""
         mysql = request.state.mysql
         menu = await mysql.get(MenuDo, menu_id)
+        tenant_id = getattr(request.state, "tenant_id", None)
+        if menu is not None and tenant_id is not None and menu.tenant_id != tenant_id:
+            menu = None
         if menu is None:
             return "菜单不存在"
 
-        menu_result = await mysql.execute(select(MenuDo))
+        menu_result = await mysql.execute(
+            select(MenuDo).where(MenuDao._tenant_filter(request))
+        )
         menus = menu_result.scalars().all()
         children_map: dict[int | None, list[MenuDo]] = {}
         menu_map = {}
@@ -316,5 +345,10 @@ class MenuDao:
             await MenuDao._delete_permission_if_unused(
                 mysql, permission_code, exclude_menu_ids=delete_ids
             )
-        await mysql.execute(delete(MenuDo).where(MenuDo.menu_id == menu_id))
+        await mysql.execute(
+            delete(MenuDo).where(
+                MenuDo.menu_id == menu_id,
+                MenuDao._tenant_filter(request),
+            )
+        )
         return None

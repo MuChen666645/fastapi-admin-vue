@@ -15,7 +15,12 @@ from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
                                                     UserPostDo)
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo, RoleMenuDo
-from module_admin.entity.do.user_do import UserDo, UserRoleDo
+from module_admin.entity.do.user_do import (
+    PasswordResetTokenDo,
+    UserDo,
+    UserPasswordHistoryDo,
+    UserRoleDo,
+)
 from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
                                               LoginUserRequestByUsernameDto,
                                               RegisterUserRequestByUsernameDto,
@@ -44,6 +49,10 @@ class UserDao:
         """
         mysql = request.state.mysql
         user_data = users.model_dump(exclude={"post_ids"})
+        user_data.setdefault(
+            "tenant_id",
+            getattr(request.state, "tenant_id", settings.DEFAULT_TENANT_ID),
+        )
         if getattr(request.state, "user_id", None) is not None:
             scope = await DataScopeService.resolve(request)
             if not scope.all_data and (
@@ -53,7 +62,17 @@ class UserDao:
                 )
             ):
                 raise ValueError("Department is outside the data scope")
-        if users.dept_id is not None and await mysql.get(DepartmentDo, users.dept_id) is None:
+        dept_result = (
+            await mysql.execute(
+                select(DepartmentDo).where(
+                    DepartmentDo.dept_id == users.dept_id,
+                    DepartmentDo.tenant_id == user_data["tenant_id"],
+                )
+            )
+            if users.dept_id is not None
+            else None
+        )
+        if users.dept_id is not None and dept_result.scalars().first() is None:
             raise ValueError("部门不存在")
         post_ids = list(dict.fromkeys(users.post_ids))
         if post_ids:
@@ -110,6 +129,60 @@ class UserDao:
         return user
 
     @staticmethod
+    async def get_user_by_identifier(
+        identifier: str, request: Request
+    ) -> Union[UserDo, None]:
+        """按用户名、邮箱或手机号查找用户。"""
+        result = await request.state.mysql.execute(
+            select(UserDo).where(
+                or_(
+                    UserDo.username == identifier,
+                    UserDo.email == identifier,
+                    UserDo.phone == identifier,
+                )
+            )
+        )
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_user_by_external_subject(
+        provider: str, subject: str, request: Request
+    ) -> UserDo | None:
+        """按外部身份提供商和主体标识查找用户。"""
+        result = await request.state.mysql.execute(
+            select(UserDo).where(
+                UserDo.auth_provider == provider,
+                UserDo.auth_subject == subject,
+            )
+        )
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_password_history(
+        user_id: int, request: Request
+    ) -> list[UserPasswordHistoryDo]:
+        """读取用户最近的历史密码。"""
+        result = await request.state.mysql.execute(
+            select(UserPasswordHistoryDo)
+            .where(UserPasswordHistoryDo.user_id == user_id)
+            .order_by(UserPasswordHistoryDo.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_password_reset_token(
+        token_hash: str, request: Request
+    ) -> PasswordResetTokenDo | None:
+        """按哈希查询未消费的密码找回令牌。"""
+        result = await request.state.mysql.execute(
+            select(PasswordResetTokenDo).where(
+                PasswordResetTokenDo.token_hash == token_hash,
+                PasswordResetTokenDo.consumed_at.is_(None),
+            )
+        )
+        return result.scalars().first()
+
+    @staticmethod
     async def get_user_by_id(user_id: int, request: Request) -> Union[UserDo, None]:
         """根据用户ID获取用户.
         Args:
@@ -121,12 +194,11 @@ class UserDao:
         """
         mysql = request.state.mysql
         scope = await DataScopeService.resolve(request)
-        result = await mysql.execute(
-            select(UserDo).where(
-                UserDo.id == user_id,
-                scope.user_id_clause(UserDo.id),
-            )
-        )
+        filters = [UserDo.id == user_id, scope.user_id_clause(UserDo.id)]
+        tenant_id = getattr(request.state, "tenant_id", None)
+        if tenant_id is not None:
+            filters.append(UserDo.tenant_id == tenant_id)
+        result = await mysql.execute(select(UserDo).where(*filters))
         return result.scalars().first()
 
     @staticmethod
@@ -146,6 +218,9 @@ class UserDao:
         )
         if enabled_only:
             role_query = role_query.where(RoleDo.status == "1")
+        tenant_id = getattr(request.state, "tenant_id", None)
+        if tenant_id is not None:
+            role_query = role_query.where(RoleDo.tenant_id == tenant_id)
         role_result = await mysql.execute(role_query)
         return list(role_result.scalars().all())
 
@@ -204,7 +279,10 @@ class UserDao:
         post_result = await mysql.execute(
             select(PostDo)
             .join(UserPostDo, UserPostDo.post_id == PostDo.post_id)
-            .where(UserPostDo.user_id == user_id)
+            .where(
+                UserPostDo.user_id == user_id,
+                PostDo.tenant_id == getattr(request.state, "tenant_id", PostDo.tenant_id),
+            )
             .order_by(PostDo.post_sort, PostDo.post_id)
         )
         post_data = [post.model_dump() for post in post_result.scalars().all()]
@@ -232,8 +310,9 @@ class UserDao:
                 .select_from(MenuDo)
                 .join(RoleMenuDo, RoleMenuDo.menu_id == MenuDo.menu_id)
                 .where(
-                    RoleMenuDo.role_id.in_(role_ids),
-                    MenuDo.status == "1",
+                RoleMenuDo.role_id.in_(role_ids),
+                MenuDo.status == "1",
+                MenuDo.tenant_id == getattr(request.state, "tenant_id", MenuDo.tenant_id),
                     MenuDo.perms.is_not(None),
                     MenuDo.perms != "",
                 )
@@ -306,7 +385,11 @@ class UserDao:
 
         menu_query = (
             select(MenuDo)
-            .where(MenuDo.status == "1", MenuDo.menu_type != "F")
+            .where(
+                MenuDo.status == "1",
+                MenuDo.menu_type != "F",
+                MenuDo.tenant_id == getattr(request.state, "tenant_id", MenuDo.tenant_id),
+            )
             .order_by(MenuDo.sort, MenuDo.menu_id)
         )
         if not any(role.code == settings.ADMIN_ROLE_CODE for role in roles):
@@ -367,9 +450,39 @@ class UserDao:
         user_db = await UserDao.get_user_by_id(user_id, request)
         if user_db is None:
             return "用户不存在"
-        user_db.password = password
-        user_db.update_time = now_utc8_naive()
+        await UserDao._apply_password_hash(user_db, password, request)
         return None
+
+    @staticmethod
+    async def update_password_without_scope(
+        user_id: int, password: str, request: Request
+    ) -> Union[str, None]:
+        """在无登录上下文的密码找回流程中更新密码。"""
+        mysql = request.state.mysql
+        user_db = await mysql.get(UserDo, user_id)
+        if user_db is None:
+            return "用户不存在"
+        await UserDao._apply_password_hash(user_db, password, request)
+        return None
+
+    @staticmethod
+    async def _apply_password_hash(user_db: UserDo, password: str, request: Request) -> None:
+        """记录旧密码并更新密码版本。"""
+        mysql = request.state.mysql
+        if user_db.password:
+            history = await UserDao.get_password_history(user_db.id, request)
+            if len(history) >= settings.PASSWORD_HISTORY_COUNT > 0:
+                await mysql.delete(history[-1])
+            mysql.add(
+                UserPasswordHistoryDo(
+                    user_id=user_db.id,
+                    password_hash=user_db.password,
+                )
+            )
+        user_db.password = password
+        user_db.password_changed_at = now_utc8_naive()
+        user_db.must_change_password = False
+        user_db.update_time = now_utc8_naive()
 
     @staticmethod
     async def bind_user_roles(

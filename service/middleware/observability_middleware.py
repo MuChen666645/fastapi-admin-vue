@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 
 from fastapi import Request
-from prometheus_client import CollectorRegistry, Counter, Histogram
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -36,6 +36,10 @@ class ApplicationMetrics:
     requests: Counter
     request_duration: Histogram
     exceptions: Counter
+    dependency_health: Gauge
+    job_executions: Counter
+    job_duration: Histogram
+    alerts: Counter
 
     @classmethod
     def create(cls) -> "ApplicationMetrics":
@@ -59,6 +63,30 @@ class ApplicationMetrics:
                 "http_request_exceptions_total",
                 "Total number of uncaught HTTP request exceptions.",
                 ("exception_type",),
+                registry=registry,
+            ),
+            dependency_health=Gauge(
+                "dependency_health",
+                "Dependency health status (1 means healthy).",
+                ("dependency",),
+                registry=registry,
+            ),
+            job_executions=Counter(
+                "scheduled_job_executions_total",
+                "Scheduled job execution results.",
+                ("job_id", "status"),
+                registry=registry,
+            ),
+            job_duration=Histogram(
+                "scheduled_job_duration_seconds",
+                "Scheduled job execution duration.",
+                ("job_id",),
+                registry=registry,
+            ),
+            alerts=Counter(
+                "alerts_sent_total",
+                "Operational alerts sent.",
+                ("alert_type", "status"),
                 registry=registry,
             ),
         )

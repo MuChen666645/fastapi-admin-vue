@@ -12,6 +12,8 @@ class LoginLogDo(SQLModel, table=True):
 
     __tablename__ = "login_logs"
 
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(
         default=None,
@@ -32,6 +34,8 @@ class OperationLogDo(SQLModel, table=True):
     """一次已认证 API 操作记录。"""
 
     __tablename__ = "operation_logs"
+
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(
@@ -55,6 +59,8 @@ class ExceptionLogDo(SQLModel, table=True):
     """一次未处理 API 异常记录。"""
 
     __tablename__ = "exception_logs"
+
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(

@@ -26,6 +26,11 @@ class LoginUserRequestByUsernameDto(BaseLoginRequestDto):
 
     username: str = Field(description="用户名")
     password: str = Field(description="密码")
+    mfa_code: str | None = Field(
+        default=None,
+        max_length=20,
+        description="MFA 验证码或恢复码",
+    )
 
 
 class LoginUserRequestByPhoneDto(BaseLoginRequestDto):
@@ -35,6 +40,11 @@ class LoginUserRequestByPhoneDto(BaseLoginRequestDto):
 
     phone: str = Field(description="手机号")
     password: str = Field(description="密码")
+    mfa_code: str | None = Field(
+        default=None,
+        max_length=20,
+        description="MFA 验证码或恢复码",
+    )
 
 
 class RegisterUserRequestDto(BaseModel):
@@ -172,6 +182,38 @@ class TokenDto(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     access_token: str | None = Field(default=None, description="访问令牌")
+    refresh_token: str | None = Field(default=None, description="刷新令牌")
+    token_type: str = Field(default="bearer", description="令牌类型")
+    expires_in: int | None = Field(default=None, description="访问令牌有效秒数")
+    must_change_password: bool = Field(default=False, description="是否必须修改密码")
+
+
+class RefreshTokenRequestDto(BaseModel):
+    """刷新访问令牌请求模型。"""
+
+    refresh_token: str = Field(min_length=32, description="刷新令牌")
+
+
+class ForgotPasswordRequestDto(BaseModel):
+    """密码找回申请模型。"""
+
+    identifier: str = Field(
+        min_length=1,
+        max_length=255,
+        description="用户名、邮箱或手机号",
+    )
+    channel: str = Field(
+        default="email",
+        pattern="^(email|sms)$",
+        description="找回渠道",
+    )
+
+
+class ConfirmPasswordResetRequestDto(BaseModel):
+    """密码找回确认模型。"""
+
+    token: str = Field(min_length=32, description="密码找回令牌")
+    password: str = Field(description="新密码")
 
 
 class ResponseUserInfoDto(BaseModel):

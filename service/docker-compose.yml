@@ -11,11 +11,23 @@ services:
       fastapi-migrate:
         condition: service_completed_successfully
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     networks:
       - common-network
     env_file:
       - ${APP_ENV_FILE:-.env.development}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
     develop:
       watch:
         - action: rebuild
@@ -37,16 +49,20 @@ services:
       - common-network
     command: ["python", "-m", "scripts.migrate_database"]
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
   fastapi-mysql:
-    image: mysql:8.0
+    image: mysql:8.0.41
     command: ["--default-authentication-plugin=mysql_native_password"]
     volumes:
       - mysql-data:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASES:-fastapi_admin}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-fastapiadmin}
-      MYSQL_USER: ${MYSQL_USER:-${MYSQL_USERNAME:-fastapi_app}}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-fastapiadmin}
+      MYSQL_DATABASE: ${MYSQL_DATABASES:?MYSQL_DATABASES is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_USER: ${MYSQL_USERNAME:?MYSQL_USERNAME is required}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
     env_file:
       - ${APP_ENV_FILE:-.env.development}
     healthcheck:
@@ -60,11 +76,19 @@ services:
       retries: 20
       start_period: 20s
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     networks:
       - common-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
   fastapi-redis:
-    image: redis:7.2-alpine
+    image: redis:7.2.7-alpine
     volumes:
       - redis-data:/data
     env_file:
@@ -80,9 +104,41 @@ services:
       retries: 10
       start_period: 5s
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     networks:
       - common-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+  fastapi-edge:
+    image: nginx:1.27.0-alpine
+    profiles: ["production"]
+    depends_on:
+      fastapi-app:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - common-network
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
 networks:
   common-network:
     driver: bridge

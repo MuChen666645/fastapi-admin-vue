@@ -106,8 +106,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(min_length=32)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(gt=0)
     ADMIN_ROLE_CODE: str = Field(min_length=1)
+    DEFAULT_TENANT_ID: int = Field(default=1, gt=0)
     # 该值必须跟随迁移头，不能由部署配置覆盖。
-    DATABASE_SCHEMA_VERSION: str = "0002_role_data_scope"
+    DATABASE_SCHEMA_VERSION: str = "0017_backup_permissions"
 
     # 限流、验证码和登录失败锁定策略。
     RATE_LIMIT_DEFAULT: str = Field(min_length=1)
@@ -117,6 +118,26 @@ class Settings(BaseSettings):
     CAPTCHA_MAX_VERIFY_ATTEMPTS: int = Field(gt=0)
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(gt=0)
     LOGIN_IP_LOCK_SECONDS: int = Field(gt=0)
+    LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS: int = Field(default=5, gt=0)
+    LOGIN_ACCOUNT_LOCK_SECONDS: int = Field(default=900, gt=0)
+    PASSWORD_MIN_LENGTH: int = Field(default=12, ge=8, le=128)
+    PASSWORD_REQUIRE_UPPERCASE: bool = True
+    PASSWORD_REQUIRE_LOWERCASE: bool = True
+    PASSWORD_REQUIRE_DIGIT: bool = True
+    PASSWORD_REQUIRE_SPECIAL: bool = True
+    PASSWORD_HISTORY_COUNT: int = Field(default=5, ge=0, le=20)
+    PASSWORD_MAX_AGE_DAYS: int = Field(default=90, ge=0)
+    PASSWORD_FORCE_CHANGE_ON_CREATE: bool = True
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=30, gt=0, le=365)
+    MFA_ISSUER: str = Field(default="FastAPI Admin", min_length=1, max_length=100)
+    PASSWORD_RESET_TOKEN_TTL_SECONDS: int = Field(default=900, gt=0)
+    PASSWORD_RESET_EMAIL_ENABLED: bool = False
+    PASSWORD_RESET_SMS_WEBHOOK: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = Field(default=465, gt=0, le=65535)
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
     READINESS_TIMEOUT_SECONDS: float = Field(gt=0)
 
     # 阿里云 OSS
@@ -134,6 +155,19 @@ class Settings(BaseSettings):
     FILE_MAX_SIZE_BYTES: int = Field(
         title="文件大小上限", default=10 * 1024 * 1024, gt=0
     )
+    FILE_PRESIGN_TTL_SECONDS: int = Field(title="预签名有效期", default=300, gt=0)
+    FILE_CONTENT_SNIFF_ENABLED: bool = True
+    FILE_VIRUS_SCAN_ENABLED: bool = False
+    FILE_REDACTION_ENABLED: bool = False
+    FILE_SENSITIVE_PATTERNS: list[str] = Field(
+        default=[
+            r"(?<!\d)1[3-9]\d{9}(?!\d)",
+            r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}",
+            r"(?<!\d)\d{15,19}(?!\d)",
+        ]
+    )
+    CLAMAV_HOST: str = "clamav"
+    CLAMAV_PORT: int = Field(default=3310, gt=0, le=65535)
     FILE_ALLOWED_EXTENSIONS: list[str] = Field(
         title="允许的文件扩展名",
         default=[
@@ -154,6 +188,9 @@ class Settings(BaseSettings):
     # 定时任务
     SCHEDULER_ENABLED: bool = Field(title="是否启用定时任务", default=False)
     SCHEDULER_TIMEZONE: str = Field(title="定时任务时区", default="Asia/Shanghai")
+    SCHEDULER_DEFAULT_TIMEOUT_SECONDS: int = Field(default=300, gt=0)
+    SCHEDULER_LOCK_TTL_SECONDS: int = Field(default=900, gt=0)
+    SCHEDULER_DEFAULT_MAX_RETRIES: int = Field(default=0, ge=0, le=10)
 
     # 网络访问策略；非开发环境必须显式收紧主机和跨域范围。
     HOSTS: list[str]
@@ -162,11 +199,64 @@ class Settings(BaseSettings):
     MEDOTHS: list[str]
     HEADERS: list[str]
     CREDENTIALS: bool
+    OTEL_ENABLED: bool = False
+    OTEL_SERVICE_NAME: str = "fastapi-admin"
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+    OTEL_EXPORTER_OTLP_HEADERS: str = ""
+    LOG_RETENTION_DAYS: int = Field(default=30, gt=0)
+    ALERT_WEBHOOK_URL: str = ""
+    BACKUP_DIR: str = "backups"
+    BACKUP_ENCRYPTION_KEY: str = ""
+    BACKUP_RETENTION_DAYS: int = Field(default=30, gt=0)
+    BACKUP_TIMEOUT_SECONDS: int = Field(default=900, gt=0)
+    OIDC_ENABLED: bool = False
+    OIDC_AUTHORIZATION_URL: str = ""
+    OIDC_TOKEN_URL: str = ""
+    OIDC_USERINFO_URL: str = ""
+    OIDC_CLIENT_ID: str = ""
+    OIDC_CLIENT_SECRET: str = ""
+    OIDC_REDIRECT_URI: str = ""
+    OIDC_SCOPES: str = "openid profile email"
+    LDAP_ENABLED: bool = False
+    LDAP_SERVER_URL: str = ""
+    LDAP_BASE_DN: str = ""
+    LDAP_BIND_DN: str = ""
+    LDAP_BIND_PASSWORD: str = ""
+    LDAP_USER_FILTER: str = "(uid={username})"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
         extra="ignore",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def load_secret_files(cls, values: Any) -> Any:
+        """支持 Docker/Kubernetes Secret 通过 *_FILE 注入，避免密钥进入环境变量。"""
+        data = dict(values or {})
+        secret_fields = (
+            "MYSQL_PASSWORD",
+            "MYSQL_ROOT_PASSWORD",
+            "MYSQL_USERNAME",
+            "REDIS_PASSWORD",
+            "REDIS_USERNAME",
+            "SECRET_KEY",
+            "ACCESS_KEY_ID",
+            "ACCESSKEY_SECRET",
+            "BACKUP_ENCRYPTION_KEY",
+            "SMTP_PASSWORD",
+            "OIDC_CLIENT_SECRET",
+            "LDAP_BIND_PASSWORD",
+            "ALERT_WEBHOOK_URL",
+        )
+        for field in secret_fields:
+            file_value = data.get(f"{field}_FILE") or os.getenv(f"{field}_FILE")
+            if not file_value:
+                continue
+            path = Path(str(file_value))
+            if path.is_file():
+                data[field] = path.read_text(encoding="utf-8").strip()
+        return data
 
     @model_validator(mode="after")
     def validate_environment_security(self) -> "Settings":

@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.notice_dto import NoticeCreateDto, NoticeDto, NoticeUpdateDto
+from module_admin.entity.dto.notice_dto import (
+    NoticeCreateDto,
+    NoticeDto,
+    NoticeInboxDto,
+    NoticeUpdateDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.notice_service import NoticeService
 
@@ -46,6 +51,34 @@ class NoticeController:
     async def create(data: NoticeCreateDto, request: Request):
         """新增通知公告。"""
         return await NoticeService.create(data, request)
+
+    @notice.get(
+        "/inbox/list",
+        summary="查询我的通知",
+        dependencies=[Depends(Auth.login_status)],
+        response_model=None,
+        responses={200: {"model": ApiResponseDto[Page[NoticeInboxDto]]}},
+    )
+    async def inbox(
+        request: Request,
+        unread_only: bool = Query(default=False, description="是否只查询未读通知"),
+        params: Params = Depends(),
+    ):
+        """查询当前用户收件箱通知。"""
+        return await NoticeService.list_inbox(request, unread_only, params)
+
+    @notice.post(
+        "/{notice_id}/read",
+        summary="标记通知已读",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def mark_read(
+        request: Request,
+        notice_id: int = Path(description="公告编号"),
+    ):
+        """标记当前用户可见通知为已读。"""
+        return await NoticeService.mark_read(notice_id, request)
 
     @notice.get(
         "/{notice_id}",

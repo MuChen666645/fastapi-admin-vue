@@ -3,19 +3,23 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import (APIRouter, Depends, FastAPI, Form, Header, Path, Query,
-                     Request)
+from fastapi import (APIRouter, Depends, FastAPI, File, Form, Header, Path,
+                     Query, Request, UploadFile)
 from fastapi_pagination import Page, Params
 
 from config.env import settings
 from config.rate_limit import limiter
 from module_admin.auth.authorization import Auth
 from module_admin.entity.dto.response_dto import ApiResponseDto
+from module_admin.entity.dto.mfa_dto import MfaCodeDto, MfaSetupDto
 from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               BatchUserIdsDto,
                                               BindUserRolesDto,
                                               LoginUserRequestByPhoneDto,
                                               LoginUserRequestByUsernameDto,
+                                              ConfirmPasswordResetRequestDto,
+                                              ForgotPasswordRequestDto,
+                                              RefreshTokenRequestDto,
                                               RegisterUserRequestByUsernameDto,
                                               ResetUserPasswordRequestDto,
                                               TokenDto,
@@ -24,6 +28,8 @@ from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
                                               UserInfoDto, UserInfoUserDto,
                                               UserRouteDto)
 from module_admin.service.user_service import UserService
+from module_admin.service.password_reset_service import PasswordResetService
+from module_admin.service.excel_service import ExcelService
 
 
 class UserController:
@@ -75,6 +81,42 @@ class UserController:
 
     @staticmethod
     @user.post(
+        "/token/refresh",
+        summary="轮换刷新令牌",
+        responses={200: {"model": ApiResponseDto[TokenDto]}},
+    )
+    async def refresh_token(users: RefreshTokenRequestDto, request: Request):
+        """消费旧 Refresh Token 并签发新的令牌对。"""
+        return await UserService.refresh_token_services(users, request)
+
+    @staticmethod
+    @user.post(
+        "/password/forgot",
+        summary="申请找回密码",
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def forgot_password(
+        data: ForgotPasswordRequestDto,
+        request: Request,
+    ):
+        """通过邮箱或短信申请一次性密码找回令牌。"""
+        return await PasswordResetService.request_reset(data, request)
+
+    @staticmethod
+    @user.post(
+        "/password/reset",
+        summary="确认找回密码",
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def confirm_password_reset(
+        data: ConfirmPasswordResetRequestDto,
+        request: Request,
+    ):
+        """消费密码找回令牌并设置新密码。"""
+        return await PasswordResetService.confirm_reset(data, request)
+
+    @staticmethod
+    @user.post(
         "/logout",
         summary="退出登录",
         responses={200: {"model": ApiResponseDto[None]}},
@@ -98,6 +140,39 @@ class UserController:
         return await UserService.get_current_user_info_services(request)
 
     @staticmethod
+    @user.post(
+        "/mfa/setup",
+        summary="初始化多因素认证",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[MfaSetupDto]}},
+    )
+    async def setup_mfa(request: Request):
+        """生成当前账号的 TOTP 密钥和恢复码。"""
+        return await UserService.setup_mfa_services(request)
+
+    @staticmethod
+    @user.post(
+        "/mfa/enable",
+        summary="启用多因素认证",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def enable_mfa(data: MfaCodeDto, request: Request):
+        """验证 TOTP 后启用当前账号 MFA。"""
+        return await UserService.enable_mfa_services(data.code, request)
+
+    @staticmethod
+    @user.post(
+        "/mfa/disable",
+        summary="关闭多因素认证",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def disable_mfa(data: MfaCodeDto, request: Request):
+        """验证 TOTP 后关闭当前账号 MFA。"""
+        return await UserService.disable_mfa_services(data.code, request)
+
+    @staticmethod
     @user.get(
         "/routes",
         summary="获取当前用户路由菜单",
@@ -107,6 +182,20 @@ class UserController:
     async def get_current_user_routes(request: Request):
         """获取当前用户的前端动态路由。"""
         return await UserService.get_current_user_routes_services(request)
+
+    @staticmethod
+    @user.put(
+        "/me/password",
+        summary="修改当前用户密码",
+        dependencies=[Depends(Auth.allow_password_change)],
+        responses={200: {"model": ApiResponseDto[None]}},
+    )
+    async def change_current_password(
+        users: UpdateUserPasswordRequestDto,
+        request: Request,
+    ):
+        """修改当前账号密码并清理旧会话。"""
+        return await UserService.change_current_password_services(users, request)
 
     @staticmethod
     @user.put(
@@ -151,6 +240,29 @@ class UserController:
         return await UserService.bind_user_roles_services(user_id, roles, request)
 
     @staticmethod
+    @user.get(
+        "/export",
+        summary="导出用户 Excel",
+        dependencies=[Depends(Auth.has_permission("system:user:list"))],
+        response_model=None,
+    )
+    async def export_users(request: Request):
+        """导出当前租户可见的用户。"""
+        return await ExcelService.export_users(request)
+
+    @user.post(
+        "/import",
+        summary="导入用户 Excel",
+        dependencies=[Depends(Auth.has_permission("system:user:add"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def import_users(
+        request: Request,
+        file: UploadFile = File(..., description="用户 Excel 文件"),
+    ):
+        """按用户 DTO 和密码策略导入用户。"""
+        return await ExcelService.import_users(file, request)
+
     @user.get(
         "/list",
         summary="查询用户列表",

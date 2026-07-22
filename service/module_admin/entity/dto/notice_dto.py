@@ -15,6 +15,10 @@ class NoticeCreateDto(BaseModel):
     notice_content: str = Field(title="公告内容", min_length=1, description="公告内容")
     status: str = Field(title="公告状态", default="1", pattern="^[01]$", description="公告状态")
     publish_time: datetime | None = Field(title="发布时间", default=None, description="发布时间")
+    recipient_user_ids: list[int] = Field(
+        default_factory=list,
+        description="收件人用户ID列表，留空表示全体租户用户",
+    )
 
 
 class NoticeUpdateDto(BaseModel):
@@ -42,3 +46,16 @@ class NoticeDto(NoticeCreateDto):
     create_by: int | None = Field(title="创建人", description="创建人")
     create_time: datetime = Field(title="创建时间", description="创建时间")
     update_time: datetime = Field(title="更新时间", description="更新时间")
+
+
+class NoticeInboxDto(BaseModel):
+    """当前用户收件箱通知。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="公告编号")
+    notice_title: str = Field(description="公告标题")
+    notice_type: str = Field(description="公告类型")
+    notice_content: str = Field(description="公告内容")
+    publish_time: datetime | None = Field(description="发布时间")
+    read_at: datetime | None = Field(description="阅读时间")

@@ -11,6 +11,8 @@ class DepartmentDo(SQLModel, table=True):
 
     __tablename__ = "departments"
 
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+
     dept_id: int | None = Field(default=None, primary_key=True)
     parent_id: int | None = Field(
         default=None,
@@ -34,6 +36,8 @@ class PostDo(SQLModel, table=True):
     """岗位表，post_code 在数据库中保持唯一。"""
 
     __tablename__ = "posts"
+
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
 
     post_id: int | None = Field(default=None, primary_key=True)
     post_code: str = Field(max_length=64, unique=True, index=True)

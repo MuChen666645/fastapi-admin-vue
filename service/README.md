@@ -11,11 +11,16 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 - MySQL 数据持久化
 - Redis 缓存、验证码存储、Token 二级缓存与跨进程共享限流
 - JWT 登录认证、Token 内存/Redis 校验与按钮级接口权限校验
+- Access/Refresh Token 轮换、停用用户拦截、强制改密、密码策略、MFA 和密码找回
 - 用户、角色、菜单管理模块，菜单按钮权限同步到权限目录
 - 若依风格 RBAC 权限模型，支持超级管理员通配权限 `*:*:*`
+- 租户隔离、字段级权限、权限变更审计和数据范围控制
 - 图片验证码生成与校验；明文数字验证码接口已停用
 - 统一响应拦截与异常处理，未知错误返回脱敏的 500 响应
 - 请求 ID、W3C traceparent 链路关联和结构化 JSON 日志
+- 文件签名校验、可选 ClamAV 扫描、分片上传、预签名 URL 和文本脱敏
+- Excel 用户/角色/字典导入导出、通知收件箱、数据库备份和恢复工具
+- Redis 分布式任务锁、超时/重试/暂停、Prometheus 指标和可选 OTLP 链路
 - 本地/阿里云 OSS 文件上传下载、系统参数、通知公告和定时任务
 - Prometheus 指标监控，可通过 `/metrics` 抓取
 - SlowAPI 请求限流
@@ -163,24 +168,54 @@ OSS_PREFIX=uploads
 FILE_STORAGE_BACKEND=local
 FILE_UPLOAD_DIR=uploads
 FILE_MAX_SIZE_BYTES=10485760
+FILE_PRESIGN_TTL_SECONDS=300
+FILE_CONTENT_SNIFF_ENABLED=true
+FILE_VIRUS_SCAN_ENABLED=false
+FILE_REDACTION_ENABLED=false
+CLAMAV_HOST=clamav
+CLAMAV_PORT=3310
 FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
 
 # Scheduler
 SCHEDULER_ENABLED=false
 SCHEDULER_TIMEZONE=Asia/Shanghai
-OSS_ENDPOINT=
-OSS_BUCKET=
-OSS_PREFIX=uploads
+SCHEDULER_DEFAULT_TIMEOUT_SECONDS=300
+SCHEDULER_LOCK_TTL_SECONDS=900
+SCHEDULER_DEFAULT_MAX_RETRIES=0
 
-# 文件存储
-FILE_STORAGE_BACKEND=local
-FILE_UPLOAD_DIR=uploads
-FILE_MAX_SIZE_BYTES=10485760
-FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
+# Observability, backup, and optional identity providers
+OTEL_ENABLED=false
+OTEL_SERVICE_NAME=fastapi-admin
+OTEL_EXPORTER_OTLP_ENDPOINT=
+OTEL_EXPORTER_OTLP_HEADERS=
+LOG_RETENTION_DAYS=30
+ALERT_WEBHOOK_URL=
+BACKUP_DIR=backups
+BACKUP_ENCRYPTION_KEY=
+BACKUP_RETENTION_DAYS=30
+BACKUP_TIMEOUT_SECONDS=900
+OIDC_ENABLED=false
+OIDC_AUTHORIZATION_URL=
+OIDC_TOKEN_URL=
+OIDC_USERINFO_URL=
+OIDC_CLIENT_ID=
+OIDC_CLIENT_SECRET=
+OIDC_REDIRECT_URI=
+OIDC_SCOPES=openid profile email
+LDAP_ENABLED=false
+LDAP_SERVER_URL=
+LDAP_BASE_DN=
+LDAP_BIND_DN=
+LDAP_BIND_PASSWORD=
+LDAP_USER_FILTER=(uid={username})
 
-# 定时任务
-SCHEDULER_ENABLED=false
-SCHEDULER_TIMEZONE=Asia/Shanghai
+# 邮件/短信找回密码
+PASSWORD_RESET_SMS_WEBHOOK=
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM=
 
 # Optional
 SECRET_KEY=replace_with_a_stable_random_secret
@@ -193,6 +228,20 @@ CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
+LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS=5
+LOGIN_ACCOUNT_LOCK_SECONDS=900
+PASSWORD_MIN_LENGTH=12
+PASSWORD_REQUIRE_UPPERCASE=true
+PASSWORD_REQUIRE_LOWERCASE=true
+PASSWORD_REQUIRE_DIGIT=true
+PASSWORD_REQUIRE_SPECIAL=true
+PASSWORD_HISTORY_COUNT=5
+PASSWORD_MAX_AGE_DAYS=90
+PASSWORD_FORCE_CHANGE_ON_CREATE=true
+REFRESH_TOKEN_EXPIRE_DAYS=30
+MFA_ISSUER=FastAPI Admin
+PASSWORD_RESET_TOKEN_TTL_SECONDS=900
+PASSWORD_RESET_EMAIL_ENABLED=false
 READINESS_TIMEOUT_SECONDS=5
 HOSTS=["*"]
 TRUSTED_PROXIES=[]
@@ -255,6 +304,12 @@ poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 docker compose up --build --watch
 ```
 
+生产环境需要准备证书文件 `certs/fullchain.pem` 和 `certs/privkey.pem`，然后启用 `fastapi-edge` profile：
+
+```bash
+docker compose --env-file .env.production --profile production up -d --build
+```
+
 ### 查看日志
 
 ```bash
@@ -272,11 +327,12 @@ docker compose down
 
 | 服务    | 容器端口 | 本机端口 |
 | ------- | -------- | -------- |
-| FastAPI | 3000     | 3000     |
-| MySQL   | 3306     | 3306     |
-| Redis   | 6379     | 6379     |
+| FastAPI | 3000     | 127.0.0.1:3000 |
+| MySQL   | 3306     | 127.0.0.1:3306 |
+| Redis   | 6379     | 127.0.0.1:6379 |
+| Nginx (production profile) | 80/443 | 80/443 |
 
-生产环境部署前请修改默认数据库密码、Redis 密码、JWT `SECRET_KEY`，并限制 `HOSTS` 与 CORS 来源。
+基础 Compose 配置仅将 FastAPI、MySQL 和 Redis 绑定到本机；生产 profile 通过 Nginx 暴露 80/443，并将 HTTPS 请求转发到 FastAPI。生产环境部署前请修改所有 `.env.production.example` 占位符、准备 TLS 证书，并限制 `HOSTS` 与 CORS 来源。
 
 ## API 模块
 
@@ -298,6 +354,8 @@ docker compose down
 | 系统参数 | `/config`  | 系统参数键值配置                                         |
 | 通知公告 | `/notice`  | 公告增删改查                                             |
 | 定时任务 | `/job`     | Cron 任务管理、手动执行和执行日志                        |
+| 外部认证 | `/auth`    | OIDC/OAuth 与 LDAP 登录                                  |
+| 数据备份 | `/ops/backup` | 受权限保护的数据库备份接口                              |
 | 静态资源 | `/static`  | 静态文件访问                                             |
 
 完整请求参数与响应结构请以 Swagger 文档为准。
@@ -324,6 +382,9 @@ Token 使用 `HS256` 算法签名，过期时间由 `ACCESS_TOKEN_EXPIRE_MINUTES
 - 角色通过 `role_menu` 关联菜单和按钮权限，接口鉴权时按用户角色、菜单按钮和权限目录共同判断。
 - 超级管理员权限 `*:*:*` 存放在 `permissions` 表中，不作为菜单数据返回；拥有超级权限时，用户信息接口只返回 `*:*:*` 权限标识。
 - `PUT /user/{user_id}/password` 用于输入旧密码的自助修改；`PUT /user/{user_id}/reset-password` 使用 `system:user:resetPwd` 权限执行管理员重置，成功后会使目标用户已有会话失效。
+- 登录会在签发 Token 前检查用户状态；已停用用户直接返回“用户已停用”，不会先获得可用 Token。
+- 请求校验失败返回结构化的 `422` 响应，字段错误位于 `data.errors`，客户端不应依赖异常字符串解析。
+- MySQL 连接 URL 使用 SQLAlchemy `URL.create()` 组装，用户名或密码包含 `@`、`:`、`/` 等字符时无需手动转义。
 - 接口运行时统一返回 `{ "code": 200, "message": "success", "data": ... }`；未知异常只返回脱敏的 500 响应，详细堆栈写入服务日志。Swagger 中每个接口使用 `ApiResponseDto[T]` 描述实际响应体，避免响应体展示为 `Any`。
 
 ## 常用命令
@@ -445,6 +506,54 @@ Authorization: Bearer <access_token>
 
 ---
 
+## 安全与运维
+
+### 认证与密码策略
+
+- 登录成功返回短期 `access_token` 和可轮换的 `refresh_token`。调用 `POST /user/token/refresh` 后，旧刷新令牌立即失效；重复使用旧令牌会撤销整个令牌族。
+- 已停用用户在签发令牌前被拒绝。受保护接口还会检查用户状态、密码版本和强制改密状态。
+- 支持 TOTP MFA：`POST /user/mfa/setup`、`/user/mfa/enable`、`/user/mfa/disable`。登录表单可提交 `mfa_code`，也可使用一次性恢复码。
+- 密码策略由 `PASSWORD_*` 配置控制，包括最小长度、大小写/数字/特殊字符、历史密码数量、最大有效期和首次改密。
+- IP 和账号维度均支持失败登录锁定，配置项为 `LOGIN_MAX_FAILED_ATTEMPTS`、`LOGIN_IP_LOCK_SECONDS`、`LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS` 和 `LOGIN_ACCOUNT_LOCK_SECONDS`。
+- `POST /user/password/forgot` 和 `/user/password/reset` 支持邮箱或短信找回密码。生产环境必须配置 SMTP 或短信 Webhook，接口不会在响应中返回明文找回令牌。
+- 可选 OIDC/OAuth 和 LDAP 登录，配置 `OIDC_*` 或 `LDAP_*` 后使用 `/auth/oidc/start`、`/auth/oidc/callback` 和 `/auth/ldap/login`。
+
+### 租户与权限
+
+- 用户、角色、菜单、部门、岗位、字典、通知、文件、任务、配置和日志记录带有 `tenant_id`，查询和写入会按当前租户隔离。
+- 应用启动时自动同步带有 `Auth.has_permission(...)` 的路由到 `api_permission_catalog`。
+- 字段权限编码格式为 `field:<resource>:<field>`，通过角色 DTO 的 `field_permission_codes` 绑定；没有字段权限时，用户敏感字段会被隐藏。
+- 角色和菜单权限变更写入 `permission_change_versions`，保存操作者、版本号以及变更前后快照。
+
+### 文件、通知和运维接口
+
+- 文件支持内容签名识别、可选 ClamAV 扫描、OSS 预签名 URL、本地/OSS 存储、分片上传和文本脱敏。
+- 当 `FILE_VIRUS_SCAN_ENABLED=true` 时，必须提供可访问的 ClamAV 服务，并通过 `CLAMAV_HOST`/`CLAMAV_PORT` 配置地址；默认 Compose 文件不包含 ClamAV 容器。
+- 分片流程：`POST /file/chunk/init`、`PUT /file/chunk/{upload_id}/{chunk_index}`、`POST /file/chunk/complete`。
+- 文本脱敏接口为 `GET /file/redacted/{file_id}`，需显式启用 `FILE_REDACTION_ENABLED`。
+- 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
+- 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /notice/inbox/list`、`POST /notice/{notice_id}/read`。
+- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/ops/backup/create` 执行；备份使用 Fernet 加密并按保留天数清理。恢复前必须确认目标数据库和备份文件。
+
+### 定时任务与可观测性
+
+- APScheduler 仍负责进程内调度，Redis `SET NX EX` 负责多实例互斥；任务支持超时、重试、暂停/恢复和执行日志。
+- `SCHEDULER_DEFAULT_TIMEOUT_SECONDS`、`SCHEDULER_LOCK_TTL_SECONDS` 和 `SCHEDULER_DEFAULT_MAX_RETRIES` 控制默认执行行为；任务 DTO 也可以单独设置超时和重试次数。
+- `/metrics` 除 HTTP 指标外，还暴露 MySQL/Redis 就绪状态、任务执行次数/耗时和告警投递状态。配置 `ALERT_WEBHOOK_URL` 后，任务失败会发送结构化告警。
+- 配置 `OTEL_ENABLED=true` 和 `OTEL_EXPORTER_OTLP_ENDPOINT` 后启用 FastAPI 链路并通过 OTLP 导出。日志文件按 `LOG_RETENTION_DAYS` 保留。
+
+### 数据库迁移与 Docker 排障
+
+当前数据库迁移头为 `0017_backup_permissions`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；`0009_scheduler_execution_controls` 也支持在 DDL 已执行但版本号更新失败后安全重试。
+
+```bash
+docker compose --env-file .env.development up -d --build
+docker compose --env-file .env.development logs -f fastapi-migrate
+poetry run python -m scripts.migrate_database
+```
+
+如果出现 `1045 Access denied`，说明 MySQL 持久卷中的账号密码与当前环境文件不一致。持久卷不会因修改 `.env` 自动改密：保留数据时使用原 root 密码轮换 `fastapi_app`；仅开发数据可丢失时才使用 `docker compose down -v` 后重新初始化。不要为解决 `1045` 直接删除生产数据卷。
+
 ## English
 
 > [中文](#fastapi-admin-vue-service) | English
@@ -458,11 +567,16 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - MySQL persistence
 - Redis cache, captcha storage, token cache, and cross-process shared rate limiting
 - JWT login authentication, memory/Redis token validation, and button-level route authorization
+- Rotating access/refresh tokens, disabled-user rejection, password policy, forced password change, MFA, and password recovery
 - User, role, and menu management modules with menu button permission synchronization
 - RuoYi-style RBAC model with super-admin wildcard permission `*:*:*`
+- Tenant isolation, field-level permissions, data scopes, and permission-change auditing
 - Image captcha generation/verification; the plaintext numeric endpoint is disabled
 - Unified response interception and exception handling with sanitized 500 responses
 - Request IDs, W3C `traceparent` correlation, and structured JSON logs
+- File signature checks, optional ClamAV scanning, chunked uploads, presigned URLs, and text redaction
+- Excel import/export for users, roles, and dictionaries, notice inboxes, and encrypted database backups
+- Redis-distributed job locks, timeout/retry/pause controls, Prometheus metrics, and optional OTLP traces
 - Local/Aliyun OSS file upload and download, system config, notices, and scheduled jobs
 - Prometheus metrics available at `/metrics`
 - SlowAPI rate limiting
@@ -601,6 +715,54 @@ REDIS_DB=0
 # Aliyun OSS
 ACCESS_KEY_ID=your_access_key_id
 ACCESSKEY_SECRET=your_access_key_secret
+OSS_ENDPOINT=
+OSS_BUCKET=
+OSS_PREFIX=uploads
+
+# File storage
+FILE_STORAGE_BACKEND=local
+FILE_UPLOAD_DIR=uploads
+FILE_MAX_SIZE_BYTES=10485760
+FILE_PRESIGN_TTL_SECONDS=300
+FILE_CONTENT_SNIFF_ENABLED=true
+FILE_VIRUS_SCAN_ENABLED=false
+FILE_REDACTION_ENABLED=false
+CLAMAV_HOST=clamav
+CLAMAV_PORT=3310
+FILE_ALLOWED_EXTENSIONS=[".jpg",".jpeg",".png",".gif",".webp",".pdf",".doc",".docx",".xls",".xlsx",".zip"]
+
+# Scheduler
+SCHEDULER_ENABLED=false
+SCHEDULER_TIMEZONE=Asia/Shanghai
+SCHEDULER_DEFAULT_TIMEOUT_SECONDS=300
+SCHEDULER_LOCK_TTL_SECONDS=900
+SCHEDULER_DEFAULT_MAX_RETRIES=0
+
+# Observability, backup, and optional identity providers
+OTEL_ENABLED=false
+OTEL_SERVICE_NAME=fastapi-admin
+OTEL_EXPORTER_OTLP_ENDPOINT=
+OTEL_EXPORTER_OTLP_HEADERS=
+LOG_RETENTION_DAYS=30
+ALERT_WEBHOOK_URL=
+BACKUP_DIR=backups
+BACKUP_ENCRYPTION_KEY=
+BACKUP_RETENTION_DAYS=30
+BACKUP_TIMEOUT_SECONDS=900
+OIDC_ENABLED=false
+OIDC_AUTHORIZATION_URL=
+OIDC_TOKEN_URL=
+OIDC_USERINFO_URL=
+OIDC_CLIENT_ID=
+OIDC_CLIENT_SECRET=
+OIDC_REDIRECT_URI=
+OIDC_SCOPES=openid profile email
+LDAP_ENABLED=false
+LDAP_SERVER_URL=
+LDAP_BASE_DN=
+LDAP_BIND_DN=
+LDAP_BIND_PASSWORD=
+LDAP_USER_FILTER=(uid={username})
 
 # Security and optional settings
 SECRET_KEY=generate_a_random_secret_at_least_32_characters_long
@@ -613,6 +775,26 @@ CAPTCHA_TTL_SECONDS=300
 CAPTCHA_MAX_VERIFY_ATTEMPTS=5
 LOGIN_MAX_FAILED_ATTEMPTS=5
 LOGIN_IP_LOCK_SECONDS=300
+LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS=5
+LOGIN_ACCOUNT_LOCK_SECONDS=900
+PASSWORD_MIN_LENGTH=12
+PASSWORD_REQUIRE_UPPERCASE=true
+PASSWORD_REQUIRE_LOWERCASE=true
+PASSWORD_REQUIRE_DIGIT=true
+PASSWORD_REQUIRE_SPECIAL=true
+PASSWORD_HISTORY_COUNT=5
+PASSWORD_MAX_AGE_DAYS=90
+PASSWORD_FORCE_CHANGE_ON_CREATE=true
+REFRESH_TOKEN_EXPIRE_DAYS=30
+MFA_ISSUER=FastAPI Admin
+PASSWORD_RESET_TOKEN_TTL_SECONDS=900
+PASSWORD_RESET_EMAIL_ENABLED=false
+PASSWORD_RESET_SMS_WEBHOOK=
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM=
 READINESS_TIMEOUT_SECONDS=5
 HOSTS=["localhost","127.0.0.1"]
 TRUSTED_PROXIES=[]
@@ -692,6 +874,12 @@ docker compose --env-file .env.development exec -T fastapi-mysql sh -c 'mysql -u
 docker compose --env-file .env.development up -d --build fastapi-app
 ```
 
+For production, prepare `certs/fullchain.pem` and `certs/privkey.pem`, then enable the `fastapi-edge` profile:
+
+```bash
+docker compose --env-file .env.production --profile production up -d --build
+```
+
 ### View logs
 
 ```bash
@@ -709,11 +897,12 @@ Default port mapping:
 
 | Service | Container Port | Host Port |
 | ------- | -------------- | --------- |
-| FastAPI | 3000           | 3000      |
-| MySQL   | 3306           | 3306      |
-| Redis   | 6379           | 6379      |
+| FastAPI | 3000           | 127.0.0.1:3000 |
+| MySQL   | 3306           | 127.0.0.1:3306 |
+| Redis   | 6379           | 127.0.0.1:6379 |
+| Nginx (production profile) | 80/443 | 80/443 |
 
-Before staging or production deployment, copy the matching `.env.*.example`, replace every placeholder with a secret from the deployment secret store, and start Compose with `--env-file` pointing to the resulting file.
+The base Compose profile binds FastAPI, MySQL, and Redis to localhost. The production profile exposes only Nginx on ports 80/443 and proxies HTTPS traffic to FastAPI. Before staging or production deployment, copy the matching `.env.*.example`, replace every placeholder, prepare TLS certificates, and start Compose with `--env-file` pointing to the resulting file.
 
 ## API Modules
 
@@ -735,6 +924,8 @@ Before staging or production deployment, copy the matching `.env.*.example`, rep
 | System Config| `/config`    | Key/value system parameters                                        |
 | Notices      | `/notice`    | Announcement CRUD                                                  |
 | Jobs         | `/job`       | Cron job management, manual run, and execution logs               |
+| External Auth| `/auth`      | OIDC/OAuth and LDAP login                                          |
+| Backups      | `/ops/backup`| Permission-protected database backup operations                    |
 | Static Files | `/static`    | Static file access                                                  |
 
 Use Swagger docs as the source of truth for full request and response schemas.
@@ -761,6 +952,9 @@ Protected APIs check the in-memory cache first and then Redis. If both caches mi
 - Roles connect to menus and button permissions through `role_menu`; authorization checks the user's roles, menu buttons, and permission catalog together.
 - The super-admin wildcard `*:*:*` is stored in `permissions`, not returned as a menu. Users with the wildcard permission only need `*:*:*` in the returned permission list.
 - `PUT /user/{user_id}/password` is the self-service change-password endpoint and requires the old password. `PUT /user/{user_id}/reset-password` is the administrator reset endpoint, uses `system:user:resetPwd`, and revokes the target user's active sessions after success.
+- Login checks user status before issuing a token. A disabled user receives `用户已停用` and never receives a usable token.
+- Validation failures keep structured `422` details under `data.errors`; clients should not parse a stringified exception.
+- MySQL URLs are assembled with SQLAlchemy `URL.create()`, so usernames and passwords containing `@`, `:`, or `/` do not need manual escaping.
 - Data scope is role-based and uses the union of all enabled roles assigned to the actor. Scope values are `1` all data, `2` selected departments, `3` current department, `4` current department and descendants, and `5` self only.
 - `role_dept` stores selected departments for scope `2`. The service applies scope predicates to user, department, post, log, and online-session queries, and checks the same scope before detail, mutation, deletion, and forced logout operations.
 - Role and menu configuration remains global system configuration. Changing a role's menus or data scope is restricted to super administrators; non-admin writes cannot use data scope as an escalation path.
@@ -881,6 +1075,54 @@ If the header is correct but the API still returns 401, also check:
 The default per-IP limit is `300/minute`, which permits concurrent admin-page requests. Username and phone login endpoints use `10/minute`, while captcha creation and verification use `30/minute`. Override these values with `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_LOGIN`, and `RATE_LIMIT_CAPTCHA`.
 
 When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures within `LOGIN_IP_LOCK_SECONDS`, both username and phone login are blocked for `LOGIN_IP_LOCK_SECONDS`. The defaults are five failures and a 300-second lock. A correct password clears a failure counter that has not yet triggered a lock.
+
+## Security and Operations
+
+### Authentication and password policy
+
+- Successful login returns a short-lived `access_token` and a rotating `refresh_token`. `POST /user/token/refresh` consumes the old refresh token; reuse revokes the whole token family.
+- Disabled users are rejected before token issuance. Protected routes also re-check user status, password version, and forced-password-change state.
+- TOTP MFA is available through `POST /user/mfa/setup`, `/user/mfa/enable`, and `/user/mfa/disable`. Login forms accept `mfa_code` or a one-time recovery code.
+- `PASSWORD_*` settings control minimum length, character classes, password history, maximum age, and first-login password changes.
+- Failed-login locking supports both IP and account dimensions through `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_IP_LOCK_SECONDS`, `LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS`, and `LOGIN_ACCOUNT_LOCK_SECONDS`.
+- `POST /user/password/forgot` and `/user/password/reset` support email or SMS password recovery. Production must configure SMTP or an SMS webhook; recovery tokens are never returned in the response.
+- Optional OIDC/OAuth and LDAP login use `/auth/oidc/start`, `/auth/oidc/callback`, and `/auth/ldap/login` when the corresponding `OIDC_*` or `LDAP_*` settings are configured.
+
+### Tenants and permissions
+
+- Users, roles, menus, departments, posts, dictionaries, notices, files, jobs, configs, and logs carry `tenant_id`; reads and writes are filtered by the current tenant.
+- Startup synchronizes routes using `Auth.has_permission(...)` into `api_permission_catalog`.
+- Field permissions use `field:<resource>:<field>` and are bound through the role DTO's `field_permission_codes`. Sensitive user fields are hidden when the actor lacks the field permission.
+- Role and menu permission changes are recorded in `permission_change_versions` with actor, version, and before/after snapshots.
+
+### Files, notices, and operations
+
+- Files support signature detection, optional ClamAV scanning, OSS presigned URLs, local/OSS storage, chunked upload, and text redaction.
+- When `FILE_VIRUS_SCAN_ENABLED=true`, provide a reachable ClamAV service and configure `CLAMAV_HOST`/`CLAMAV_PORT`; the default Compose file does not include a ClamAV container.
+- The chunked upload flow is `POST /file/chunk/init`, `PUT /file/chunk/{upload_id}/{chunk_index}`, then `POST /file/chunk/complete`.
+- Text redaction is exposed through `GET /file/redacted/{file_id}` and requires `FILE_REDACTION_ENABLED=true`.
+- Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
+- Notices support recipients, inbox queries, unread filtering, and read state through `GET /notice/inbox/list` and `POST /notice/{notice_id}/read`.
+- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/ops/backup/create` endpoint. Backups are Fernet-encrypted and cleaned up according to the retention policy. Confirm the target database before restoring.
+
+### Jobs and observability
+
+- APScheduler remains the in-process scheduler; a Redis `SET NX EX` lock prevents duplicate execution across instances. Jobs support timeout, retry, pause/resume, and execution logs.
+- `SCHEDULER_DEFAULT_TIMEOUT_SECONDS`, `SCHEDULER_LOCK_TTL_SECONDS`, and `SCHEDULER_DEFAULT_MAX_RETRIES` define defaults; individual job DTOs can override timeout and retries.
+- `/metrics` exposes HTTP metrics plus MySQL/Redis readiness, job executions/durations, and alert delivery state. Configure `ALERT_WEBHOOK_URL` to send structured job-failure alerts.
+- Set `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT` to export FastAPI traces over OTLP. Log files are retained according to `LOG_RETENTION_DAYS`.
+
+### Migrations and Docker troubleshooting
+
+The current migration head is `0017_backup_permissions`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. `0009_scheduler_execution_controls` is also retry-safe when its DDL ran but the version update failed.
+
+```bash
+docker compose --env-file .env.development up -d --build
+docker compose --env-file .env.development logs -f fastapi-migrate
+poetry run python -m scripts.migrate_database
+```
+
+An `1045 Access denied` error means the credentials in the persistent MySQL volume differ from the selected environment file. A volume does not rotate passwords when `.env` changes: preserve data by rotating `fastapi_app` with the original root password; only use `docker compose down -v` for disposable development data. Never delete a production volume to resolve `1045`.
 
 ## License
 

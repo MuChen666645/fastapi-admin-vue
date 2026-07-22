@@ -13,6 +13,8 @@ class ScheduledJobDo(SQLModel, table=True):
 
     __tablename__ = "scheduled_jobs"
 
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+
     id: int | None = Field(title="任务编号", default=None, primary_key=True)
     job_name: str = Field(title="任务名称", max_length=100, index=True)
     job_key: str = Field(title="任务标识", max_length=100, unique=True, index=True)
@@ -23,6 +25,8 @@ class ScheduledJobDo(SQLModel, table=True):
         default="{}",
         sa_column=Column(Text, nullable=False),
     )
+    timeout_seconds: int = Field(title="超时时间", default=300, nullable=False)
+    max_retries: int = Field(title="最大重试次数", default=0, nullable=False)
     status: str = Field(title="任务状态", default="1", max_length=1, index=True)
     last_run_time: datetime | None = Field(title="上次执行时间", default=None)
     next_run_time: datetime | None = Field(title="下次执行时间", default=None)
@@ -39,6 +43,8 @@ class JobLogDo(SQLModel, table=True):
     """一次定时任务执行结果。"""
 
     __tablename__ = "job_logs"
+
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
 
     id: int | None = Field(title="日志编号", default=None, primary_key=True)
     job_id: int | None = Field(title="任务编号", default=None, index=True)

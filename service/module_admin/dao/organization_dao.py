@@ -13,6 +13,10 @@ from utils.time_utils import now_utc8_naive
 
 
 class OrganizationDao:
+    @staticmethod
+    def _tenant_filter(model, request: Request):
+        tenant_id = getattr(request.state, "tenant_id", None)
+        return model.tenant_id == tenant_id if tenant_id is not None else True
     """部门和岗位数据库操作。"""
 
     @staticmethod
@@ -24,14 +28,19 @@ class OrganizationDao:
         elif model is PostDo:
             if not await DataScopeService.can_access_post(item_id, request):
                 return None
-        return await request.state.mysql.get(model, item_id)
+        key = DepartmentDo.dept_id if model is DepartmentDo else PostDo.post_id
+        result = await request.state.mysql.execute(
+            select(model).where(key == item_id, OrganizationDao._tenant_filter(model, request))
+        )
+        return result.scalars().first()
 
     @staticmethod
     async def list_departments(request: Request, name: str | None, status: str | None):
         """按名称和状态查询部门。"""
         scope = await DataScopeService.resolve(request)
         query = select(DepartmentDo).where(
-            scope.department_id_clause(DepartmentDo.dept_id)
+            scope.department_id_clause(DepartmentDo.dept_id),
+            OrganizationDao._tenant_filter(DepartmentDo, request),
         ).order_by(DepartmentDo.order_num, DepartmentDo.dept_id)
         if name:
             query = query.where(DepartmentDo.dept_name.contains(name))
@@ -53,7 +62,13 @@ class OrganizationDao:
                 and not await DataScopeService.can_access_department(parent_id, request)
             ):
                 return "No data permission"
-            parent = await mysql.get(DepartmentDo, parent_id)
+            parent_result = await mysql.execute(
+                select(DepartmentDo).where(
+                    DepartmentDo.dept_id == parent_id,
+                    OrganizationDao._tenant_filter(DepartmentDo, request),
+                )
+            )
+            parent = parent_result.scalars().first()
             if parent is None:
                 return "父部门不存在"
         if not parent and getattr(request.state, "user_id", None) is not None:
@@ -62,7 +77,13 @@ class OrganizationDao:
                 return "No data permission"
         ancestors = f"{parent.ancestors},{parent.dept_id}".strip(",") if parent else "0"
         values["parent_id"] = parent_id
-        mysql.add(DepartmentDo(**values, ancestors=ancestors))
+        mysql.add(
+            DepartmentDo(
+                **values,
+                ancestors=ancestors,
+                tenant_id=getattr(request.state, "tenant_id", None),
+            )
+        )
         return None
 
     @staticmethod
@@ -97,7 +118,8 @@ class OrganizationDao:
                 select(DepartmentDo).where(
                     DataScopeService._department_descendant_clause(
                         DepartmentDo.ancestors, dept_id
-                    )
+                    ),
+                    OrganizationDao._tenant_filter(DepartmentDo, request),
                 )
             )
             for child in child_result.scalars().all():
@@ -118,12 +140,18 @@ class OrganizationDao:
         if dept is None:
             return "部门不存在"
         child_result = await mysql.execute(
-            select(DepartmentDo.dept_id).where(DepartmentDo.parent_id == dept_id).limit(1)
+            select(DepartmentDo.dept_id).where(
+                DepartmentDo.parent_id == dept_id,
+                OrganizationDao._tenant_filter(DepartmentDo, request),
+            ).limit(1)
         )
         if child_result.scalars().first() is not None:
             return "部门存在子部门，不能删除"
         user_result = await mysql.execute(
-            select(UserDo.id).where(UserDo.dept_id == dept_id).limit(1)
+            select(UserDo.id).where(
+                UserDo.dept_id == dept_id,
+                UserDo.tenant_id == getattr(request.state, "tenant_id", UserDo.tenant_id),
+            ).limit(1)
         )
         if user_result.scalars().first() is not None:
             return "部门存在用户，不能删除"
@@ -137,7 +165,8 @@ class OrganizationDao:
         """按名称和状态查询岗位。"""
         scope = await DataScopeService.resolve(request)
         query = select(PostDo).where(
-            scope.post_id_clause(PostDo.post_id)
+            scope.post_id_clause(PostDo.post_id),
+            OrganizationDao._tenant_filter(PostDo, request),
         ).order_by(PostDo.post_sort, PostDo.post_id)
         if name:
             query = query.where(PostDo.post_name.contains(name))
@@ -153,7 +182,12 @@ class OrganizationDao:
             scope = await DataScopeService.resolve(request)
             if not scope.all_data:
                 return "No data permission"
-        mysql.add(PostDo(**data.model_dump()))
+        mysql.add(
+            PostDo(
+                **data.model_dump(),
+                tenant_id=getattr(request.state, "tenant_id", None),
+            )
+        )
         return None
 
     @staticmethod

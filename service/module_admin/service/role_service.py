@@ -9,6 +9,7 @@ from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
 from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
                                               CreateRoleDto, RoleListDto,
                                               UpdataRoleDto)
+from module_admin.service.permission_audit_service import PermissionAuditService
 
 
 class RoleService:
@@ -100,10 +101,20 @@ class RoleService:
             request,
             permission_change=bool(roles.menu_ids)
             or roles.data_scope != "5"
-            or bool(roles.dept_ids),
+            or bool(roles.dept_ids)
+            or bool(roles.field_permission_codes),
         )
         try:
-            await RoleDao.create_role_by_role_name(roles, request)
+            role = await RoleDao.create_role_by_role_name(roles, request)
+            if role is not None:
+                await PermissionAuditService.record(
+                    request,
+                    "role",
+                    role.id,
+                    "create",
+                    None,
+                    role.model_dump(),
+                )
         except RoleCodeConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
@@ -159,6 +170,14 @@ class RoleService:
         result = await RoleDao.del_role_by_id(role_id, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        await PermissionAuditService.record(
+            request,
+            "role",
+            role_id,
+            "delete",
+            role,
+            None,
+        )
         return None
 
     @staticmethod
@@ -179,6 +198,14 @@ class RoleService:
         result = await RoleDao.del_role_by_name(role_name, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        await PermissionAuditService.record(
+            request,
+            "role",
+            role.id,
+            "delete",
+            role.model_dump(),
+            None,
+        )
         return None
 
     @staticmethod
@@ -215,10 +242,19 @@ class RoleService:
             [role_id],
             permission_change=roles.menu_ids is not None
             or roles.data_scope is not None
-            or roles.dept_ids is not None,
+            or roles.dept_ids is not None
+            or roles.field_permission_codes is not None,
         )
         try:
             role = await RoleDao.upd_role_by_id(roles, request, role_id)
+            await PermissionAuditService.record(
+                request,
+                "role",
+                role_id,
+                "update",
+                current_role,
+                roles.model_dump(exclude_unset=True),
+            )
         except RoleCodeConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
@@ -260,6 +296,7 @@ class RoleService:
             )
         if any(RoleService._is_admin_code(role.code) for role in role_models):
             raise HTTPException(status_code=403, detail="超级管理员角色禁止修改")
+        previous_status = {role.id: role.status for role in role_models}
         await RoleService._ensure_role_write_scope(
             request, unique_role_ids, global_mutation=True
         )
@@ -268,4 +305,13 @@ class RoleService:
         )
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        for role in role_models:
+            await PermissionAuditService.record(
+                request,
+                "role",
+                role.id,
+                "status",
+                {"status": previous_status[role.id]},
+                {"status": roles.status},
+            )
         return None

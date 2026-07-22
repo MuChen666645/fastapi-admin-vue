@@ -1,6 +1,6 @@
 """ 角色模块控制器. """
 
-from fastapi import APIRouter, Depends, FastAPI, Path, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, File, Path, Query, Request, UploadFile
 from module_admin.service.role_service import RoleService
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.entity.dto.role_dto import (
@@ -12,6 +12,7 @@ from module_admin.entity.dto.role_dto import (
 )
 from module_admin.auth.authorization import Auth
 from fastapi_pagination import Page, Params
+from module_admin.service.excel_service import ExcelService
 
 
 class RoleController:
@@ -34,6 +35,31 @@ class RoleController:
     async def create_role(roles: CreateRoleDto, request: Request):
         """创建角色."""
         return await RoleService.create_role_services(roles, request)
+
+    @staticmethod
+    @role.get(
+        "/export",
+        summary="导出角色 Excel",
+        dependencies=[Depends(Auth.has_permission("system:role:list"))],
+        response_model=None,
+    )
+    async def export_roles(request: Request):
+        """导出当前租户角色。"""
+        return await ExcelService.export_roles(request)
+
+    @staticmethod
+    @role.post(
+        "/import",
+        summary="导入角色 Excel",
+        dependencies=[Depends(Auth.has_permission("system:role:add"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def import_roles(
+        request: Request,
+        file: UploadFile = File(..., description="角色 Excel 文件"),
+    ):
+        """按角色 DTO 导入角色。"""
+        return await ExcelService.import_roles(file, request)
 
     @staticmethod
     @role.get(

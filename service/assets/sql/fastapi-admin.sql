@@ -234,7 +234,9 @@ INSERT IGNORE INTO permissions (
     ('Job add', 'monitor:job:add', 'monitor', 'button', '/job/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job add'),
     ('Job edit', 'monitor:job:edit', 'monitor', 'button', '/job/{job_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job edit'),
     ('Job delete', 'monitor:job:remove', 'monitor', 'button', '/job/{job_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job delete'),
-    ('Job run', 'monitor:job:run', 'monitor', 'button', '/job/{job_id}/run', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job run');
+    ('Job run', 'monitor:job:run', 'monitor', 'button', '/job/{job_id}/run', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job run'),
+    ('Backup create', 'system:backup:create', 'system', 'button', '/ops/backup/create', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup create'),
+    ('Backup restore', 'system:backup:restore', 'system', 'button', '/ops/backup/restore', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup restore');
 INSERT IGNORE INTO menu (
     menu_id, parent_id, menu_name, icon, menu_path, component,
     is_hidden, is_cache, menu_type, sort, link_url, perms, status,

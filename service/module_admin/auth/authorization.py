@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import ipaddress
 import json
+import secrets
 import time
 import uuid
 
@@ -23,9 +24,36 @@ class Auth:
     # Redis Key 在所有应用进程之间共享。
     TOKEN_REDIS_PREFIX = "auth:token:"
     TOKEN_INDEX_KEY = "auth:token:index"
+    REFRESH_REDIS_PREFIX = "auth:refresh:"
+    REFRESH_REVOKED_PREFIX = "auth:refresh:revoked:"
     # Redis 不可用时使用的有界降级缓存，避免进程内存无限增长。
     MAX_MEMORY_TOKEN_CACHE_SIZE = 2048
     _token_cache: OrderedDict[str, dict] = OrderedDict()
+    _refresh_cache: dict[str, dict] = {}
+
+    # Redis 中一次性消费旧 Refresh Token 并写入新 Token，防止并发重放。
+    _ROTATE_REFRESH_SCRIPT = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+    return {-1, ''}
+end
+if redis.call('EXISTS', KEYS[3]) == 1 then
+    return {-2, ''}
+end
+local decoded, payload = pcall(cjson.decode, raw)
+if not decoded then
+    redis.call('DEL', KEYS[1])
+    return {-1, ''}
+end
+if payload.used == true then
+    redis.call('SET', KEYS[3], '1', 'EX', ARGV[2])
+    return {-2, ''}
+end
+payload.used = true
+redis.call('SET', KEYS[1], cjson.encode(payload), 'KEEPTTL')
+redis.call('SET', KEYS[2], ARGV[1], 'EX', ARGV[2])
+return {1, raw}
+"""
 
     @staticmethod
     def create_token(data: dict) -> str:
@@ -53,6 +81,41 @@ class Auth:
         return token
 
     @staticmethod
+    async def create_login_token_pair(data: dict, request: Request) -> tuple[str, str]:
+        """创建短期访问令牌和可轮换刷新令牌。"""
+        family_id = uuid.uuid4().hex
+        token_data = {**data, "family_id": family_id}
+        access_token = await Auth.create_login_token(token_data, request)
+        refresh_token = await Auth.create_refresh_token(
+            token_data,
+            request,
+            family_id=family_id,
+        )
+        return access_token, refresh_token
+
+    @staticmethod
+    async def create_refresh_token(
+        data: dict,
+        request: Request,
+        family_id: str | None = None,
+    ) -> str:
+        """签发只保存哈希索引的刷新令牌。"""
+        token = secrets.token_urlsafe(64)
+        now = time.time()
+        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        payload = {
+            "user_id": data.get("user_id"),
+            "username": data.get("username"),
+            "family_id": family_id or data.get("family_id") or uuid.uuid4().hex,
+            "password_changed_at": data.get("password_changed_at"),
+            "created_at": now,
+            "expires_at": now + ttl,
+            "used": False,
+        }
+        await Auth._store_refresh_payload(request, token, payload, ttl)
+        return token
+
+    @staticmethod
     async def verify_token(request: Request, Authorization: str | None) -> dict:
         """校验请求头、缓存记录、签名、有效期和用户 ID。"""
         if not Authorization:
@@ -76,7 +139,61 @@ class Auth:
             await Auth._delete_token_cache(request, token)
             raise HTTPException(status_code=401, detail="Invalid Token")
 
+        family_id = payload.get("family_id")
+        if family_id and await Auth._is_refresh_family_revoked(request, family_id):
+            await Auth._delete_token_cache(request, token)
+            raise HTTPException(status_code=401, detail="Session Revoked")
+
         return payload
+
+    @staticmethod
+    async def refresh_login_token(
+        refresh_token: str, request: Request
+    ) -> tuple[str, str, bool]:
+        """校验并轮换 Refresh Token，同时检查账号和密码版本。"""
+        payload, next_refresh = await Auth._rotate_refresh_token(
+            request, refresh_token
+        )
+        from module_admin.entity.do.user_do import UserDo
+
+        user = await request.state.mysql.get(UserDo, int(payload["user_id"]))
+        if user is None or str(user.status) != "1":
+            await Auth.revoke_refresh_family(request, payload["family_id"])
+            raise HTTPException(status_code=401, detail="Invalid Refresh Token")
+        current_password_version = (
+            user.password_changed_at.isoformat()
+            if user.password_changed_at is not None
+            else None
+        )
+        if current_password_version != payload.get("password_changed_at"):
+            await Auth.revoke_refresh_family(request, payload["family_id"])
+            raise HTTPException(status_code=401, detail="Refresh Token Expired")
+
+        data = {
+            "user_id": user.id,
+            "username": user.username,
+            "tenant_id": getattr(user, "tenant_id", None),
+            "family_id": payload["family_id"],
+            "password_changed_at": current_password_version,
+            "must_change_password": bool(
+                getattr(user, "must_change_password", False)
+            ),
+        }
+        access_token = await Auth.create_login_token(data, request)
+        return access_token, next_refresh, bool(
+            getattr(user, "must_change_password", False)
+        )
+
+    @staticmethod
+    async def revoke_refresh_family(request: Request, family_id: str) -> None:
+        """撤销 Refresh Token 族，阻止同族令牌继续刷新。"""
+        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        redis = getattr(request.app.state, "redis", None)
+        key = f"{Auth.REFRESH_REVOKED_PREFIX}{family_id}"
+        if redis is not None:
+            await redis.set(key, "1", ex=ttl)
+            return
+        Auth._refresh_cache[key] = {"payload": {"revoked": True}, "expire_at": time.time() + ttl}
 
     @staticmethod
     async def router_auth(
@@ -84,12 +201,33 @@ class Auth:
         Authorization: str | None = Header(default=None, description="Token"),
     ) -> dict:
         """认证请求并将已启用用户写入请求状态。"""
+        return await Auth._authenticate(request, Authorization, allow_password_change=False)
+
+    @staticmethod
+    async def allow_password_change(
+        request: Request,
+        Authorization: str | None = Header(default=None, description="Token"),
+    ) -> dict:
+        """允许被强制改密账号访问自助改密接口。"""
+        return await Auth._authenticate(request, Authorization, allow_password_change=True)
+
+    @staticmethod
+    async def _authenticate(
+        request: Request,
+        Authorization: str | None,
+        allow_password_change: bool,
+    ) -> dict:
+        """执行 Token、用户状态和强制改密状态校验。"""
         payload = await Auth.verify_token(request, Authorization)
         user_id = Auth._get_user_id(payload)
         user = await Auth._get_enabled_user(request, user_id)
 
+        if getattr(user, "must_change_password", False) and not allow_password_change:
+            raise HTTPException(status_code=403, detail="请先修改密码")
+
         request.state.auth_payload = payload
         request.state.user_id = user.id
+        request.state.tenant_id = getattr(user, "tenant_id", None)
         return payload
 
     @staticmethod
@@ -125,9 +263,11 @@ class Auth:
         request: Request, Authorization: str | None
     ) -> None:
         """校验并撤销当前登录 Token。"""
-        await Auth.verify_token(request, Authorization)
+        payload = await Auth.verify_token(request, Authorization)
         token = Auth._parse_authorization(Authorization)
         await Auth._delete_token_cache(request, token)
+        if payload.get("family_id"):
+            await Auth.revoke_refresh_family(request, payload["family_id"])
 
     @staticmethod
     def has_permission(permission_code: str):
@@ -147,6 +287,7 @@ class Auth:
                 return payload
             raise HTTPException(status_code=403, detail="Permission Denied")
 
+        permission_dependency.permission_code = permission_code
         return permission_dependency
 
     @staticmethod
@@ -169,6 +310,119 @@ class Auth:
         """构造 Redis Key，避免在 Key 中保存原始 JWT。"""
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         return f"{Auth.TOKEN_REDIS_PREFIX}{token_hash}"
+
+    @staticmethod
+    def _get_refresh_cache_key(token: str) -> str:
+        """构造不包含原始 Refresh Token 的 Redis Key。"""
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        return f"{Auth.REFRESH_REDIS_PREFIX}{token_hash}"
+
+    @staticmethod
+    async def _store_refresh_payload(
+        request: Request, token: str, payload: dict, ttl: int
+    ) -> None:
+        """将刷新令牌状态写入共享 Redis 或测试用内存存储。"""
+        key = Auth._get_refresh_cache_key(token)
+        redis = getattr(request.app.state, "redis", None)
+        if redis is not None:
+            await redis.set(key, json.dumps(payload), ex=ttl)
+            return
+        Auth._refresh_cache[key] = {
+            "payload": payload,
+            "expire_at": time.time() + ttl,
+        }
+
+    @staticmethod
+    async def _is_refresh_family_revoked(request: Request, family_id: str) -> bool:
+        """判断刷新令牌族是否已被撤销。"""
+        key = f"{Auth.REFRESH_REVOKED_PREFIX}{family_id}"
+        redis = getattr(request.app.state, "redis", None)
+        if redis is not None:
+            return await redis.get(key) is not None
+        cached = Auth._refresh_cache.get(key)
+        if cached is None or cached.get("expire_at", 0) <= time.time():
+            Auth._refresh_cache.pop(key, None)
+            return False
+        return True
+
+    @staticmethod
+    async def _rotate_refresh_token(
+        request: Request, refresh_token: str
+    ) -> tuple[dict, str]:
+        """原子消费旧令牌并写入新令牌，重放时撤销整个令牌族。"""
+        old_key = Auth._get_refresh_cache_key(refresh_token)
+        redis = getattr(request.app.state, "redis", None)
+        if redis is None or hasattr(redis, "_data"):
+            cached = Auth._refresh_cache.get(old_key)
+            if redis is not None:
+                raw = await redis.get(old_key)
+                if raw is not None:
+                    cached = {"payload": json.loads(raw), "expire_at": time.time() + 1}
+            if cached is None or cached.get("expire_at", 0) <= time.time():
+                raise HTTPException(status_code=401, detail="Invalid Refresh Token")
+            payload = dict(cached["payload"])
+            family_id = payload.get("family_id")
+            if not family_id or await Auth._is_refresh_family_revoked(request, family_id):
+                raise HTTPException(status_code=401, detail="Invalid Refresh Token")
+            if payload.get("used"):
+                await Auth.revoke_refresh_family(request, family_id)
+                raise HTTPException(status_code=401, detail="Refresh Token Reused")
+
+            payload["used"] = True
+            if redis is not None:
+                await redis.set(old_key, json.dumps(payload), ex=60)
+            else:
+                cached["payload"] = payload
+            next_token = secrets.token_urlsafe(64)
+            next_payload = {
+                **payload,
+                "used": False,
+                "created_at": time.time(),
+                "expires_at": time.time()
+                + settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            }
+            await Auth._store_refresh_payload(
+                request,
+                next_token,
+                next_payload,
+                settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            )
+            payload.pop("used", None)
+            return payload, next_token
+
+        raw_new_token = secrets.token_urlsafe(64)
+        family_id = None
+        old_raw = await redis.get(old_key)
+        if old_raw is not None:
+            try:
+                family_id = json.loads(old_raw).get("family_id")
+            except (TypeError, json.JSONDecodeError):
+                family_id = None
+        if not family_id:
+            raise HTTPException(status_code=401, detail="Invalid Refresh Token")
+        new_payload = {
+            **json.loads(old_raw),
+            "used": False,
+            "created_at": time.time(),
+            "expires_at": time.time()
+            + settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        }
+        ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        result = await redis.eval(
+            Auth._ROTATE_REFRESH_SCRIPT,
+            3,
+            old_key,
+            Auth._get_refresh_cache_key(raw_new_token),
+            f"{Auth.REFRESH_REVOKED_PREFIX}{family_id}",
+            json.dumps(new_payload),
+            ttl,
+        )
+        status = int(result[0])
+        if status == -2:
+            raise HTTPException(status_code=401, detail="Refresh Token Reused")
+        if status != 1:
+            raise HTTPException(status_code=401, detail="Invalid Refresh Token")
+        return json.loads(result[1]), raw_new_token
 
     @staticmethod
     def _get_payload_ttl(payload: dict) -> int:
@@ -362,6 +616,17 @@ class Auth:
 
             if not await DataScopeService.can_access_user(user_id, request):
                 return 0
+        targets = [item for item in sessions if str(item.get("user_id")) == str(user_id)]
+        for session in targets:
+            await Auth._delete_cache_key(
+                request, f"{Auth.TOKEN_REDIS_PREFIX}{session['token_id']}"
+            )
+        return len(targets)
+
+    @staticmethod
+    async def revoke_all_user_tokens(request: Request, user_id: int) -> int:
+        """在密码找回等系统流程中撤销用户全部 Access Token。"""
+        sessions = await Auth.list_online_tokens(request)
         targets = [item for item in sessions if str(item.get("user_id")) == str(user_id)]
         for session in targets:
             await Auth._delete_cache_key(

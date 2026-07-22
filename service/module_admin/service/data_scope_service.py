@@ -62,6 +62,11 @@ class DataScopeService:
     SELF = "5"
 
     @staticmethod
+    def _tenant_filter(model, request: Request):
+        tenant_id = getattr(request.state, "tenant_id", None)
+        return model.tenant_id == tenant_id if tenant_id is not None else True
+
+    @staticmethod
     def _department_descendant_clause(column, department_id: int):
         """按完整祖先片段匹配部门 ID，避免子串误匹配。"""
         ancestry = func.concat(",", column, ",")
@@ -90,6 +95,7 @@ class DataScopeService:
         role_result = await mysql.execute(
             select(RoleDo).where(
                 RoleDo.status == "1",
+                DataScopeService._tenant_filter(RoleDo, request),
                 or_(RoleDo.id == legacy_role_id, RoleDo.id.in_(assigned_role_ids)),
             )
         )
@@ -124,7 +130,10 @@ class DataScopeService:
             department_ids.update(result.scalars().all())
 
         current_dept_result = await mysql.execute(
-            select(UserDo.dept_id).where(UserDo.id == actor_user_id)
+                select(UserDo.dept_id).where(
+                    UserDo.id == actor_user_id,
+                    DataScopeService._tenant_filter(UserDo, request),
+                )
         )
         current_dept_id = current_dept_result.scalars().first()
         if current_dept_id and DataScopeService.CURRENT_DEPARTMENT in scope_codes:
@@ -132,6 +141,7 @@ class DataScopeService:
         if current_dept_id and DataScopeService.DEPARTMENT_AND_CHILDREN in scope_codes:
             result = await mysql.execute(
                 select(DepartmentDo.dept_id).where(
+                    DataScopeService._tenant_filter(DepartmentDo, request),
                     or_(
                         DepartmentDo.dept_id == current_dept_id,
                         DataScopeService._department_descendant_clause(
@@ -159,6 +169,7 @@ class DataScopeService:
         result = await request.state.mysql.execute(
             select(UserDo.id).where(
                 UserDo.id == user_id,
+                DataScopeService._tenant_filter(UserDo, request),
                 scope.user_id_clause(UserDo.id),
             )
         )
@@ -173,6 +184,7 @@ class DataScopeService:
         result = await request.state.mysql.execute(
             select(DepartmentDo.dept_id).where(
                 DepartmentDo.dept_id == dept_id,
+                DataScopeService._tenant_filter(DepartmentDo, request),
                 scope.department_id_clause(DepartmentDo.dept_id),
             )
         )
@@ -187,6 +199,7 @@ class DataScopeService:
         result = await request.state.mysql.execute(
             select(PostDo.post_id).where(
                 PostDo.post_id == post_id,
+                DataScopeService._tenant_filter(PostDo, request),
                 scope.post_id_clause(PostDo.post_id),
             )
         )
@@ -199,7 +212,12 @@ class DataScopeService:
         if scope.all_data:
             return True
         result = await request.state.mysql.execute(
-            select(UserPostDo.user_id).where(UserPostDo.post_id == post_id)
+            select(UserPostDo.user_id)
+            .join(PostDo, PostDo.post_id == UserPostDo.post_id)
+            .where(
+                UserPostDo.post_id == post_id,
+                DataScopeService._tenant_filter(PostDo, request),
+            )
         )
         assigned_user_ids = set(result.scalars().all())
         if not assigned_user_ids:
@@ -218,12 +236,16 @@ class DataScopeService:
         scope = await DataScopeService.resolve(request)
         if scope.all_data:
             result = await request.state.mysql.execute(
-                select(UserDo.id).where(UserDo.id.in_(unique_user_ids))
+                select(UserDo.id).where(
+                    UserDo.id.in_(unique_user_ids),
+                    DataScopeService._tenant_filter(UserDo, request),
+                )
             )
             return set(result.scalars().all())
         result = await request.state.mysql.execute(
             select(UserDo.id).where(
                 UserDo.id.in_(unique_user_ids),
+                DataScopeService._tenant_filter(UserDo, request),
                 scope.user_id_clause(UserDo.id),
             )
         )
@@ -238,12 +260,16 @@ class DataScopeService:
         scope = await DataScopeService.resolve(request)
         if scope.all_data:
             result = await request.state.mysql.execute(
-                select(PostDo.post_id).where(PostDo.post_id.in_(unique_post_ids))
+                select(PostDo.post_id).where(
+                    PostDo.post_id.in_(unique_post_ids),
+                    DataScopeService._tenant_filter(PostDo, request),
+                )
             )
             return set(result.scalars().all())
         result = await request.state.mysql.execute(
             select(PostDo.post_id).where(
                 PostDo.post_id.in_(unique_post_ids),
+                DataScopeService._tenant_filter(PostDo, request),
                 scope.post_id_clause(PostDo.post_id),
             )
         )

@@ -26,8 +26,10 @@ from middleware.observability_middleware import (
     ObservabilityMiddleware,
 )
 from middleware.response_intercept import ResponseInterceptor
+from middleware.telemetry import configure_telemetry
 from module_admin.v1 import AdminAPI
 from module_admin.service.job_scheduler import JobScheduler, TaskHandler
+from module_admin.service.permission_sync_service import PermissionSyncService
 from utils.fastapi_admin import FastApiAdmin
 
 # 静态资源必须以入口文件位置为基准，避免从其他工作目录启动时失效。
@@ -63,10 +65,17 @@ async def lifespan(app: FastAPI):
             engine, session_factory = await mysql_factory(app_settings)
         app.state.mysql_engine = engine
         app.state.mysql_session_factory = session_factory
+        await PermissionSyncService.sync(app, session_factory)
         if app_settings.SCHEDULER_ENABLED:
             scheduler = JobScheduler(
                 lambda: app.state.mysql_session_factory,
                 timezone=app_settings.SCHEDULER_TIMEZONE,
+                redis=app.state.redis,
+                default_timeout=app_settings.SCHEDULER_DEFAULT_TIMEOUT_SECONDS,
+                lock_ttl=app_settings.SCHEDULER_LOCK_TTL_SECONDS,
+                default_max_retries=app_settings.SCHEDULER_DEFAULT_MAX_RETRIES,
+                metrics=app.state.metrics,
+                alert_webhook_url=app_settings.ALERT_WEBHOOK_URL,
             )
             for task_name, handler in getattr(app.state, "job_tasks", {}).items():
                 scheduler.register_task(task_name, handler)
@@ -121,6 +130,7 @@ def create_app(
     application.state.scheduler = None
     application.state.job_tasks = job_tasks or {}
     application.state.metrics = ApplicationMetrics.create()
+    configure_telemetry(application, configured_settings)
     if redis_factory is not None:
         application.state.redis_factory = redis_factory
     if mysql_factory is not None:

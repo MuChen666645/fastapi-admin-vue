@@ -15,6 +15,14 @@ class RoleDo(SQLModel, table=True):
     id: int = Field(primary_key=True, description="Role ID")
     name: str = Field(max_length=100, nullable=False, unique=True)
     code: str = Field(max_length=100, nullable=False, unique=True)
+    tenant_id: int | None = Field(
+        default=None,
+        foreign_key="tenants.id",
+        ondelete="RESTRICT",
+        nullable=True,
+        index=True,
+        description="租户ID",
+    )
     description: str = Field(max_length=255)
     create_time: datetime = Field(default_factory=now_utc8_naive)
     update_time: datetime = Field(default_factory=now_utc8_naive)
@@ -39,6 +47,25 @@ class RoleMenuDo(SQLModel, table=True):
     )
     menu_id: int = Field(
         foreign_key="menu.menu_id",
+        ondelete="CASCADE",
+        nullable=False,
+        primary_key=True,
+    )
+
+
+class RolePermissionDo(SQLModel, table=True):
+    """角色与非菜单权限目录的关联模型。"""
+
+    __tablename__ = "role_permission"
+
+    role_id: int = Field(
+        foreign_key="roles.id",
+        ondelete="CASCADE",
+        nullable=False,
+        primary_key=True,
+    )
+    permission_id: int = Field(
+        foreign_key="permissions.id",
         ondelete="CASCADE",
         nullable=False,
         primary_key=True,

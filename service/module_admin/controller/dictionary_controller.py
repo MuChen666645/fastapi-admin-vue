@@ -1,6 +1,6 @@
 """字典模块控制器。"""
 
-from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi import APIRouter, Depends, File, Path, Query, Request, UploadFile
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
@@ -14,6 +14,7 @@ from module_admin.entity.dto.dictionary_dto import (
 )
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.dictionary_service import DictionaryService
+from module_admin.service.excel_service import ExcelService
 
 
 def permission(code: str):
@@ -25,6 +26,29 @@ class DictionaryController:
     """字典类型和字典数据接口。"""
 
     dictionary = APIRouter(prefix="/dict", tags=["字典模块"])
+
+    @dictionary.get(
+        "/export",
+        summary="导出字典 Excel",
+        dependencies=permission("system:dict:list"),
+        response_model=None,
+    )
+    async def export_dictionary(request: Request):
+        """导出当前租户字典。"""
+        return await ExcelService.export_dictionary(request)
+
+    @dictionary.post(
+        "/import",
+        summary="导入字典 Excel",
+        dependencies=permission("system:dict:add"),
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def import_dictionary(
+        request: Request,
+        file: UploadFile = File(..., description="字典 Excel 文件"),
+    ):
+        """导入字典类型及字典数据。"""
+        return await ExcelService.import_dictionary(file, request)
 
     @dictionary.get(
         "/type/list",

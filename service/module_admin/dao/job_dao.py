@@ -9,12 +9,18 @@ from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 
 
 class JobDao:
+    @staticmethod
+    def _tenant_filter(model, request: Request):
+        tenant_id = getattr(request.state, "tenant_id", None)
+        return model.tenant_id == tenant_id if tenant_id is not None else True
     """持久化定时任务和执行日志。"""
 
     @staticmethod
     async def list_jobs(request: Request, name: str | None, status: str | None, params: Params):
         """按名称和状态分页查询定时任务。"""
-        query = select(ScheduledJobDo).order_by(ScheduledJobDo.id.desc())
+        query = select(ScheduledJobDo).where(
+            JobDao._tenant_filter(ScheduledJobDo, request)
+        ).order_by(ScheduledJobDo.id.desc())
         if name:
             query = query.where(ScheduledJobDo.job_name.contains(name))
         if status is not None:
@@ -24,13 +30,22 @@ class JobDao:
     @staticmethod
     async def get_by_id(job_id: int, request: Request) -> ScheduledJobDo | None:
         """按编号查询定时任务。"""
-        return await request.state.mysql.get(ScheduledJobDo, job_id)
+        result = await request.state.mysql.execute(
+            select(ScheduledJobDo).where(
+                ScheduledJobDo.id == job_id,
+                JobDao._tenant_filter(ScheduledJobDo, request),
+            )
+        )
+        return result.scalars().first()
 
     @staticmethod
     async def get_by_key(job_key: str, request: Request) -> ScheduledJobDo | None:
         """按任务标识查询定时任务。"""
         result = await request.state.mysql.execute(
-            select(ScheduledJobDo).where(ScheduledJobDo.job_key == job_key)
+            select(ScheduledJobDo).where(
+                ScheduledJobDo.job_key == job_key,
+                JobDao._tenant_filter(ScheduledJobDo, request),
+            )
         )
         return result.scalars().first()
 
@@ -40,6 +55,7 @@ class JobDao:
         item = ScheduledJobDo(
             **data.model_dump(),
             create_by=getattr(request.state, "user_id", None),
+            tenant_id=getattr(request.state, "tenant_id", None),
         )
         request.state.mysql.add(item)
         return item
@@ -47,7 +63,7 @@ class JobDao:
     @staticmethod
     async def update(job_id: int, data, request: Request) -> ScheduledJobDo | None:
         """更新定时任务实体。"""
-        item = await request.state.mysql.get(ScheduledJobDo, job_id)
+        item = await JobDao.get_by_id(job_id, request)
         if item is None:
             return None
         item.sqlmodel_update(data.model_dump(exclude_unset=True))
@@ -56,7 +72,7 @@ class JobDao:
     @staticmethod
     async def delete(job_id: int, request: Request) -> ScheduledJobDo | None:
         """删除定时任务实体。"""
-        item = await request.state.mysql.get(ScheduledJobDo, job_id)
+        item = await JobDao.get_by_id(job_id, request)
         if item is not None:
             await request.state.mysql.delete(item)
         return item
@@ -66,7 +82,10 @@ class JobDao:
         """分页查询定时任务执行日志。"""
         query = (
             select(JobLogDo)
-            .where(JobLogDo.job_id == job_id)
+            .where(
+                JobLogDo.job_id == job_id,
+                JobDao._tenant_filter(JobLogDo, request),
+            )
             .order_by(JobLogDo.id.desc())
         )
         return await paginate(request.state.mysql, query, params=params)

@@ -9,6 +9,7 @@ from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
+from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
 from module_admin.entity.do.log_do import ExceptionLogDo, OperationLogDo
@@ -30,6 +31,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         logger.add(
             "{time:YYYY-MM-DD}.log",
             rotation="1 week",
+            retention=f"{settings.LOG_RETENTION_DAYS} days",
             enqueue=True,
             serialize=True,
             level="INFO",
@@ -37,6 +39,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         logger.add(
             "{time:YYYY-MM-DD}.debug.log",
             rotation="1 week",
+            retention=f"{settings.LOG_RETENTION_DAYS} days",
             enqueue=True,
             serialize=True,
             level="ERROR",
@@ -85,6 +88,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             await LogDao.create_operation(
                 OperationLogDo(
                     user_id=user_id,
+                    tenant_id=getattr(request.state, "tenant_id", None),
                     username=payload.get("username"),
                     method=request.method,
                     path=request.url.path,
@@ -114,6 +118,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             await LogDao.create_exception(
                 ExceptionLogDo(
                     user_id=getattr(request.state, "user_id", None),
+                    tenant_id=getattr(request.state, "tenant_id", None),
                     username=payload.get("username"),
                     method=request.method,
                     path=request.url.path,

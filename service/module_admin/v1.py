@@ -19,6 +19,8 @@ from module_admin.controller.file_controller import FileController
 from module_admin.controller.job_controller import JobController
 from module_admin.controller.notice_controller import NoticeController
 from module_admin.controller.system_config_controller import SystemConfigController
+from module_admin.controller.external_auth_controller import ExternalAuthController
+from module_admin.controller.backup_controller import BackupController
 
 
 class AdminAPI:
@@ -50,6 +52,8 @@ class AdminAPI:
         """初始化路由."""
         db_dependencies = [Depends(bind_request_mysql_session)]
         app.include_router(HealthController.health)
+        app.include_router(ExternalAuthController.auth, dependencies=db_dependencies)
+        app.include_router(BackupController.backup, dependencies=db_dependencies)
         app.include_router(UserController(app).user, dependencies=db_dependencies)
         app.include_router(CodeController(app).code)
         app.include_router(RoleController(app).role, dependencies=db_dependencies)

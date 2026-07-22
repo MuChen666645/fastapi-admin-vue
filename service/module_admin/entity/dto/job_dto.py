@@ -19,6 +19,8 @@ class ScheduledJobCreateDto(BaseModel):
     task_name: str = Field(title="处理器名称", min_length=1, max_length=200, description="处理器名称")
     cron_expression: str = Field(title="Cron 表达式", min_length=9, max_length=100, description="Cron 表达式")
     args_json: str = Field(title="任务参数", default="{}", max_length=10000, description="任务参数，必须是合法的 JSON")
+    timeout_seconds: int = Field(title="超时时间", default=300, gt=0, le=86400, description="单次执行超时时间")
+    max_retries: int = Field(title="最大重试次数", default=0, ge=0, le=10, description="失败后的自动重试次数")
     status: str = Field(title="任务状态", default="1", pattern="^[01]$", description="任务状态，0表示停用，1表示启用")
 
     @field_validator("args_json")
@@ -46,6 +48,8 @@ class ScheduledJobUpdateDto(BaseModel):
         title="Cron 表达式", default=None, min_length=9, max_length=100, description="Cron 表达式"
     )
     args_json: str | None = Field(title="任务参数", default=None, max_length=10000, description="任务参数，必须是合法的 JSON")
+    timeout_seconds: int | None = Field(title="超时时间", default=None, gt=0, le=86400, description="单次执行超时时间")
+    max_retries: int | None = Field(title="最大重试次数", default=None, ge=0, le=10, description="失败后的自动重试次数")
     status: str | None = Field(title="任务状态", default=None, pattern="^[01]$", description="任务状态，0表示停用，1表示启用")
 
     @field_validator("args_json")

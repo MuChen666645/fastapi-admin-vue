@@ -28,6 +28,17 @@ class NoticeService:
         return await NoticeDao.create(data, request)
 
     @staticmethod
+    async def list_inbox(request: Request, unread_only: bool, params: Params):
+        """查询当前用户通知收件箱。"""
+        return await NoticeDao.list_inbox(request, unread_only, params)
+
+    @staticmethod
+    async def mark_read(notice_id: int, request: Request) -> None:
+        """标记当前用户通知为已读。"""
+        if not await NoticeDao.mark_read(notice_id, request):
+            raise HTTPException(status_code=404, detail="通知公告不存在或不可见")
+
+    @staticmethod
     async def update(notice_id: int, data, request: Request):
         """更新通知公告。"""
         if await NoticeDao.update(notice_id, data, request) is None:

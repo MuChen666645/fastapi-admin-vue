@@ -21,6 +21,10 @@ class RoleDto(BaseModel):
 
 
 class CreateRoleDto(RoleDto):
+    field_permission_codes: list[str] = Field(
+        default_factory=list,
+        description="字段权限编码列表",
+    )
     """新增角色请求模型。"""
 
     name: str = Field(..., min_length=1, max_length=50, description="角色名称")
@@ -34,6 +38,10 @@ class CreateRoleDto(RoleDto):
 
 
 class UpdataRoleDto(RoleDto):
+    field_permission_codes: list[str] | None = Field(
+        default=None,
+        description="字段权限编码列表",
+    )
     """修改角色请求模型。"""
 
     menu_ids: list[int] | None = Field(default=None, description="菜单ID列表")
@@ -61,6 +69,10 @@ class RoleListDto(RoleDto):
 
 
 class RoleDetailDto(RoleListDto):
+    field_permission_codes: list[str] = Field(
+        default_factory=list,
+        description="字段权限编码列表",
+    )
     """角色详情响应模型。"""
 
     menu_ids: list[int] = Field(default_factory=list, description="菜单ID列表")

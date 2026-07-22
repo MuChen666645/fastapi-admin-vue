@@ -13,6 +13,8 @@ class SystemConfigDo(SQLModel, table=True):
 
     __tablename__ = "system_configs"
 
+    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+
     id: int | None = Field(title="参数编号", default=None, primary_key=True)
     config_name: str = Field(title="参数名称", max_length=100, index=True)
     config_key: str = Field(title="参数键名", max_length=100, unique=True, index=True)

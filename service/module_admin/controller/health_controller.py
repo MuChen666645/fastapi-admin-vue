@@ -22,6 +22,7 @@ class HealthController:
     async def ready(request: Request) -> dict[str, object]:
         """检查业务请求依赖的外部服务和数据库版本。"""
         checks: dict[str, str] = {}
+        metrics = getattr(request.app.state, "metrics", None)
 
         app_settings = getattr(request.app.state, "settings", settings)
         redis = getattr(request.app.state, "redis", None)
@@ -32,10 +33,16 @@ class HealthController:
                 redis.ping(), timeout=app_settings.READINESS_TIMEOUT_SECONDS
             )
             checks["redis"] = "ok"
+            if metrics is not None:
+                metrics.dependency_health.labels("redis").set(1)
         except asyncio.TimeoutError:
             checks["redis"] = "timeout"
+            if metrics is not None:
+                metrics.dependency_health.labels("redis").set(0)
         except Exception:
             checks["redis"] = "unavailable"
+            if metrics is not None:
+                metrics.dependency_health.labels("redis").set(0)
 
         session_factory = getattr(request.app.state, "mysql_session_factory", None)
         try:
@@ -45,6 +52,8 @@ class HealthController:
                 async with session_factory() as session:
                     await session.execute(text("SELECT 1"))
                     checks["mysql"] = "ok"
+                    if metrics is not None:
+                        metrics.dependency_health.labels("mysql").set(1)
                     version_result = await session.execute(
                         text("SELECT version_num FROM alembic_version LIMIT 1")
                     )
@@ -57,9 +66,13 @@ class HealthController:
         except asyncio.TimeoutError:
             checks.setdefault("mysql", "timeout")
             checks.setdefault("schema", "timeout")
+            if metrics is not None:
+                metrics.dependency_health.labels("mysql").set(0)
         except Exception:
             checks.setdefault("mysql", "unavailable")
             checks.setdefault("schema", "unavailable")
+            if metrics is not None:
+                metrics.dependency_health.labels("mysql").set(0)
 
         if any(status != "ok" for status in checks.values()):
             raise HTTPException(
