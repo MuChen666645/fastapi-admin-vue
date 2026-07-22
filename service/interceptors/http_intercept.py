@@ -1,6 +1,7 @@
 """HTTP异常拦截."""
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from jwt import PyJWTError
 from loguru import logger
@@ -45,7 +46,7 @@ class ApiExceptionInterception:
         """统一处理请求参数校验异常。"""
         raise HTTPException(
             status_code=422,
-            detail=str(exc),
+            detail=jsonable_encoder(exc.errors()),
         )
 
     @staticmethod

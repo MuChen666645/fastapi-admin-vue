@@ -12,6 +12,7 @@ from datetime import datetime
 from passlib.context import CryptContext
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
+from pathlib import Path
 
 
 class FastApiAdmin:
@@ -183,9 +184,10 @@ class FastApiAdmin:
             draw = ImageDraw.Draw(image)
             # 创建字体对象
             font = ImageFont.truetype(
-                os.path.join(
-                    os.path.abspath(os.getcwd()), "assets", "font", "AlimamaDaoLiTi.ttf"
-                ),
+                Path(__file__).resolve().parents[1]
+                / "assets"
+                / "font"
+                / "AlimamaDaoLiTi.ttf",
                 size=self.font_size,
             )
             # 绘制干扰点

@@ -7,6 +7,7 @@ from fastapi import Request
 from loguru import logger
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, create_async_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker
 
 from config.env import Settings, settings
@@ -34,13 +35,16 @@ class MysqlServe:
         """MySQL 连接错误。"""
 
     @staticmethod
-    def get_db_url(app_settings: Settings | None = None) -> str:
+    def get_db_url(app_settings: Settings | None = None) -> URL:
         """根据应用配置构造 MySQL 连接地址。"""
         app_settings = app_settings or settings
-        return (
-            f"mysql+aiomysql://{app_settings.MYSQL_USERNAME}:"
-            f"{app_settings.MYSQL_PASSWORD}@{app_settings.MYSQL_HOST}:"
-            f"{app_settings.MYSQL_POST}/{app_settings.MYSQL_DATABASES}"
+        return URL.create(
+            drivername="mysql+aiomysql",
+            username=app_settings.MYSQL_USERNAME,
+            password=app_settings.MYSQL_PASSWORD,
+            host=app_settings.MYSQL_HOST,
+            port=app_settings.MYSQL_POST,
+            database=app_settings.MYSQL_DATABASES,
         )
 
     @staticmethod

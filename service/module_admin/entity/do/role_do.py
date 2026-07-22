@@ -14,7 +14,7 @@ class RoleDo(SQLModel, table=True):
 
     id: int = Field(primary_key=True, description="Role ID")
     name: str = Field(max_length=100, nullable=False, unique=True)
-    code: str = Field(max_length=100, nullable=False)
+    code: str = Field(max_length=100, nullable=False, unique=True)
     description: str = Field(max_length=255)
     create_time: datetime = Field(default_factory=now_utc8_naive)
     update_time: datetime = Field(default_factory=now_utc8_naive)

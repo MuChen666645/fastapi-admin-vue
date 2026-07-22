@@ -13,6 +13,10 @@ from module_admin.entity.dto.role_dto import (CreateRoleDto, RoleListDto,
 from utils.time_utils import now_utc8_naive
 
 
+class RoleCodeConflictError(ValueError):
+    """角色编码已经被其他角色使用。"""
+
+
 class RoleDao:
     """持久化角色及其菜单、部门关联记录。"""
 
@@ -55,6 +59,18 @@ class RoleDao:
         return unique_menu_ids
 
     @staticmethod
+    async def _ensure_role_code_available(
+        mysql, code: str, role_id: int | None = None
+    ) -> None:
+        """在写入前检查角色编码，避免把可预期冲突暴露为数据库错误。"""
+        statement = select(RoleDo.id).where(RoleDo.code == code)
+        if role_id is not None:
+            statement = statement.where(RoleDo.id != role_id)
+        result = await mysql.execute(statement)
+        if result.scalar_one_or_none() is not None:
+            raise RoleCodeConflictError("角色编码已存在")
+
+    @staticmethod
     async def create_role_by_role_name(roles: CreateRoleDto, request: Request) -> None:
         """创建角色.
 
@@ -67,6 +83,7 @@ class RoleDao:
         """
         mysql = request.state.mysql
         role_data = roles.model_dump(exclude={"menu_ids", "dept_ids"})
+        await RoleDao._ensure_role_code_available(mysql, roles.code)
         menu_ids = await RoleDao._validate_menu_ids(mysql, roles.menu_ids)
         dept_ids = await RoleDao._validate_dept_ids(mysql, roles.dept_ids)
         role = RoleDo(**role_data)
@@ -193,6 +210,8 @@ class RoleDao:
         role_data = roles.model_dump(exclude_unset=True)
         menu_ids = role_data.pop("menu_ids", None)
         dept_ids = role_data.pop("dept_ids", None)
+        if roles.code is not None:
+            await RoleDao._ensure_role_code_available(mysql, roles.code, role_id)
         if role_data.get("data_scope") is None:
             role_data.pop("data_scope", None)
         if menu_ids is not None:

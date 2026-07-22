@@ -23,6 +23,8 @@ class RoleDto(BaseModel):
 class CreateRoleDto(RoleDto):
     """新增角色请求模型。"""
 
+    name: str = Field(..., min_length=1, max_length=50, description="角色名称")
+    code: str = Field(..., min_length=1, max_length=50, description="角色编码")
     data_scope: str = Field(default="5", pattern="^[1-5]$" , description="数据权限范围")
     menu_ids: list[int] = Field(default_factory=list , description="菜单ID列表")
     dept_ids: list[int] = Field(

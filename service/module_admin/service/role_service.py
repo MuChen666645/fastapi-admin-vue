@@ -5,7 +5,7 @@ from fastapi_pagination import Page, Params
 
 from config.env import settings
 from module_admin.auth.authorization import Auth
-from module_admin.dao.role_dao import RoleDao
+from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
 from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
                                               CreateRoleDto, RoleListDto,
                                               UpdataRoleDto)
@@ -104,6 +104,8 @@ class RoleService:
         )
         try:
             await RoleDao.create_role_by_role_name(roles, request)
+        except RoleCodeConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return None
@@ -217,6 +219,8 @@ class RoleService:
         )
         try:
             role = await RoleDao.upd_role_by_id(roles, request, role_id)
+        except RoleCodeConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if role is not None:

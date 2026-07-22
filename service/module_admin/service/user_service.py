@@ -171,6 +171,21 @@ class UserService:
         raise HTTPException(status_code=401, detail="密码错误")
 
     @staticmethod
+    async def _ensure_user_enabled(
+        request: Request, user, identifier: str
+    ) -> None:
+        """拒绝停用账号登录，并记录登录失败原因。"""
+        if str(getattr(user, "status", None)) != "1":
+            await UserService._record_login(
+                request,
+                identifier,
+                "0",
+                "用户已停用",
+                user.id,
+            )
+            raise HTTPException(status_code=403, detail="用户已停用")
+
+    @staticmethod
     async def create_user_by_username_services(
         users: RegisterUserRequestByUsernameDto, request: Request
     ) -> None:
@@ -211,6 +226,7 @@ class UserService:
             request,
         )
         await UserService._ensure_login_ip_allowed(request, users.username)
+        await UserService._ensure_user_enabled(request, user, users.username)
         token = await Auth.create_login_token(
             {"user_id": user.id, "username": user.username}, request
         )
@@ -249,6 +265,7 @@ class UserService:
             request,
         )
         await UserService._ensure_login_ip_allowed(request, users.phone)
+        await UserService._ensure_user_enabled(request, user, users.phone)
         token = await Auth.create_login_token(
             {"user_id": str(user.id), "username": user.username}, request
         )
