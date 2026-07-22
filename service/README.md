@@ -265,15 +265,51 @@ CREDENTIALS=false
 poetry install
 ```
 
-### 2. 准备 MySQL 与 Redis
+### 2. 选择本地运行环境
+
+应用根据 `APP_ENV` 读取 `.env.<APP_ENV>`；`APP_ENV_FILE` 仅由 Docker Compose 用于选择容器的 `env_file`。首次使用时复制对应示例并填写配置：
+
+```powershell
+Copy-Item .env.development.example .env.development
+Copy-Item .env.staging.example .env.staging
+Copy-Item .env.production.example .env.production
+```
+
+直接在宿主机运行时，staging/production 示例中的 `MYSQL_HOST=fastapi-mysql` 和 `REDIS_HOST=fastapi-redis` 应改为本机可访问的地址，例如 `127.0.0.1`；这两个服务名只适用于容器网络。
+
+PowerShell 启动命令：
+
+```powershell
+# development
+$env:APP_ENV = "development"
+poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+
+# staging
+$env:APP_ENV = "staging"
+poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+
+# production
+$env:APP_ENV = "production"
+poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+```
+
+Bash/Linux 启动命令：
+
+```bash
+APP_ENV=development poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+APP_ENV=staging poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+APP_ENV=production poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+```
+
+### 3. 准备 MySQL 与 Redis
 
 可以使用本机服务，也可以通过 Docker Compose 只启动依赖服务：
 
 ```bash
-docker compose up -d fastapi-mysql fastapi-redis
+docker compose --env-file .env.development up -d fastapi-mysql fastapi-redis
 ```
 
-### 3. 创建数据库
+### 4. 创建数据库
 
 如果没有使用 `docker-compose.yml` 中的默认数据库，请手动创建数据库：
 
@@ -281,15 +317,18 @@ docker compose up -d fastapi-mysql fastapi-redis
 CREATE DATABASE fastapi_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-数据库结构由 `fastapi-migrate` 或 `scripts.migrate_database` 在服务启动前迁移，初始数据脚本由部署阶段显式执行。开发环境执行迁移后，再执行 `assets/sql/fastapi-admin.sql`；预发布和正式环境请先复制对应的 `.example` 文件并替换全部占位值。
+数据库结构由 `fastapi-migrate` 或 `scripts.migrate_database` 在服务启动前迁移。没有 `alembic_version` 的旧安装会先标记为 `0001_initial_schema`，再升级到当前 head；持久化数据库卷不会因环境文件变化自动更换 MySQL 密码，改密前请先备份。
 
-### 4. 启动服务
+### 5. 迁移和初始化数据
+
+`APP_ENV` 决定迁移使用的数据库配置。运行迁移后，再显式执行初始化数据脚本：
 
 ```bash
-poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+poetry run python -m scripts.migrate_database
+mysql --host 127.0.0.1 --port 3306 --user YOUR_MYSQL_USER --password=YOUR_MYSQL_PASSWORD --database fastapi_admin < assets/sql/fastapi-admin.sql
 ```
 
-启动成功后访问：
+服务启动成功后访问：
 
 - API 服务：`http://127.0.0.1:3000`
 - Swagger 文档：`http://127.0.0.1:3000/docs`
@@ -298,25 +337,43 @@ poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 
 ## Docker 部署
 
-### 构建并启动全部服务
+### 1. 选择 Docker 环境
+
+先复制并填写对应的环境文件。`--env-file` 同时提供 Compose 插值变量，`APP_ENV_FILE` 再让应用、迁移、MySQL 和 Redis 容器加载同一份配置。
+
+development：
 
 ```bash
-docker compose up --build --watch
+docker compose --env-file .env.development up -d --build
 ```
 
-生产环境需要准备证书文件 `certs/fullchain.pem` 和 `certs/privkey.pem`，然后启用 `fastapi-edge` profile：
+staging：
+
+```bash
+docker compose --env-file .env.staging up -d --build
+```
+
+production：准备证书文件 `certs/fullchain.pem` 和 `certs/privkey.pem`，然后启用 `fastapi-edge` profile：
 
 ```bash
 docker compose --env-file .env.production --profile production up -d --build
 ```
 
-### 查看日志
+首次部署后执行初始化数据脚本（迁移服务会先完成 schema 迁移）：
+
+```bash
+docker compose --env-file .env.development exec -T fastapi-mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fastapi_admin' < assets/sql/fastapi-admin.sql
+```
+
+staging/production 将命令中的 `.env.development` 替换为对应环境文件。生产环境不要使用开发环境配置或 `--watch`。
+
+### 2. 查看日志
 
 ```bash
 docker compose logs -f fastapi-app
 ```
 
-### 停止服务
+### 3. 停止服务
 
 ```bash
 docker compose down
@@ -828,7 +885,43 @@ For staging or production, copy the example file, replace every `REPLACE_WITH_..
 poetry install
 ```
 
-### 2. Prepare MySQL and Redis
+### 2. Select the local environment
+
+The application reads `.env.<APP_ENV>` according to `APP_ENV`. `APP_ENV_FILE` is used by Docker Compose to select the container `env_file`; it does not select the file for a direct `uvicorn` process. Copy the matching example and fill in its values before starting:
+
+```powershell
+Copy-Item .env.development.example .env.development
+Copy-Item .env.staging.example .env.staging
+Copy-Item .env.production.example .env.production
+```
+
+When running directly on the host, change `MYSQL_HOST=fastapi-mysql` and `REDIS_HOST=fastapi-redis` in staging/production configurations to reachable host addresses such as `127.0.0.1`; those service names are available only inside the Compose network.
+
+PowerShell commands:
+
+```powershell
+# development
+$env:APP_ENV = "development"
+poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+
+# staging
+$env:APP_ENV = "staging"
+poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+
+# production
+$env:APP_ENV = "production"
+poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+```
+
+Bash/Linux commands:
+
+```bash
+APP_ENV=development poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+APP_ENV=staging poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+APP_ENV=production poetry run uvicorn main:app --host 0.0.0.0 --port 3000
+```
+
+### 3. Prepare MySQL and Redis
 
 You can use local services or start only the dependency services with Docker Compose:
 
@@ -836,7 +929,7 @@ You can use local services or start only the dependency services with Docker Com
 docker compose --env-file .env.development up -d fastapi-mysql fastapi-redis
 ```
 
-### 3. Create the database
+### 4. Create the database
 
 If you are not using the default database from `docker-compose.yml`, create it manually:
 
@@ -844,17 +937,15 @@ If you are not using the default database from `docker-compose.yml`, create it m
 CREATE DATABASE fastapi_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Database schema changes are managed by the migration service before the application starts. Run `poetry run python -m scripts.migrate_database` for local or direct deployments, then execute `assets/sql/fastapi-admin.sql` once to load seed data. Existing installations without `alembic_version` are detected, stamped at `0001_initial_schema`, and upgraded to the current head. A persistent database volume does not rotate its MySQL password when `.env` changes; rotate the credential explicitly or use a new volume only after taking a backup.
+Database schema changes are managed by the migration service before the application starts. Existing installations without `alembic_version` are detected, stamped at `0001_initial_schema`, and upgraded to the current head. A persistent database volume does not rotate its MySQL password when an environment file changes; rotate the credential explicitly or use a new volume only after taking a backup.
+
+### 5. Migrate and seed data
+
+`APP_ENV` determines which database configuration the migration uses. Run the migration and then load the seed data explicitly:
 
 ```bash
 poetry run python -m scripts.migrate_database
 mysql --host 127.0.0.1 --port 3306 --user YOUR_MYSQL_USER --password=YOUR_MYSQL_PASSWORD --database fastapi_admin < assets/sql/fastapi-admin.sql
-```
-
-### 4. Start the service
-
-```bash
-poetry run uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
 After startup, open:
@@ -866,27 +957,43 @@ After startup, open:
 
 ## Docker Deployment
 
-### Build and start all services
+### 1. Select the Docker environment
+
+Copy and fill the matching environment file first. `--env-file` supplies Compose interpolation variables, while `APP_ENV_FILE` makes the application, migration, MySQL, and Redis containers load the same profile.
+
+Development:
 
 ```bash
 docker compose --env-file .env.development up -d --build
-docker compose --env-file .env.development exec -T fastapi-mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fastapi_admin' < assets/sql/fastapi-admin.sql
-docker compose --env-file .env.development up -d --build fastapi-app
 ```
 
-For production, prepare `certs/fullchain.pem` and `certs/privkey.pem`, then enable the `fastapi-edge` profile:
+Staging:
+
+```bash
+docker compose --env-file .env.staging up -d --build
+```
+
+Production: prepare `certs/fullchain.pem` and `certs/privkey.pem`, then enable the `fastapi-edge` profile:
 
 ```bash
 docker compose --env-file .env.production --profile production up -d --build
 ```
 
-### View logs
+After the first deployment, load seed data after the migration service completes:
+
+```bash
+docker compose --env-file .env.development exec -T fastapi-mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fastapi_admin' < assets/sql/fastapi-admin.sql
+```
+
+Replace `.env.development` with the selected staging or production file. Do not use development settings or `--watch` in production.
+
+### 2. View logs
 
 ```bash
 docker compose logs -f fastapi-app
 ```
 
-### Stop services
+### 3. Stop services
 
 ```bash
 docker compose down
