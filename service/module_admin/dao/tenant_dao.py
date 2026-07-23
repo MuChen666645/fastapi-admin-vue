@@ -13,6 +13,29 @@ class TenantDao:
     """集中处理租户边界、成员关系和乐观锁写入。"""
 
     @staticmethod
+    async def _clear_other_defaults(mysql, user_id: int, tenant_id: int) -> None:
+        await mysql.execute(
+            update(TenantMemberDo)
+            .where(
+                TenantMemberDo.user_id == user_id,
+                TenantMemberDo.tenant_id != tenant_id,
+            )
+            .values(
+                is_default=False,
+                version=TenantMemberDo.version + 1,
+                updated_at=now_utc8_naive(),
+            )
+        )
+
+    @staticmethod
+    async def _set_user_primary_tenant(mysql, user_id: int, tenant_id: int) -> None:
+        await mysql.execute(
+            update(UserDo)
+            .where(UserDo.id == user_id)
+            .values(tenant_id=tenant_id, update_time=now_utc8_naive())
+        )
+
+    @staticmethod
     async def get(tenant_id: int, request: Request) -> TenantDo | None:
         """查询未删除租户。"""
         result = await request.state.mysql.execute(
@@ -98,14 +121,8 @@ class TenantDao:
             member.version += 1
             member.updated_at = now_utc8_naive()
         if is_default:
-            await mysql.execute(
-                update(TenantMemberDo)
-                .where(
-                    TenantMemberDo.user_id == user_id,
-                    TenantMemberDo.tenant_id != tenant_id,
-                )
-                .values(is_default=False, updated_at=now_utc8_naive())
-            )
+            await TenantDao._clear_other_defaults(mysql, user_id, tenant_id)
+            await TenantDao._set_user_primary_tenant(mysql, user_id, tenant_id)
         await mysql.flush()
         return member
 
@@ -119,7 +136,43 @@ class TenantDao:
         request: Request,
     ) -> bool:
         """按版本号更新成员关系，返回是否成功。"""
-        result = await request.state.mysql.execute(
+        mysql = request.state.mysql
+        member_result = await mysql.execute(
+            select(TenantMemberDo)
+            .where(
+                TenantMemberDo.tenant_id == tenant_id,
+                TenantMemberDo.user_id == user_id,
+                TenantMemberDo.version == version,
+                TenantMemberDo.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+        member = member_result.scalars().first()
+        if member is None or (is_default and status != "1"):
+            return False
+
+        fallback_member = None
+        if member.is_default and not is_default:
+            fallback_result = await mysql.execute(
+                select(TenantMemberDo)
+                .join(TenantDo, TenantDo.id == TenantMemberDo.tenant_id)
+                .where(
+                    TenantMemberDo.user_id == user_id,
+                    TenantMemberDo.tenant_id != tenant_id,
+                    TenantMemberDo.status == "1",
+                    TenantMemberDo.deleted_at.is_(None),
+                    TenantDo.status == "1",
+                    TenantDo.deleted_at.is_(None),
+                )
+                .order_by(TenantMemberDo.is_default.desc(), TenantMemberDo.tenant_id)
+                .limit(1)
+                .with_for_update()
+            )
+            fallback_member = fallback_result.scalars().first()
+            if fallback_member is None:
+                return False
+
+        result = await mysql.execute(
             update(TenantMemberDo)
             .where(
                 TenantMemberDo.tenant_id == tenant_id,
@@ -137,14 +190,19 @@ class TenantDao:
         if result.rowcount != 1:
             return False
         if is_default:
-            await request.state.mysql.execute(
-                update(TenantMemberDo)
-                .where(
-                    TenantMemberDo.user_id == user_id,
-                    TenantMemberDo.tenant_id != tenant_id,
-                )
-                .values(is_default=False, updated_at=now_utc8_naive())
+            await TenantDao._clear_other_defaults(mysql, user_id, tenant_id)
+            await TenantDao._set_user_primary_tenant(mysql, user_id, tenant_id)
+        elif fallback_member is not None:
+            await TenantDao._clear_other_defaults(
+                mysql, user_id, fallback_member.tenant_id
             )
+            fallback_member.is_default = True
+            fallback_member.version += 1
+            fallback_member.updated_at = now_utc8_naive()
+            await TenantDao._set_user_primary_tenant(
+                mysql, user_id, fallback_member.tenant_id
+            )
+            await mysql.flush()
         return True
 
     @staticmethod

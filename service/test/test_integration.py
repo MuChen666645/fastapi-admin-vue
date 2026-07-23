@@ -15,13 +15,16 @@ from starlette.requests import Request
 from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.organization_dao import OrganizationDao
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
-from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
+from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
+                                           OperationLogDo)
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
-from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo, UserRoleDo
+from module_admin.entity.do.user_do import (PasswordResetTokenDo, UserDo,
+                                            UserRoleDo)
 from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from module_admin.service.job_scheduler import JobScheduler
 from utils.fastapi_admin import FastApiAdmin
@@ -446,6 +449,124 @@ def test_password_reset_api_uses_explicit_secondary_tenant() -> None:
                         delete(TenantDo).where(TenantDo.id == tenant.id)
                     )
                     await session.commit()
+                await _cleanup_reset_password_case(
+                    app.state.mysql_session_factory, case
+                )
+
+    anyio.run(run)
+
+
+def test_default_tenant_follows_membership_changes_in_real_mysql() -> None:
+    """默认成员变更后，用户主租户应与成员关系保持一致。"""
+
+    async def run() -> None:
+        async with app.router.lifespan_context(app):
+            app.dependency_overrides.clear()
+            assert isinstance(app.state.redis, Redis)
+            assert app.state.mysql_engine is not None
+            case = await _seed_reset_password_case(app.state.mysql_session_factory)
+            suffix = uuid.uuid4().hex[:12]
+            tenant_id = None
+            try:
+                async with app.state.mysql_session_factory() as session:
+                    tenant = TenantDo(
+                        code=f"integration-default-{suffix}",
+                        name=f"integration-default-{suffix}",
+                    )
+                    session.add(tenant)
+                    await session.flush()
+                    tenant_id = tenant.id
+                    session.add(
+                        TenantMemberDo(
+                            user_id=case.target_user_id,
+                            tenant_id=tenant.id,
+                            is_default=False,
+                        )
+                    )
+                    await session.commit()
+
+                request = _request_for_token()
+                async with app.state.mysql_session_factory() as session:
+                    request.state.mysql = session
+                    assert await TenantDao.update_member(
+                        tenant_id,
+                        case.target_user_id,
+                        "1",
+                        True,
+                        1,
+                        request,
+                    )
+                    await session.commit()
+
+                async with app.state.mysql_session_factory() as session:
+                    target = await session.get(UserDo, case.target_user_id)
+                    assert target is not None
+                    assert target.tenant_id == tenant_id
+                    members_result = await session.execute(
+                        select(TenantMemberDo).where(
+                            TenantMemberDo.user_id == case.target_user_id
+                        )
+                    )
+                    members = {
+                        member.tenant_id: member
+                        for member in members_result.scalars().all()
+                    }
+                    assert members[tenant_id].is_default is True
+                    assert members[settings.DEFAULT_TENANT_ID].is_default is False
+
+                async with app.state.mysql_session_factory() as session:
+                    request.state.mysql = session
+                    assert await TenantDao.update_member(
+                        tenant_id,
+                        case.target_user_id,
+                        "0",
+                        False,
+                        2,
+                        request,
+                    )
+                    await session.commit()
+
+                async with app.state.mysql_session_factory() as session:
+                    target = await session.get(UserDo, case.target_user_id)
+                    assert target is not None
+                    assert target.tenant_id == settings.DEFAULT_TENANT_ID
+                    members_result = await session.execute(
+                        select(TenantMemberDo).where(
+                            TenantMemberDo.user_id == case.target_user_id
+                        )
+                    )
+                    members = {
+                        member.tenant_id: member
+                        for member in members_result.scalars().all()
+                    }
+                    assert members[tenant_id].is_default is False
+                    assert members[settings.DEFAULT_TENANT_ID].is_default is True
+                    assert members[tenant_id].status == "0"
+                    default_version = members[settings.DEFAULT_TENANT_ID].version
+
+                async with app.state.mysql_session_factory() as session:
+                    request.state.mysql = session
+                    assert not await TenantDao.update_member(
+                        settings.DEFAULT_TENANT_ID,
+                        case.target_user_id,
+                        "0",
+                        False,
+                        default_version,
+                        request,
+                    )
+            finally:
+                async with app.state.mysql_session_factory() as session:
+                    if tenant_id is not None:
+                        await session.execute(
+                            delete(TenantMemberDo).where(
+                                TenantMemberDo.user_id == case.target_user_id,
+                                TenantMemberDo.tenant_id == tenant_id,
+                            )
+                        )
+                        await session.execute(
+                            delete(TenantDo).where(TenantDo.id == tenant_id)
+                        )
+                        await session.commit()
                 await _cleanup_reset_password_case(
                     app.state.mysql_session_factory, case
                 )
