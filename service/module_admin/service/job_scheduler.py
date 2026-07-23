@@ -185,6 +185,8 @@ class JobScheduler:
                 job = await session.get(ScheduledJobDo, job_id)
                 if job is None:
                     return "failed", "定时任务不存在"
+                if job.status != "1":
+                    return "skipped", "定时任务已停用"
                 handler = self._handlers.get(job.task_name)
                 if handler is None:
                     message = f"任务处理器未注册：{job.task_name}"

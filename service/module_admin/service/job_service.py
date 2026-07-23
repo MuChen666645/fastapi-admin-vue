@@ -56,7 +56,9 @@ class JobService:
     @staticmethod
     async def run_now(job_id: int, request: Request):
         """立即执行一次定时任务。"""
-        await JobService.detail(job_id, request)
+        job = await JobService.detail(job_id, request)
+        if job.status != "1":
+            raise HTTPException(status_code=409, detail="定时任务已停用")
         scheduler = getattr(request.app.state, "scheduler", None)
         if scheduler is None:
             raise HTTPException(status_code=503, detail="定时任务调度器未启用")

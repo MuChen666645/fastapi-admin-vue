@@ -15,6 +15,7 @@ from starlette.requests import Request
 from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.organization_dao import OrganizationDao
+from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
@@ -22,6 +23,7 @@ from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
 from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo, UserRoleDo
 from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
+from module_admin.service.job_scheduler import JobScheduler
 from utils.fastapi_admin import FastApiAdmin
 
 pytestmark = [
@@ -259,6 +261,84 @@ def test_reset_password_through_real_services() -> None:
             finally:
                 await Auth.revoke_user_tokens(admin_request, case.admin_user_id)
                 await Auth.revoke_user_tokens(target_request, case.target_user_id)
+                await _cleanup_reset_password_case(
+                    app.state.mysql_session_factory, case
+                )
+
+    anyio.run(run)
+
+
+def test_disabled_job_cannot_run_through_real_api() -> None:
+    """Disabled jobs must be rejected by the real API before execution."""
+
+    async def run() -> None:
+        async with app.router.lifespan_context(app):
+            app.dependency_overrides.clear()
+            assert isinstance(app.state.redis, Redis)
+            assert app.state.mysql_engine is not None
+            case = await _seed_reset_password_case(app.state.mysql_session_factory)
+            suffix = uuid.uuid4().hex[:12]
+            job_id = None
+            admin_request = _request_for_token()
+            try:
+                async with app.state.mysql_session_factory() as session:
+                    job = ScheduledJobDo(
+                        job_name=f"integration-disabled-{suffix}",
+                        job_key=f"integration-disabled-{suffix}",
+                        task_name="integration-disabled-handler",
+                        cron_expression="* * * * *",
+                        status="0",
+                        tenant_id=settings.DEFAULT_TENANT_ID,
+                        create_by=case.admin_user_id,
+                    )
+                    session.add(job)
+                    await session.flush()
+                    job_id = job.id
+                    await session.commit()
+
+                scheduler = JobScheduler(
+                    lambda: app.state.mysql_session_factory,
+                    timezone=settings.SCHEDULER_TIMEZONE,
+                    redis=None,
+                )
+                scheduler_status, scheduler_message = await scheduler._execute(job_id)
+                assert scheduler_status == "skipped"
+                assert scheduler_message == "定时任务已停用"
+                token = await Auth.create_login_token(
+                    {
+                        "user_id": case.admin_user_id,
+                        "username": "integration-admin",
+                        "tenant_id": settings.DEFAULT_TENANT_ID,
+                    },
+                    admin_request,
+                )
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://127.0.0.1",
+                ) as client:
+                    response = await client.post(
+                        f"/api/v1/job/{job_id}/run",
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+
+                assert response.status_code == 409, response.text
+                assert response.json()["code"] == 409
+                async with app.state.mysql_session_factory() as session:
+                    log_result = await session.execute(
+                        select(JobLogDo).where(JobLogDo.job_id == job_id)
+                    )
+                    assert log_result.scalars().first() is None
+            finally:
+                await Auth.revoke_user_tokens(admin_request, case.admin_user_id)
+                async with app.state.mysql_session_factory() as session:
+                    if job_id is not None:
+                        await session.execute(
+                            delete(JobLogDo).where(JobLogDo.job_id == job_id)
+                        )
+                        await session.execute(
+                            delete(ScheduledJobDo).where(ScheduledJobDo.id == job_id)
+                        )
+                    await session.commit()
                 await _cleanup_reset_password_case(
                     app.state.mysql_session_factory, case
                 )
