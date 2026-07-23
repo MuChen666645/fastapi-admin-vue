@@ -82,7 +82,6 @@ class Settings(BaseSettings):
     VERSION: str = Field(min_length=1)
     OPENAPI_URL: str = Field(min_length=1)
     API_V1_PREFIX: str = Field(default="/api/v1", min_length=1)
-    API_LEGACY_ENABLED: bool = True
     DOCS_AUTH_TOKEN: str = ""
     METRICS_AUTH_TOKEN: str = ""
     # 响应模型属于 API 合约，不属于部署参数。

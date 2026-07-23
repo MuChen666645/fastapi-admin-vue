@@ -190,7 +190,7 @@ def test_reset_password_through_real_services() -> None:
                     base_url="http://127.0.0.1",
                 ) as client:
                     response = await client.put(
-                        f"/user/{case.target_user_id}/reset-password",
+                        f"/api/v1/user/{case.target_user_id}/reset-password",
                         headers={"Authorization": f"Bearer {token}"},
                         json={"password": "new-target-password"},
                     )

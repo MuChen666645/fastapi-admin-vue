@@ -81,7 +81,7 @@ def test_login_limit_rejects_excessive_attempts(
             async with create_async_client() as client:
                 responses = [
                     await client.post(
-                        "/user/login/username",
+                        "/api/v1/user/login/username",
                         data={
                             "username": "admin",
                             "password": "password",

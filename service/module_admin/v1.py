@@ -63,8 +63,6 @@ class AdminAPI:
                 prefix=version_prefix,
                 dependencies=dependencies or [],
             )
-            if app_settings.API_LEGACY_ENABLED:
-                app.include_router(router, dependencies=dependencies or [])
 
         include(HealthController.health)
         include(ExternalAuthController.auth, db_dependencies)

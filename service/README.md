@@ -109,7 +109,7 @@ Controller -> Service -> DAO -> Database
 
 - `main.create_app()` 负责组装中间件、异常处理器、静态资源、分页和后台路由。
 - 应用启动时建立 Redis、MySQL 连接，并按配置启动定时任务；数据库结构由 `scripts.migrate_database` 和 Alembic 管理，不在应用启动阶段执行 DDL。
-- `/health/live` 只表示进程可以响应请求；`/health/ready` 会检查 Redis、MySQL 和 `alembic_version`，所有依赖就绪后才返回成功。
+- `/api/v1/health/live` 只表示进程可以响应请求；`/api/v1/health/ready` 会检查 Redis、MySQL 和 `alembic_version`，所有依赖就绪后才返回成功。
 - 业务请求使用 `request.state.mysql` 的请求级事务；日志审计使用独立会话，避免业务事务回滚时丢失异常记录。
 
 ### 注释与文档规范
@@ -142,7 +142,6 @@ SUMMARY=FastAPI, SQLModel, MySQL and Redis admin service.
 VERSION=0.0.1
 OPENAPI_URL=/openapi.json
 API_V1_PREFIX=/api/v1
-API_LEGACY_ENABLED=true
 
 # MySQL
 MYSQL_HOST=127.0.0.1
@@ -430,28 +429,28 @@ docker compose down
 
 | 模块     | 路由前缀   | 说明                                                     |
 | -------- | ---------- | -------------------------------------------------------- |
-| 用户     | `/user`    | 用户创建、登录、自助修改密码、管理员重置密码、用户信息查询 |
-| 角色     | `/role`    | 角色创建、列表查询、详情、更新、删除                     |
-| 菜单     | `/menu`    | 菜单创建、菜单树/列表查询、详情、更新、删除              |
-| 部门     | `/dept`    | 部门树查询、创建、更新、删除                             |
-| 岗位     | `/post`    | 岗位列表查询、创建、更新、删除                           |
-| 字典     | `/dict`    | 字典类型和字典数据的增删改查                             |
-| 日志     | `/log`     | 登录、操作、异常日志查询和删除                           |
-| 在线用户 | `/online`  | 在线会话查询、单会话和用户会话强制退出                   |
-| 验证码   | `/captcha` | 图片验证码与校验；明文数字验证码接口返回 `410`           |
-| 健康检查 | `/health`  | 存活探针和 MySQL/Redis/schema 就绪探针                   |
+| 用户     | `/api/v1/user`    | 用户创建、登录、自助修改密码、管理员重置密码、用户信息查询 |
+| 角色     | `/api/v1/role`    | 角色创建、列表查询、详情、更新、删除                     |
+| 菜单     | `/api/v1/menu`    | 菜单创建、菜单树/列表查询、详情、更新、删除              |
+| 部门     | `/api/v1/dept`    | 部门树查询、创建、更新、删除                             |
+| 岗位     | `/api/v1/post`    | 岗位列表查询、创建、更新、删除                           |
+| 字典     | `/api/v1/dict`    | 字典类型和字典数据的增删改查                             |
+| 日志     | `/api/v1/log`     | 登录、操作、异常日志查询和删除                           |
+| 在线用户 | `/api/v1/online`  | 在线会话查询、单会话和用户会话强制退出                   |
+| 验证码   | `/api/v1/captcha` | 图片验证码与校验；明文数字验证码接口返回 `410`           |
+| 健康检查 | `/api/v1/health`  | 存活探针和 MySQL/Redis/schema 就绪探针                   |
 | 指标监控 | `/metrics` | Prometheus HTTP 请求数、状态码和耗时指标                 |
-| 文件存储 | `/file`    | 本地或阿里云 OSS 文件上传、下载和删除                     |
-| 系统参数 | `/config`  | 系统参数键值配置                                         |
-| 通知公告 | `/notice`  | 公告增删改查                                             |
-| 定时任务 | `/job`     | Cron 任务管理、手动执行和执行日志                        |
-| 外部认证 | `/auth`    | OIDC/OAuth 与 LDAP 登录                                  |
-| 数据备份 | `/ops/backup` | 受权限保护的数据库备份接口                              |
+| 文件存储 | `/api/v1/file`    | 本地或阿里云 OSS 文件上传、下载和删除                     |
+| 系统参数 | `/api/v1/config`  | 系统参数键值配置                                         |
+| 通知公告 | `/api/v1/notice`  | 公告增删改查                                             |
+| 定时任务 | `/api/v1/job`     | Cron 任务管理、手动执行和执行日志                        |
+| 外部认证 | `/api/v1/auth`    | OIDC/OAuth 与 LDAP 登录                                  |
+| 数据备份 | `/api/v1/ops/backup` | 受权限保护的数据库备份接口                              |
 | 静态资源 | `/static`  | 静态文件访问                                             |
 
 完整请求参数与响应结构请以 Swagger 文档为准。
 
-`GET /captcha/image` 返回 `captcha_id` 和 Base64 图片。用户名登录、手机号登录及 `GET /captcha/verify` 必须同时提交 `captcha_id` 与图片中的验证码。验证码 ID 绑定获取时的客户端 IP，校验成功后立即失效；连续错误达到 `CAPTCHA_MAX_VERIFY_ATTEMPTS` 次后也会失效，有效期由 `CAPTCHA_TTL_SECONDS` 控制。
+`GET /api/v1/captcha/image` 返回 `captcha_id` 和 Base64 图片。用户名登录、手机号登录及 `GET /api/v1/captcha/verify` 必须同时提交 `captcha_id` 与图片中的验证码。验证码 ID 绑定获取时的客户端 IP，校验成功后立即失效；连续错误达到 `CAPTCHA_MAX_VERIFY_ATTEMPTS` 次后也会失效，有效期由 `CAPTCHA_TTL_SECONDS` 控制。
 
 ## 认证方式
 
@@ -472,7 +471,7 @@ Token 使用 `HS256` 算法签名，过期时间由 `ACCESS_TOKEN_EXPIRE_MINUTES
 - 新增或修改按钮菜单时会同步写入/更新权限目录；删除按钮菜单时，如果权限标识未被其他按钮菜单使用，会同步清理对应权限。
 - 角色通过 `role_menu` 关联菜单和按钮权限，接口鉴权时按用户角色、菜单按钮和权限目录共同判断。
 - 超级管理员权限 `*:*:*` 存放在 `permissions` 表中，不作为菜单数据返回；拥有超级权限时，用户信息接口只返回 `*:*:*` 权限标识。
-- `PUT /user/{user_id}/password` 用于输入旧密码的自助修改；`PUT /user/{user_id}/reset-password` 使用 `system:user:resetPwd` 权限执行管理员重置，成功后会使目标用户已有会话失效。
+- `PUT /api/v1/user/{user_id}/password` 用于输入旧密码的自助修改；`PUT /api/v1/user/{user_id}/reset-password` 使用 `system:user:resetPwd` 权限执行管理员重置，成功后会使目标用户已有会话失效。
 - 登录会在签发 Token 前检查用户状态；已停用用户直接返回“用户已停用”，不会先获得可用 Token。
 - 请求校验失败返回结构化的 `422` 响应，字段错误位于 `data.errors`，客户端不应依赖异常字符串解析。
 - MySQL 连接 URL 使用 SQLAlchemy `URL.create()` 组装，用户名或密码包含 `@`、`:`、`/` 等字符时无需手动转义。
@@ -503,7 +502,7 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q test/test_admin_api_async
 from main import create_app
 application = create_app()
 
-# 显式注册定时任务处理器，/job 中的 task_name 必须匹配。
+# 显式注册定时任务处理器，/api/v1/job 中的 task_name 必须匹配。
 application = create_app(job_tasks={"example.task": lambda args: "ok"})
 
 # 代码格式化
@@ -601,13 +600,13 @@ Authorization: Bearer <access_token>
 
 ### 认证与密码策略
 
-- 登录成功返回短期 `access_token` 和可轮换的 `refresh_token`。调用 `POST /user/token/refresh` 后，旧刷新令牌立即失效；重复使用旧令牌会撤销整个令牌族。
+- 登录成功返回短期 `access_token` 和可轮换的 `refresh_token`。调用 `POST /api/v1/user/token/refresh` 后，旧刷新令牌立即失效；重复使用旧令牌会撤销整个令牌族。
 - 已停用用户在签发令牌前被拒绝。受保护接口还会检查用户状态、密码版本和强制改密状态。
-- 支持 TOTP MFA：`POST /user/mfa/setup`、`/user/mfa/enable`、`/user/mfa/disable`。登录表单可提交 `mfa_code`，也可使用一次性恢复码。
+- 支持 TOTP MFA：`POST /api/v1/user/mfa/setup`、`/api/v1/user/mfa/enable`、`/api/v1/user/mfa/disable`。登录表单可提交 `mfa_code`，也可使用一次性恢复码。
 - 密码策略由 `PASSWORD_*` 配置控制，包括最小长度、大小写/数字/特殊字符、历史密码数量、最大有效期和首次改密。
 - IP 和账号维度均支持失败登录锁定，配置项为 `LOGIN_MAX_FAILED_ATTEMPTS`、`LOGIN_IP_LOCK_SECONDS`、`LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS` 和 `LOGIN_ACCOUNT_LOCK_SECONDS`。
-- `POST /user/password/forgot` 和 `/user/password/reset` 支持邮箱或短信找回密码。生产环境必须配置 SMTP 或短信 Webhook，接口不会在响应中返回明文找回令牌。
-- 可选 OIDC/OAuth 和 LDAP 登录，配置 `OIDC_*` 或 `LDAP_*` 后使用 `/auth/oidc/start`、`/auth/oidc/callback` 和 `/auth/ldap/login`。OIDC 必须配置 `OIDC_ISSUER`、`OIDC_AUDIENCE`、`OIDC_JWKS_URL`，回调会校验签名、发行方、受众、Nonce、PKCE 和 `email_verified`；外部登录仍需提交 MFA 验证码。
+- `POST /api/v1/user/password/forgot` 和 `/api/v1/user/password/reset` 支持邮箱或短信找回密码。生产环境必须配置 SMTP 或短信 Webhook，接口不会在响应中返回明文找回令牌。
+- 可选 OIDC/OAuth 和 LDAP 登录，配置 `OIDC_*` 或 `LDAP_*` 后使用 `/api/v1/auth/oidc/start`、`/api/v1/auth/oidc/callback` 和 `/api/v1/auth/ldap/login`。OIDC 必须配置 `OIDC_ISSUER`、`OIDC_AUDIENCE`、`OIDC_JWKS_URL`，回调会校验签名、发行方、受众、Nonce、PKCE 和 `email_verified`；外部登录仍需提交 MFA 验证码。
 
 ### 租户与权限
 
@@ -622,14 +621,14 @@ Authorization: Bearer <access_token>
 
 - 文件支持内容签名识别、可选 ClamAV 扫描、OSS 预签名 URL、本地/OSS 存储、分片上传和文本脱敏。
 - 当 `FILE_VIRUS_SCAN_ENABLED=true` 时，必须提供可访问的 ClamAV 服务，并通过 `CLAMAV_HOST`/`CLAMAV_PORT` 配置地址；默认 Compose 文件不包含 ClamAV 容器。
-- 分片流程：`POST /file/chunk/init`、`PUT /file/chunk/{upload_id}/{chunk_index}`、`POST /file/chunk/complete`。未完成的分片记录和临时目录会按 `FILE_CHUNK_TTL_SECONDS` 定期清理。
+- 分片流程：`POST /api/v1/file/chunk/init`、`PUT /api/v1/file/chunk/{upload_id}/{chunk_index}`、`POST /api/v1/file/chunk/complete`。未完成的分片记录和临时目录会按 `FILE_CHUNK_TTL_SECONDS` 定期清理。
 - 系统参数中 `secret`、`password`、`sensitive` 类型会加密存储，列表、详情和按键查询只返回掩码；请勿将敏感值写入日志或提交到环境示例文件。
-- 文本脱敏接口为 `GET /file/redacted/{file_id}`，需显式启用 `FILE_REDACTION_ENABLED`。
+- 文本脱敏接口为 `GET /api/v1/file/redacted/{file_id}`，需显式启用 `FILE_REDACTION_ENABLED`。
 - 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
 - 用户、角色和字典支持异步导出：调用对应的 `/export/async` 创建任务，再轮询 `/export/tasks/{task_id}`，完成后通过 `/export/tasks/{task_id}/download` 下载。
-- 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /notice/inbox/list`、`POST /notice/{notice_id}/read`。
+- 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /api/v1/notice/inbox/list`、`POST /api/v1/notice/{notice_id}/read`。
 - 通知支持收件箱、Webhook、邮件和短信渠道，外部投递失败按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
-- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/ops/backup/create` 执行；`verify` 命令和 `/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。备份使用 Fernet 加密并按保留天数清理。
+- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/api/v1/ops/backup/create` 执行；`verify` 命令和 `/api/v1/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/api/v1/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。备份使用 Fernet 加密并按保留天数清理。
 
 ### 定时任务与可观测性
 
@@ -641,7 +640,7 @@ Authorization: Bearer <access_token>
 
 ### 数据库迁移与 Docker 排障
 
-当前数据库迁移头为 `0023_async_exports`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；部署后请检查 `/health/ready` 的 `schema` 状态为 `ok`。
+当前数据库迁移头为 `0023_async_exports`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；部署后请检查 `/api/v1/health/ready` 的 `schema` 状态为 `ok`。
 
 ```bash
 docker compose --env-file .env.development up -d --build
@@ -682,7 +681,7 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - Local/Aliyun OSS file upload and download, system config, notices, and scheduled jobs
 - Prometheus metrics available at `/metrics` (protected by `METRICS_AUTH_TOKEN` outside development)
 - SlowAPI rate limiting
-- Versioned routes under `/api/v1`; legacy paths remain available while `API_LEGACY_ENABLED=true`
+- All admin routes use the versioned `/api/v1` prefix.
 - Swagger/OpenAPI API documentation with concrete per-route response DTOs; operations endpoints require `DOCS_AUTH_TOKEN` outside development
 - Dockerfile and Docker Compose setup
 - Poetry dependency management
@@ -764,7 +763,7 @@ Request
 
 - `main.create_app()` assembles middleware, exception handlers, static files, pagination, and admin routes.
 - Startup creates Redis and MySQL clients and optionally starts the scheduler. Alembic migrations are applied by `scripts.migrate_database`, not by application startup DDL.
-- `/health/live` only reports process liveness. `/health/ready` checks Redis, MySQL, and `alembic_version` before returning success.
+- `/api/v1/health/live` only reports process liveness. `/api/v1/health/ready` checks Redis, MySQL, and `alembic_version` before returning success.
 - Business requests use the request-scoped transaction in `request.state.mysql`; audit logs use an independent session so rollback does not hide the failure record.
 
 ### Documentation and Comment Rules
@@ -1070,28 +1069,28 @@ The base Compose profile binds FastAPI, MySQL, and Redis to localhost. The produ
 
 | Module       | Route Prefix | Description                                                         |
 | ------------ | ------------ | ------------------------------------------------------------------- |
-| User         | `/user`      | User creation, login, self-service password change, administrator password reset, user info |
-| Role         | `/role`      | Role creation, list, detail, update, delete                         |
-| Menu         | `/menu`      | Menu creation, tree/list query, detail, update, delete               |
-| Department   | `/dept`      | Department tree query, create, update, delete                        |
-| Post         | `/post`      | Post list, create, update, delete                                     |
-| Dictionary   | `/dict`      | Dictionary type and dictionary data CRUD                              |
-| Logs         | `/log`       | Login, operation, exception log query and deletion                    |
-| Online Users | `/online`    | Online session query and forced logout                                |
-| Captcha      | `/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
-| Health       | `/health`    | Liveness and MySQL/Redis readiness probes                         |
+| User         | `/api/v1/user`      | User creation, login, self-service password change, administrator password reset, user info |
+| Role         | `/api/v1/role`      | Role creation, list, detail, update, delete                         |
+| Menu         | `/api/v1/menu`      | Menu creation, tree/list query, detail, update, delete               |
+| Department   | `/api/v1/dept`      | Department tree query, create, update, delete                        |
+| Post         | `/api/v1/post`      | Post list, create, update, delete                                     |
+| Dictionary   | `/api/v1/dict`      | Dictionary type and dictionary data CRUD                              |
+| Logs         | `/api/v1/log`       | Login, operation, exception log query and deletion                    |
+| Online Users | `/api/v1/online`    | Online session query and forced logout                                |
+| Captcha      | `/api/v1/captcha`   | Image captcha/verification; the plaintext numeric endpoint returns `410` |
+| Health       | `/api/v1/health`    | Liveness and MySQL/Redis readiness probes                         |
 | Metrics      | `/metrics`   | Prometheus request count, status, and latency metrics              |
-| File Storage | `/file`      | Local or Aliyun OSS upload, download, and deletion                 |
-| System Config| `/config`    | Key/value system parameters                                        |
-| Notices      | `/notice`    | Announcement CRUD                                                  |
-| Jobs         | `/job`       | Cron job management, manual run, and execution logs               |
-| External Auth| `/auth`      | OIDC/OAuth and LDAP login                                          |
-| Backups      | `/ops/backup`| Permission-protected database backup operations                    |
+| File Storage | `/api/v1/file`      | Local or Aliyun OSS upload, download, and deletion                 |
+| System Config| `/api/v1/config`    | Key/value system parameters                                        |
+| Notices      | `/api/v1/notice`    | Announcement CRUD                                                  |
+| Jobs         | `/api/v1/job`       | Cron job management, manual run, and execution logs               |
+| External Auth| `/api/v1/auth`      | OIDC/OAuth and LDAP login                                          |
+| Backups      | `/api/v1/ops/backup`| Permission-protected database backup operations                    |
 | Static Files | `/static`    | Static file access                                                  |
 
 Use Swagger docs as the source of truth for full request and response schemas.
 
-`GET /captcha/image` returns a `captcha_id` and a Base64 image. Username login, phone login, and `GET /captcha/verify` must submit both the `captcha_id` and the code shown in the image. The ID is bound to the client IP and is consumed after a successful verification. It is also deleted after `CAPTCHA_MAX_VERIFY_ATTEMPTS` failures, and expires after `CAPTCHA_TTL_SECONDS`.
+`GET /api/v1/captcha/image` returns a `captcha_id` and a Base64 image. Username login, phone login, and `GET /api/v1/captcha/verify` must submit both the `captcha_id` and the code shown in the image. The ID is bound to the client IP and is consumed after a successful verification. It is also deleted after `CAPTCHA_MAX_VERIFY_ATTEMPTS` failures, and expires after `CAPTCHA_TTL_SECONDS`.
 
 ## Authentication
 
@@ -1112,7 +1111,7 @@ Protected APIs check the in-memory cache first and then Redis. If both caches mi
 - Creating or updating a button menu syncs the permission catalog. Deleting a button menu removes the permission only when the same code is not used by other button menus.
 - Roles connect to menus and button permissions through `role_menu`; authorization checks the user's roles, menu buttons, and permission catalog together.
 - The super-admin wildcard `*:*:*` is stored in `permissions`, not returned as a menu. Users with the wildcard permission only need `*:*:*` in the returned permission list.
-- `PUT /user/{user_id}/password` is the self-service change-password endpoint and requires the old password. `PUT /user/{user_id}/reset-password` is the administrator reset endpoint, uses `system:user:resetPwd`, and revokes the target user's active sessions after success.
+- `PUT /api/v1/user/{user_id}/password` is the self-service change-password endpoint and requires the old password. `PUT /api/v1/user/{user_id}/reset-password` is the administrator reset endpoint, uses `system:user:resetPwd`, and revokes the target user's active sessions after success.
 - Login checks user status before issuing a token. A disabled user receives `用户已停用` and never receives a usable token.
 - Validation failures keep structured `422` details under `data.errors`; clients should not parse a stringified exception.
 - MySQL URLs are assembled with SQLAlchemy `URL.create()`, so usernames and passwords containing `@`, `:`, or `/` do not need manual escaping.
@@ -1149,7 +1148,7 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q test/test_admin_api_async
 from main import create_app
 application = create_app()
 
-# Register scheduled task handlers explicitly; task_name in /job must match.
+# Register scheduled task handlers explicitly; task_name in /api/v1/job must match.
 application = create_app(job_tasks={"example.task": lambda args: "ok"})
 
 # Format code
@@ -1241,13 +1240,13 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 
 ### Authentication and password policy
 
-- Successful login returns a short-lived `access_token` and a rotating `refresh_token`. `POST /user/token/refresh` consumes the old refresh token; reuse revokes the whole token family.
+- Successful login returns a short-lived `access_token` and a rotating `refresh_token`. `POST /api/v1/user/token/refresh` consumes the old refresh token; reuse revokes the whole token family.
 - Disabled users are rejected before token issuance. Protected routes also re-check user status, password version, and forced-password-change state.
-- TOTP MFA is available through `POST /user/mfa/setup`, `/user/mfa/enable`, and `/user/mfa/disable`. Login forms accept `mfa_code` or a one-time recovery code.
+- TOTP MFA is available through `POST /api/v1/user/mfa/setup`, `/api/v1/user/mfa/enable`, and `/api/v1/user/mfa/disable`. Login forms accept `mfa_code` or a one-time recovery code.
 - `PASSWORD_*` settings control minimum length, character classes, password history, maximum age, and first-login password changes.
 - Failed-login locking supports both IP and account dimensions through `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_IP_LOCK_SECONDS`, `LOGIN_ACCOUNT_MAX_FAILED_ATTEMPTS`, and `LOGIN_ACCOUNT_LOCK_SECONDS`.
-- `POST /user/password/forgot` and `/user/password/reset` support email or SMS password recovery. Production must configure SMTP or an SMS webhook; recovery tokens are never returned in the response.
-- Optional OIDC/OAuth and LDAP login use `/auth/oidc/start`, `/auth/oidc/callback`, and `/auth/ldap/login` when the corresponding `OIDC_*` or `LDAP_*` settings are configured. OIDC requires `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URL`; callbacks validate the signature, issuer, audience, nonce, PKCE, and `email_verified`, and external login still requires an MFA code.
+- `POST /api/v1/user/password/forgot` and `/api/v1/user/password/reset` support email or SMS password recovery. Production must configure SMTP or an SMS webhook; recovery tokens are never returned in the response.
+- Optional OIDC/OAuth and LDAP login use `/api/v1/auth/oidc/start`, `/api/v1/auth/oidc/callback`, and `/api/v1/auth/ldap/login` when the corresponding `OIDC_*` or `LDAP_*` settings are configured. OIDC requires `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URL`; callbacks validate the signature, issuer, audience, nonce, PKCE, and `email_verified`, and external login still requires an MFA code.
 
 ### Tenants and permissions
 
@@ -1262,14 +1261,14 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 
 - Files support signature detection, optional ClamAV scanning, OSS presigned URLs, local/OSS storage, chunked upload, and text redaction.
 - When `FILE_VIRUS_SCAN_ENABLED=true`, provide a reachable ClamAV service and configure `CLAMAV_HOST`/`CLAMAV_PORT`; the default Compose file does not include a ClamAV container.
-- The chunked upload flow is `POST /file/chunk/init`, `PUT /file/chunk/{upload_id}/{chunk_index}`, then `POST /file/chunk/complete`. Incomplete chunk records and temporary directories are periodically removed according to `FILE_CHUNK_TTL_SECONDS`.
+- The chunked upload flow is `POST /api/v1/file/chunk/init`, `PUT /api/v1/file/chunk/{upload_id}/{chunk_index}`, then `POST /api/v1/file/chunk/complete`. Incomplete chunk records and temporary directories are periodically removed according to `FILE_CHUNK_TTL_SECONDS`.
 - System-config values of type `secret`, `password`, or `sensitive` are encrypted at rest and returned as a mask in list, detail, and value responses. Do not log sensitive values or commit them to environment examples.
-- Text redaction is exposed through `GET /file/redacted/{file_id}` and requires `FILE_REDACTION_ENABLED=true`.
+- Text redaction is exposed through `GET /api/v1/file/redacted/{file_id}` and requires `FILE_REDACTION_ENABLED=true`.
 - Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
 - Users, roles, and dictionaries also support persistent asynchronous exports: call `/export/async`, poll `/export/tasks/{task_id}`, and download from `/export/tasks/{task_id}/download` after completion.
-- Notices support recipients, inbox queries, unread filtering, and read state through `GET /notice/inbox/list` and `POST /notice/{notice_id}/read`.
+- Notices support recipients, inbox queries, unread filtering, and read state through `GET /api/v1/notice/inbox/list` and `POST /api/v1/notice/{notice_id}/read`.
 - Notices support inbox, webhook, email, and SMS delivery. External delivery failures retry with bounded exponential backoff using `NOTIFICATION_RETRY_MAX_ATTEMPTS` and `NOTIFICATION_RETRY_BASE_SECONDS`.
-- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Backups are Fernet-encrypted and cleaned up according to the retention policy.
+- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/api/v1/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/api/v1/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/api/v1/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Backups are Fernet-encrypted and cleaned up according to the retention policy.
 
 ### Jobs and observability
 
@@ -1281,7 +1280,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 
 ### Migrations and Docker troubleshooting
 
-The current migration head is `0023_async_exports`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. Check that `/health/ready` reports `schema=ok` after deployment.
+The current migration head is `0023_async_exports`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. Check that `/api/v1/health/ready` reports `schema=ok` after deployment.
 
 ```bash
 docker compose --env-file .env.development up -d --build

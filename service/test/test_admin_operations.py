@@ -90,11 +90,12 @@ def test_admin_operation_routes_are_registered() -> None:
     paths = {route.path for route in app.routes if hasattr(route, "path")}
 
     assert {
-        "/file/upload",
-        "/file/download/{file_id}",
-        "/config/list",
-        "/config/value/{config_key}",
-        "/notice/list",
-        "/job/list",
-        "/job/{job_id}/run",
+        "/api/v1/file/upload",
+        "/api/v1/file/download/{file_id}",
+        "/api/v1/config/list",
+        "/api/v1/config/value/{config_key}",
+        "/api/v1/notice/list",
+        "/api/v1/job/list",
+        "/api/v1/job/{job_id}/run",
     } <= paths
+    assert "/file/upload" not in paths

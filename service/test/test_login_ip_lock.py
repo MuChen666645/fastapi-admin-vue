@@ -101,13 +101,13 @@ def test_ip_lock_is_shared_by_username_and_phone_login(
         async with create_async_client() as client:
             for _ in range(settings.LOGIN_MAX_FAILED_ATTEMPTS - 1):
                 response = await client.post(
-                    "/user/login/username",
+                    "/api/v1/user/login/username",
                     data=username_login.model_dump(),
                 )
                 assert response.status_code == 401
 
             lock_response = await client.post(
-                "/user/login/username",
+                "/api/v1/user/login/username",
                 data=username_login.model_dump(),
             )
             assert lock_response.status_code == 429
@@ -120,7 +120,7 @@ def test_ip_lock_is_shared_by_username_and_phone_login(
                 captcha="1234",
             )
             phone_response = await client.post(
-                "/user/login/phone",
+                "/api/v1/user/login/phone",
                 data=phone_login.model_dump(),
             )
             assert phone_response.status_code == 429

@@ -210,7 +210,7 @@ async def _login(client: AsyncClient, case: ApiCase) -> str:
     request = _request_for_token()
     await _seed_captcha(captcha_id, request)
     response = await client.post(
-        "/user/login/username",
+        "/api/v1/user/login/username",
         data={
             "username": f"integration-admin-{case.suffix}",
             "password": ADMIN_PASSWORD,
@@ -338,7 +338,7 @@ def test_real_captcha_and_user_api() -> None:
 
     async def run() -> None:
         async def exercise(client: AsyncClient, case: ApiCase) -> None:
-            image = await client.get("/captcha/image")
+            image = await client.get("/api/v1/captcha/image")
             assert image.status_code == 200
             assert image.json()["data"]["captcha_id"]
             assert image.json()["data"]["image"].startswith("data:image/")
@@ -347,7 +347,7 @@ def test_real_captcha_and_user_api() -> None:
             phone = _phone_number()
             _assert_success(
                 await client.post(
-                    "/user/add",
+                    "/api/v1/user/add",
                     json={
                         "username": username,
                         "password": "target-password",
@@ -363,29 +363,29 @@ def test_real_captcha_and_user_api() -> None:
             )
             case.user_ids.append(user_id)
 
-            info = _assert_success(await client.get("/user/info"))
+            info = _assert_success(await client.get("/api/v1/user/info"))
             assert info["user"]["username"] == f"integration-admin-{case.suffix}"
             assert "*:*:*" in info["permissions"]
-            routes = _assert_success(await client.get("/user/routes"))
+            routes = _assert_success(await client.get("/api/v1/user/routes"))
             assert isinstance(routes, list)
             users = _assert_success(
-                await client.get("/user/list", params={"username": username})
+                await client.get("/api/v1/user/list", params={"username": username})
             )
             assert users["total"] == 1
             assert users["items"][0]["id"] == user_id
 
             _assert_success(
                 await client.put(
-                    f"/user/{user_id}",
+                    f"/api/v1/user/{user_id}",
                     json={"nickname": "集成测试用户已更新"},
                 )
             )
             invalid_update = await client.put(
-                f"/user/{user_id}", json={"role_id": case.admin_role_id}
+                f"/api/v1/user/{user_id}", json={"role_id": case.admin_role_id}
             )
             assert invalid_update.status_code == 422
-            _assert_success(await client.delete(f"/user/{user_id}"))
-            assert (await client.get(f"/user/{user_id}")).status_code == 404
+            _assert_success(await client.delete(f"/api/v1/user/{user_id}"))
+            assert (await client.get(f"/api/v1/user/{user_id}")).status_code == 404
 
         await _run_with_admin(exercise)
 
@@ -402,7 +402,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             department_name = f"集成子部门-{suffix}"
             _assert_success(
                 await client.post(
-                    "/dept/add",
+                    "/api/v1/dept/add",
                     json={
                         "dept_name": department_name,
                         "parent_id": case.department_ids[0],
@@ -418,7 +418,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.department_ids.append(department_id)
             _assert_success(
                 await client.put(
-                    f"/dept/{department_id}",
+                    f"/api/v1/dept/{department_id}",
                     json={"dept_name": f"{department_name}-已更新"},
                 )
             )
@@ -426,7 +426,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             post_code = f"integration-post-{suffix}"
             _assert_success(
                 await client.post(
-                    "/post/add",
+                    "/api/v1/post/add",
                     json={"post_code": post_code, "post_name": "集成测试岗位"},
                 )
             )
@@ -436,14 +436,14 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.post_ids.append(post_id)
             _assert_success(
                 await client.put(
-                    f"/post/{post_id}", json={"post_name": "集成测试岗位已更新"}
+                    f"/api/v1/post/{post_id}", json={"post_name": "集成测试岗位已更新"}
                 )
             )
 
             role_code = f"integration-role-{suffix}"
             _assert_success(
                 await client.post(
-                    "/role/add",
+                    "/api/v1/role/add",
                     json={"name": f"集成角色-{suffix}", "code": role_code},
                 )
             )
@@ -453,7 +453,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.role_ids.append(role_id)
             _assert_success(
                 await client.put(
-                    f"/role/{role_id}",
+                    f"/api/v1/role/{role_id}",
                     json={"name": f"集成角色-{suffix}-已更新"},
                 )
             )
@@ -461,7 +461,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             menu_name = f"集成菜单-{suffix}"
             _assert_success(
                 await client.post(
-                    "/menu/add",
+                    "/api/v1/menu/add",
                     json={
                         "menu_name": menu_name,
                         "parent_id": 0,
@@ -480,7 +480,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.menu_ids.append(menu_id)
             _assert_success(
                 await client.put(
-                    f"/menu/{menu_id}",
+                    f"/api/v1/menu/{menu_id}",
                     json={"menu_name": f"{menu_name}-已更新"},
                 )
             )
@@ -488,7 +488,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             dict_type = f"integration_dict_{suffix}"
             _assert_success(
                 await client.post(
-                    "/dict/type/add",
+                    "/api/v1/dict/type/add",
                     json={"dict_name": "集成字典", "dict_type": dict_type},
                 )
             )
@@ -501,7 +501,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.dict_type_ids.append(dict_type_id)
             _assert_success(
                 await client.post(
-                    "/dict/data/add",
+                    "/api/v1/dict/data/add",
                     json={
                         "dict_label": "集成值",
                         "dict_value": "1",
@@ -517,13 +517,13 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             )
             case.dict_data_ids.append(dict_data_id)
             _assert_success(
-                await client.put(f"/dict/data/{dict_data_id}", json={"status": "0"})
+                await client.put(f"/api/v1/dict/data/{dict_data_id}", json={"status": "0"})
             )
 
             config_key = f"integration.config.{suffix}"
             _assert_success(
                 await client.post(
-                    "/config/add",
+                    "/api/v1/config/add",
                     json={
                         "config_name": "集成参数",
                         "config_key": config_key,
@@ -540,19 +540,19 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.config_ids.append(config_id)
             _assert_success(
                 await client.put(
-                    f"/config/{config_id}",
+                    f"/api/v1/config/{config_id}",
                     json={"config_value": "after"},
                 )
             )
             config_value = _assert_success(
-                await client.get(f"/config/value/{config_key}")
+                await client.get(f"/api/v1/config/value/{config_key}")
             )
             assert config_value["config_value"] == "after"
 
             notice_title = f"集成公告-{suffix}"
             _assert_success(
                 await client.post(
-                    "/notice/add",
+                    "/api/v1/notice/add",
                     json={
                         "notice_title": notice_title,
                         "notice_content": "集成测试公告内容",
@@ -568,7 +568,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.notice_ids.append(notice_id)
             _assert_success(
                 await client.put(
-                    f"/notice/{notice_id}",
+                    f"/api/v1/notice/{notice_id}",
                     json={"notice_content": "公告已更新"},
                 )
             )
@@ -576,7 +576,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             job_key = f"integration.job.{suffix}"
             _assert_success(
                 await client.post(
-                    "/job/add",
+                    "/api/v1/job/add",
                     json={
                         "job_name": "集成任务",
                         "job_key": job_key,
@@ -595,42 +595,42 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             case.job_ids.append(job_id)
             _assert_success(
                 await client.put(
-                    f"/job/{job_id}",
+                    f"/api/v1/job/{job_id}",
                     json={"job_name": "集成任务已更新"},
                 )
             )
-            logs = _assert_success(await client.get(f"/job/{job_id}/log/list"))
+            logs = _assert_success(await client.get(f"/api/v1/job/{job_id}/log/list"))
             assert logs["total"] == 0
-            run_response = await client.post(f"/job/{job_id}/run")
+            run_response = await client.post(f"/api/v1/job/{job_id}/run")
             assert run_response.status_code in {200, 503}
             if run_response.status_code == 200:
                 assert run_response.json()["data"]["status"] == "failed"
 
             for path in (
-                "/role/list",
-                "/menu/list",
-                "/dept/list",
-                "/post/list",
-                "/dict/type/list",
-                "/dict/data/list",
-                "/config/list",
-                "/notice/list",
-                "/job/list",
-                "/log/login/list",
-                "/log/operation/list",
-                "/online/list",
+                "/api/v1/role/list",
+                "/api/v1/menu/list",
+                "/api/v1/dept/list",
+                "/api/v1/post/list",
+                "/api/v1/dict/type/list",
+                "/api/v1/dict/data/list",
+                "/api/v1/config/list",
+                "/api/v1/notice/list",
+                "/api/v1/job/list",
+                "/api/v1/log/login/list",
+                "/api/v1/log/operation/list",
+                "/api/v1/online/list",
             ):
                 assert _assert_success(await client.get(path)) is not None
 
-            _assert_success(await client.delete(f"/notice/{notice_id}"))
-            _assert_success(await client.delete(f"/config/{config_id}"))
-            _assert_success(await client.delete(f"/job/{job_id}"))
-            _assert_success(await client.delete(f"/dict/data/{dict_data_id}"))
-            _assert_success(await client.delete(f"/dict/type/{dict_type_id}"))
-            _assert_success(await client.delete(f"/menu/{menu_id}"))
-            _assert_success(await client.delete(f"/role/{role_id}"))
-            _assert_success(await client.delete(f"/post/{post_id}"))
-            _assert_success(await client.delete(f"/dept/{department_id}"))
+            _assert_success(await client.delete(f"/api/v1/notice/{notice_id}"))
+            _assert_success(await client.delete(f"/api/v1/config/{config_id}"))
+            _assert_success(await client.delete(f"/api/v1/job/{job_id}"))
+            _assert_success(await client.delete(f"/api/v1/dict/data/{dict_data_id}"))
+            _assert_success(await client.delete(f"/api/v1/dict/type/{dict_type_id}"))
+            _assert_success(await client.delete(f"/api/v1/menu/{menu_id}"))
+            _assert_success(await client.delete(f"/api/v1/role/{role_id}"))
+            _assert_success(await client.delete(f"/api/v1/post/{post_id}"))
+            _assert_success(await client.delete(f"/api/v1/dept/{department_id}"))
 
         await _run_with_admin(exercise)
 

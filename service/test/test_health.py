@@ -44,7 +44,7 @@ class ReadySessionFactory:
 def test_liveness_does_not_require_database() -> None:
     async def run() -> None:
         async with create_async_client() as client:
-            response = await client.get("/health/live")
+            response = await client.get("/api/v1/health/live")
 
         assert response.status_code == 200
         assert response.json() == {
@@ -63,7 +63,7 @@ def test_readiness_checks_redis_and_mysql() -> None:
         app.state.redis = FakeRedis()
         app.state.mysql_session_factory = ReadySessionFactory()
         async with create_async_client() as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
         assert response.status_code == 200
         assert response.json()["data"] == {
@@ -77,7 +77,7 @@ def test_readiness_checks_redis_and_mysql() -> None:
 def test_readiness_returns_503_when_mysql_is_unavailable() -> None:
     async def run() -> None:
         async with create_async_client() as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
         assert response.status_code == 503
         body = response.json()
@@ -99,7 +99,7 @@ def test_readiness_returns_503_when_redis_is_unavailable() -> None:
         app.state.redis = BrokenRedis()
         app.state.mysql_session_factory = ReadySessionFactory()
         async with create_async_client() as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
         assert response.status_code == 503
         body = response.json()
@@ -128,7 +128,7 @@ def test_readiness_times_out_when_redis_hangs(
         app.state.redis = HangingRedis()
         app.state.mysql_session_factory = ReadySessionFactory()
         async with create_async_client() as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
         assert response.status_code == 503
         assert response.json()["message"]["checks"]["redis"] == "timeout"
@@ -156,7 +156,7 @@ def test_readiness_times_out_when_mysql_hangs(
         app.state.redis = FakeRedis()
         app.state.mysql_session_factory = HangingSessionFactory()
         async with create_async_client() as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
         assert response.status_code == 503
         assert response.json()["message"]["checks"]["mysql"] == "timeout"
@@ -172,7 +172,7 @@ def test_readiness_returns_503_when_schema_is_outdated() -> None:
         app.state.redis = FakeRedis()
         app.state.mysql_session_factory = ReadySessionFactory("0001_initial_schema")
         async with create_async_client() as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
         assert response.status_code == 503
         body = response.json()

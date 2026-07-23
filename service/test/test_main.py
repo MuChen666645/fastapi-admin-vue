@@ -151,7 +151,7 @@ def test_trusted_host_rejects_unknown_hosts() -> None:
             transport=ASGITransport(app=app), base_url="http://testserver"
         ) as client:
             response = await client.get(
-                "/health/live", headers={"host": "attacker.example"}
+                "/api/v1/health/live", headers={"host": "attacker.example"}
             )
 
         assert response.status_code == 400
