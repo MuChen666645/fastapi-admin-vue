@@ -4,15 +4,12 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 
 from module_admin.auth.authorization import Auth
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.entity.dto.tenant_dto import (
-    TenantCreateDto,
-    TenantDto,
-    TenantMemberAddDto,
-    TenantMemberDto,
-    TenantMemberUpdateDto,
-    TenantSwitchDto,
-    TenantUpdateDto,
-)
+from module_admin.entity.dto.tenant_dto import (TenantCreateDto, TenantDto,
+                                                TenantMemberAddDto,
+                                                TenantMemberDto,
+                                                TenantMemberUpdateDto,
+                                                TenantSwitchDto,
+                                                TenantUpdateDto)
 from module_admin.service.tenant_service import TenantService
 
 
@@ -34,7 +31,10 @@ class TenantController:
     @tenant.get(
         "/list/all",
         summary="查询全部租户",
-        dependencies=[Depends(Auth.has_permission("system:tenant:list"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:list")),
+        ],
         responses={200: {"model": ApiResponseDto[list[TenantDto]]}},
     )
     async def list_all(request: Request):
@@ -54,7 +54,10 @@ class TenantController:
     @tenant.post(
         "/add",
         summary="新增租户",
-        dependencies=[Depends(Auth.has_permission("system:tenant:add"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:add")),
+        ],
         responses={200: {"model": ApiResponseDto[TenantDto]}},
     )
     async def create(data: TenantCreateDto, request: Request):
@@ -64,7 +67,10 @@ class TenantController:
     @tenant.put(
         "/{tenant_id}",
         summary="修改租户",
-        dependencies=[Depends(Auth.has_permission("system:tenant:edit"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:edit")),
+        ],
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def update(
@@ -78,7 +84,10 @@ class TenantController:
     @tenant.delete(
         "/{tenant_id}",
         summary="删除租户",
-        dependencies=[Depends(Auth.has_permission("system:tenant:remove"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:remove")),
+        ],
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def delete(
@@ -92,7 +101,10 @@ class TenantController:
     @tenant.get(
         "/{tenant_id}/members",
         summary="查询租户成员",
-        dependencies=[Depends(Auth.has_permission("system:tenant:member:list"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:member:list")),
+        ],
         responses={200: {"model": ApiResponseDto[list[TenantMemberDto]]}},
     )
     async def members(
@@ -105,7 +117,10 @@ class TenantController:
     @tenant.post(
         "/{tenant_id}/members",
         summary="添加租户成员",
-        dependencies=[Depends(Auth.has_permission("system:tenant:member:add"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:member:add")),
+        ],
         responses={200: {"model": ApiResponseDto[TenantMemberDto]}},
     )
     async def add_member(
@@ -119,7 +134,10 @@ class TenantController:
     @tenant.put(
         "/{tenant_id}/members/{user_id}",
         summary="修改租户成员",
-        dependencies=[Depends(Auth.has_permission("system:tenant:member:edit"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:member:edit")),
+        ],
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def update_member(
@@ -134,7 +152,10 @@ class TenantController:
     @tenant.delete(
         "/{tenant_id}/members/{user_id}",
         summary="移除租户成员",
-        dependencies=[Depends(Auth.has_permission("system:tenant:member:remove"))],
+        dependencies=[
+            Depends(Auth.platform_admin_status),
+            Depends(Auth.has_permission("system:tenant:member:remove")),
+        ],
         responses={200: {"model": ApiResponseDto[None]}},
     )
     async def remove_member(

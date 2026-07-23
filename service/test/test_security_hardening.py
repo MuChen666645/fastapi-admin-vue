@@ -16,6 +16,7 @@ from sqlalchemy import select
 
 from config.env import settings
 from module_admin.auth.authorization import Auth
+from module_admin.controller.tenant_controller import TenantController
 from module_admin.dao.menu_dao import MenuDao
 from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.tenant_scope import tenant_clause
@@ -80,6 +81,58 @@ def test_tenant_dao_get_rejects_disabled_tenants() -> None:
         assert "tenants.status" in str(statements[0])
 
     anyio.run(run)
+
+
+def test_platform_admin_dependency_rejects_non_platform_users(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        async def authenticate(_request, _authorization):
+            return {"user_id": 7}
+
+        async def actor_roles(_request):
+            return [SimpleNamespace(code=settings.ADMIN_ROLE_CODE)]
+
+        monkeypatch.setattr(Auth, "router_auth", authenticate)
+        monkeypatch.setattr(Auth, "get_actor_roles", actor_roles)
+
+        platform_request = _request(tenant_id=settings.DEFAULT_TENANT_ID)
+        assert await Auth.platform_admin_status(platform_request, "token") == {
+            "user_id": 7
+        }
+
+        tenant_request = _request(tenant_id=settings.DEFAULT_TENANT_ID + 1)
+        with pytest.raises(HTTPException) as tenant_error:
+            await Auth.platform_admin_status(tenant_request, "token")
+        assert tenant_error.value.status_code == 403
+
+        async def non_admin_roles(_request):
+            return [SimpleNamespace(code="tenant-admin")]
+
+        monkeypatch.setattr(Auth, "get_actor_roles", non_admin_roles)
+        with pytest.raises(HTTPException) as role_error:
+            await Auth.platform_admin_status(platform_request, "token")
+        assert role_error.value.status_code == 403
+
+    anyio.run(run)
+
+
+def test_tenant_management_routes_require_platform_admin() -> None:
+    exempt_paths = {"/tenant/list", "/tenant/switch"}
+    protected_routes = [
+        route
+        for route in TenantController.tenant.routes
+        if route.path not in exempt_paths
+    ]
+
+    assert len(protected_routes) == 8
+    assert all(
+        any(
+            dependency.call is Auth.platform_admin_status
+            for dependency in route.dependant.dependencies
+        )
+        for route in protected_routes
+    )
 
 
 def test_auth_tenant_member_query_checks_tenant_lifecycle() -> None:

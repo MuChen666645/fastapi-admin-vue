@@ -266,6 +266,20 @@ return {1, raw}
         return await Auth.router_auth(request, Authorization)
 
     @staticmethod
+    async def platform_admin_status(
+        request: Request,
+        Authorization: str | None = Header(default=None, description="Token"),
+    ) -> dict:
+        """仅允许平台租户中的超级管理员访问平台级管理接口。"""
+        payload = await Auth.router_auth(request, Authorization)
+        if getattr(request.state, "tenant_id", None) != settings.DEFAULT_TENANT_ID:
+            raise HTTPException(status_code=403, detail="仅平台管理员可执行此操作")
+        roles = await Auth.get_actor_roles(request)
+        if not Auth.has_admin_role(roles):
+            raise HTTPException(status_code=403, detail="仅平台管理员可执行此操作")
+        return payload
+
+    @staticmethod
     def has_admin_role(roles: list) -> bool:
         """判断角色列表是否包含配置的保留管理员角色。"""
         admin_role_code = settings.ADMIN_ROLE_CODE.strip().casefold()
@@ -642,7 +656,8 @@ return {1, raw}
             return False
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import DataScopeService
+            from module_admin.service.data_scope_service import \
+                DataScopeService
 
             if not await DataScopeService.can_access_user(
                 int(target["user_id"]), request
@@ -657,7 +672,8 @@ return {1, raw}
         sessions = await Auth.list_online_tokens(request)
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import DataScopeService
+            from module_admin.service.data_scope_service import \
+                DataScopeService
 
             if not await DataScopeService.can_access_user(user_id, request):
                 return 0
