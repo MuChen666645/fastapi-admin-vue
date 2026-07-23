@@ -8,6 +8,7 @@ from test.conftest import app
 import anyio
 import pytest
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from sqlalchemy import delete, select
 from starlette.requests import Request
 
@@ -18,11 +19,18 @@ from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationL
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
+from module_admin.entity.do.tenant_do import TenantMemberDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
 from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from utils.fastapi_admin import FastApiAdmin
 
-pytestmark = pytest.mark.integration
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        os.getenv("RUN_INTEGRATION_TESTS") != "1",
+        reason="RUN_INTEGRATION_TESTS=1 is required for real service tests",
+    ),
+]
 
 
 @dataclass(frozen=True)
@@ -73,6 +81,7 @@ async def _seed_reset_password_case(session_factory) -> ResetPasswordCase:
                 id=None,
                 name=f"integration-admin-{suffix}",
                 code=settings.ADMIN_ROLE_CODE,
+                tenant_id=settings.DEFAULT_TENANT_ID,
                 description="integration administrator",
             )
             session.add(admin_role)
@@ -96,6 +105,7 @@ async def _seed_reset_password_case(session_factory) -> ResetPasswordCase:
         department = DepartmentDo(
             dept_name=f"integration-{suffix}",
             ancestors="0",
+            tenant_id=settings.DEFAULT_TENANT_ID,
         )
         session.add(department)
         await session.flush()
@@ -103,8 +113,10 @@ async def _seed_reset_password_case(session_factory) -> ResetPasswordCase:
         admin_user = UserDo(
             id=None,
             username=f"integration-admin-{suffix}",
-            password=FastApiAdmin.password_hash("old-admin-password"),
+            password=FastApiAdmin.password_hash("Old-Admin1!"),
             phone=_phone_number(),
+            tenant_id=settings.DEFAULT_TENANT_ID,
+            must_change_password=False,
             dept_id=department.dept_id,
             role_id=admin_role.id,
             nickname="integration-admin",
@@ -112,12 +124,29 @@ async def _seed_reset_password_case(session_factory) -> ResetPasswordCase:
         target_user = UserDo(
             id=None,
             username=f"integration-target-{suffix}",
-            password=FastApiAdmin.password_hash("old-target-password"),
+            password=FastApiAdmin.password_hash("Old-Target1!"),
             phone=_phone_number(),
+            tenant_id=settings.DEFAULT_TENANT_ID,
+            must_change_password=False,
             dept_id=department.dept_id,
             nickname="integration-target",
         )
         session.add_all([admin_user, target_user])
+        await session.flush()
+        session.add_all(
+            [
+                TenantMemberDo(
+                    user_id=admin_user.id,
+                    tenant_id=settings.DEFAULT_TENANT_ID,
+                    is_default=True,
+                ),
+                TenantMemberDo(
+                    user_id=target_user.id,
+                    tenant_id=settings.DEFAULT_TENANT_ID,
+                    is_default=True,
+                ),
+            ]
+        )
         await session.commit()
 
         return ResetPasswordCase(
@@ -145,6 +174,9 @@ async def _cleanup_reset_password_case(
             delete(ExceptionLogDo).where(ExceptionLogDo.user_id.in_(user_ids))
         )
         await session.execute(
+            delete(TenantMemberDo).where(TenantMemberDo.user_id.in_(user_ids))
+        )
+        await session.execute(
             delete(UserRoleDo).where(UserRoleDo.user_id.in_(user_ids))
         )
         await session.execute(delete(UserDo).where(UserDo.id.in_(user_ids)))
@@ -167,22 +199,29 @@ async def _cleanup_reset_password_case(
 
 
 def test_reset_password_through_real_services() -> None:
-    if os.getenv("RUN_INTEGRATION_TESTS") != "1":
-        pytest.skip("RUN_INTEGRATION_TESTS=1 is required")
-
     async def run() -> None:
         async with app.router.lifespan_context(app):
             app.dependency_overrides.clear()
+            assert isinstance(app.state.redis, Redis)
+            assert app.state.mysql_engine is not None
             case = await _seed_reset_password_case(app.state.mysql_session_factory)
             admin_request = _request_for_token()
             target_request = _request_for_token()
             try:
                 await Auth.create_login_token(
-                    {"user_id": case.target_user_id, "username": "integration-target"},
+                    {
+                        "user_id": case.target_user_id,
+                        "username": "integration-target",
+                        "tenant_id": settings.DEFAULT_TENANT_ID,
+                    },
                     target_request,
                 )
                 token = await Auth.create_login_token(
-                    {"user_id": case.admin_user_id, "username": "integration-admin"},
+                    {
+                        "user_id": case.admin_user_id,
+                        "username": "integration-admin",
+                        "tenant_id": settings.DEFAULT_TENANT_ID,
+                    },
                     admin_request,
                 )
                 async with AsyncClient(
@@ -192,7 +231,7 @@ def test_reset_password_through_real_services() -> None:
                     response = await client.put(
                         f"/api/v1/user/{case.target_user_id}/reset-password",
                         headers={"Authorization": f"Bearer {token}"},
-                        json={"password": "new-target-password"},
+                        json={"password": "New-Target1!"},
                     )
 
                 assert response.status_code == 200, response.text
@@ -201,11 +240,9 @@ def test_reset_password_through_real_services() -> None:
                 async with app.state.mysql_session_factory() as session:
                     target = await session.get(UserDo, case.target_user_id)
                     assert target is not None
-                    assert FastApiAdmin.verify_password(
-                        "new-target-password", target.password
-                    )
+                    assert FastApiAdmin.verify_password("New-Target1!", target.password)
                     assert not FastApiAdmin.verify_password(
-                        "old-target-password", target.password
+                        "Old-Target1!", target.password
                     )
                 sessions = await Auth.list_online_tokens(target_request)
                 assert all(
@@ -224,12 +261,11 @@ def test_reset_password_through_real_services() -> None:
 def test_department_move_does_not_update_prefix_collision_in_real_mysql() -> None:
     """验证移动部门时不会修改 ID 前缀相同的无关分支。"""
 
-    if os.getenv("RUN_INTEGRATION_TESTS") != "1":
-        pytest.skip("RUN_INTEGRATION_TESTS=1 is required")
-
     async def run() -> None:
         async with app.router.lifespan_context(app):
             app.dependency_overrides.clear()
+            assert isinstance(app.state.redis, Redis)
+            assert app.state.mysql_engine is not None
             case = await _seed_reset_password_case(app.state.mysql_session_factory)
             admin_request = _request_for_token()
             while True:
@@ -263,12 +299,14 @@ def test_department_move_does_not_update_prefix_collision_in_real_mysql() -> Non
                                 dept_id=old_parent_id,
                                 parent_id=None,
                                 ancestors="0",
+                                tenant_id=settings.DEFAULT_TENANT_ID,
                                 dept_name="integration-old-parent",
                             ),
                             DepartmentDo(
                                 dept_id=new_parent_id,
                                 parent_id=None,
                                 ancestors="0",
+                                tenant_id=settings.DEFAULT_TENANT_ID,
                                 dept_name="integration-new-parent",
                             ),
                         ]
@@ -280,12 +318,14 @@ def test_department_move_does_not_update_prefix_collision_in_real_mysql() -> Non
                                 dept_id=short_id,
                                 parent_id=old_parent_id,
                                 ancestors=f"0,{old_parent_id}",
+                                tenant_id=settings.DEFAULT_TENANT_ID,
                                 dept_name="integration-moving",
                             ),
                             DepartmentDo(
                                 dept_id=long_id,
                                 parent_id=old_parent_id,
                                 ancestors=f"0,{old_parent_id}",
+                                tenant_id=settings.DEFAULT_TENANT_ID,
                                 dept_name="integration-unrelated",
                             ),
                         ]
@@ -297,12 +337,14 @@ def test_department_move_does_not_update_prefix_collision_in_real_mysql() -> Non
                                 dept_id=moving_child_id,
                                 parent_id=short_id,
                                 ancestors=f"0,{old_parent_id},{short_id}",
+                                tenant_id=settings.DEFAULT_TENANT_ID,
                                 dept_name="integration-moving-child",
                             ),
                             DepartmentDo(
                                 dept_id=unrelated_child_id,
                                 parent_id=long_id,
                                 ancestors=f"0,{old_parent_id},{long_id}",
+                                tenant_id=settings.DEFAULT_TENANT_ID,
                                 dept_name="integration-unrelated-child",
                             ),
                         ]
@@ -310,6 +352,7 @@ def test_department_move_does_not_update_prefix_collision_in_real_mysql() -> Non
                     await session.commit()
 
                 admin_request.state.user_id = case.admin_user_id
+                admin_request.state.tenant_id = settings.DEFAULT_TENANT_ID
                 async with app.state.mysql_session_factory() as session:
                     admin_request.state.mysql = session
                     result = await OrganizationDao.update_department(

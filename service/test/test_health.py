@@ -1,5 +1,6 @@
 import asyncio
-from test.conftest import FakeRedis, create_async_client
+from test.conftest import create_async_client
+from test.unit_support import InMemoryRedis
 
 import anyio
 import pytest
@@ -60,7 +61,7 @@ def test_readiness_checks_redis_and_mysql() -> None:
     async def run() -> None:
         from main import app
 
-        app.state.redis = FakeRedis()
+        app.state.redis = InMemoryRedis()
         app.state.mysql_session_factory = ReadySessionFactory()
         async with create_async_client() as client:
             response = await client.get("/api/v1/health/ready")
@@ -89,7 +90,7 @@ def test_readiness_returns_503_when_mysql_is_unavailable() -> None:
 
 
 def test_readiness_returns_503_when_redis_is_unavailable() -> None:
-    class BrokenRedis(FakeRedis):
+    class BrokenRedis(InMemoryRedis):
         async def ping(self) -> bool:
             raise ConnectionError("Redis unavailable")
 
@@ -115,7 +116,7 @@ def test_readiness_returns_503_when_redis_is_unavailable() -> None:
 def test_readiness_times_out_when_redis_hangs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    class HangingRedis(FakeRedis):
+    class HangingRedis(InMemoryRedis):
         async def ping(self) -> bool:
             await asyncio.sleep(1)
             return True
@@ -153,7 +154,7 @@ def test_readiness_times_out_when_mysql_hangs(
         from main import app
 
         monkeypatch.setattr(settings, "READINESS_TIMEOUT_SECONDS", 0.01)
-        app.state.redis = FakeRedis()
+        app.state.redis = InMemoryRedis()
         app.state.mysql_session_factory = HangingSessionFactory()
         async with create_async_client() as client:
             response = await client.get("/api/v1/health/ready")
@@ -169,7 +170,7 @@ def test_readiness_returns_503_when_schema_is_outdated() -> None:
     async def run() -> None:
         from main import app
 
-        app.state.redis = FakeRedis()
+        app.state.redis = InMemoryRedis()
         app.state.mysql_session_factory = ReadySessionFactory("0001_initial_schema")
         async with create_async_client() as client:
             response = await client.get("/api/v1/health/ready")

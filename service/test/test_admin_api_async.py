@@ -9,6 +9,7 @@ from test.conftest import app
 import anyio
 import pytest
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from sqlalchemy import delete, select
 from starlette.requests import Request
 
@@ -20,9 +21,11 @@ from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationL
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.notice_do import NoticeDo
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
+from module_admin.entity.do.permission_audit_do import PermissionChangeVersionDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.system_config_do import SystemConfigDo
+from module_admin.entity.do.tenant_do import TenantMemberDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
 from module_admin.service.code_service import CodeService
 from utils.fastapi_admin import FastApiAdmin
@@ -35,7 +38,7 @@ pytestmark = [
     ),
 ]
 
-ADMIN_PASSWORD = "integration-admin-password"
+ADMIN_PASSWORD = "Integration-Admin1!"
 CAPTCHA_CODE = "1234"
 
 
@@ -101,6 +104,7 @@ async def _seed_case(session_factory) -> ApiCase:
                 id=None,
                 name=f"integration-admin-{suffix}",
                 code=settings.ADMIN_ROLE_CODE,
+                tenant_id=settings.DEFAULT_TENANT_ID,
                 description="集成测试管理员角色",
             )
             session.add(admin_role)
@@ -130,6 +134,7 @@ async def _seed_case(session_factory) -> ApiCase:
         department = DepartmentDo(
             dept_name=f"集成测试部门-{suffix}",
             ancestors="0",
+            tenant_id=settings.DEFAULT_TENANT_ID,
         )
         session.add(department)
         await session.flush()
@@ -142,9 +147,19 @@ async def _seed_case(session_factory) -> ApiCase:
             email=f"integration-admin-{suffix}@example.com",
             dept_id=department.dept_id,
             role_id=admin_role.id,
+            tenant_id=settings.DEFAULT_TENANT_ID,
+            must_change_password=False,
             nickname="集成测试管理员",
         )
         session.add(admin_user)
+        await session.flush()
+        session.add(
+            TenantMemberDo(
+                user_id=admin_user.id,
+                tenant_id=settings.DEFAULT_TENANT_ID,
+                is_default=True,
+            )
+        )
         await session.commit()
 
         return ApiCase(
@@ -233,6 +248,19 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
             )
 
     async with session_factory() as session:
+        for resource_type, resource_ids in (
+            ("menu", case.menu_ids),
+            ("role", case.role_ids),
+        ):
+            if resource_ids:
+                await session.execute(
+                    delete(PermissionChangeVersionDo).where(
+                        PermissionChangeVersionDo.resource_type == resource_type,
+                        PermissionChangeVersionDo.resource_id.in_(
+                            [str(resource_id) for resource_id in resource_ids]
+                        ),
+                    )
+                )
         if case.user_ids:
             await session.execute(
                 delete(LoginLogDo).where(LoginLogDo.user_id.in_(case.user_ids))
@@ -242,6 +270,9 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
             )
             await session.execute(
                 delete(ExceptionLogDo).where(ExceptionLogDo.user_id.in_(case.user_ids))
+            )
+            await session.execute(
+                delete(TenantMemberDo).where(TenantMemberDo.user_id.in_(case.user_ids))
             )
             await session.execute(
                 delete(UserPostDo).where(UserPostDo.user_id.in_(case.user_ids))
@@ -316,8 +347,11 @@ async def _run_with_admin(callback) -> None:
     """启动真实应用、执行测试回调，并保证测试数据最终清理。"""
     async with app.router.lifespan_context(app):
         app.dependency_overrides.clear()
-        case = await _seed_case(app.state.mysql_session_factory)
+        assert isinstance(app.state.redis, Redis)
+        assert app.state.mysql_engine is not None
+        case = None
         try:
+            case = await _seed_case(app.state.mysql_session_factory)
             transport = ASGITransport(
                 app=app,
                 client=("127.0.0.1", 23456),
@@ -330,7 +364,8 @@ async def _run_with_admin(callback) -> None:
                 client.headers["Authorization"] = f"Bearer {token}"
                 await callback(client, case)
         finally:
-            await _cleanup_case(app.state.mysql_session_factory, case)
+            if case is not None:
+                await _cleanup_case(app.state.mysql_session_factory, case)
 
 
 def test_real_captcha_and_user_api() -> None:
@@ -350,7 +385,7 @@ def test_real_captcha_and_user_api() -> None:
                     "/api/v1/user/add",
                     json={
                         "username": username,
-                        "password": "target-password",
+                        "password": "Integration-Target1!",
                         "phone": phone,
                         "email": f"{username}@example.com",
                         "nickname": "集成测试用户",
@@ -444,7 +479,11 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             _assert_success(
                 await client.post(
                     "/api/v1/role/add",
-                    json={"name": f"集成角色-{suffix}", "code": role_code},
+                    json={
+                        "name": f"集成角色-{suffix}",
+                        "code": role_code,
+                        "description": "集成测试角色",
+                    },
                 )
             )
             role_id = await _find_id(
@@ -517,7 +556,9 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             )
             case.dict_data_ids.append(dict_data_id)
             _assert_success(
-                await client.put(f"/api/v1/dict/data/{dict_data_id}", json={"status": "0"})
+                await client.put(
+                    f"/api/v1/dict/data/{dict_data_id}", json={"status": "0"}
+                )
             )
 
             config_key = f"integration.config.{suffix}"
@@ -622,6 +663,41 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             ):
                 assert _assert_success(await client.get(path)) is not None
 
+            login_logs = _assert_success(
+                await client.get(
+                    "/api/v1/log/login/list",
+                    params={"username": f"integration-admin-{suffix}"},
+                )
+            )
+            assert login_logs["total"] >= 1
+            assert any(
+                item["username"] == f"integration-admin-{suffix}"
+                for item in login_logs["items"]
+            )
+
+            operation_logs = _assert_success(
+                await client.get(
+                    "/api/v1/log/operation/list",
+                    params={"username": f"integration-admin-{suffix}"},
+                )
+            )
+            assert operation_logs["total"] >= 1
+
+            online_users = _assert_success(
+                await client.get(
+                    "/api/v1/online/list",
+                    params={
+                        "username": f"integration-admin-{suffix}",
+                        "page": 1,
+                        "size": 10,
+                    },
+                )
+            )
+            assert online_users["total"] >= 1
+            assert any(
+                item["user_id"] == case.admin_user_id for item in online_users["items"]
+            )
+
             _assert_success(await client.delete(f"/api/v1/notice/{notice_id}"))
             _assert_success(await client.delete(f"/api/v1/config/{config_id}"))
             _assert_success(await client.delete(f"/api/v1/job/{job_id}"))
@@ -631,6 +707,12 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             _assert_success(await client.delete(f"/api/v1/role/{role_id}"))
             _assert_success(await client.delete(f"/api/v1/post/{post_id}"))
             _assert_success(await client.delete(f"/api/v1/dept/{department_id}"))
+
+            logout = _assert_success(
+                await client.delete(f"/api/v1/online/user/{case.admin_user_id}")
+            )
+            assert logout["user_id"] == case.admin_user_id
+            assert logout["revoked_token_count"] >= 1
 
         await _run_with_admin(exercise)
 

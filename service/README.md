@@ -492,6 +492,10 @@ poetry run python -m pytest -q
 # 运行单元测试并检查 60% 覆盖率阈值
 poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-missing
 
+# 启动本地真实 MySQL/Redis（测试数据会使用随机后缀并在测试后清理）
+docker compose up -d fastapi-mysql fastapi-redis
+poetry run python -m scripts.migrate_database
+
 # 运行 MySQL/Redis 集成测试
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 
@@ -1137,6 +1141,11 @@ poetry run python -m pytest -q
 
 # Run unit tests and enforce the 60% coverage threshold
 poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-missing
+
+# Start the local real MySQL/Redis services. Tests use randomized temporary rows
+# and clean them up after each test.
+docker compose up -d fastapi-mysql fastapi-redis
+poetry run python -m scripts.migrate_database
 
 # Run MySQL/Redis integration tests
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration

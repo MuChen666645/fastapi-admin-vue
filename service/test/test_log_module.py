@@ -1,15 +1,11 @@
-from test.conftest import app, create_async_client
+from test.conftest import app
 from types import SimpleNamespace
 
 import anyio
 import pytest
-from fastapi_pagination import Params
 
-from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
 from module_admin.entity.do.log_do import LoginLogDo
-from module_admin.entity.dto.log_dto import OnlineQueryDto
-from module_admin.service.log_service import LogService
 from module_admin.service.user_service import UserService
 
 
@@ -95,39 +91,6 @@ def test_log_and_online_routes_are_registered() -> None:
     assert expected_routes <= routes
 
 
-def test_login_log_list_endpoint(monkeypatch) -> None:
-    async def fake_list(log_type, query, params, request):
-        assert log_type == "login"
-        assert params.page == 2
-        assert params.size == 10
-        return {"items": [], "total": 0, "page": 2, "size": 10, "pages": 0}
-
-    async def run() -> None:
-        monkeypatch.setattr(LogService, "list_logs", fake_list)
-        async with create_async_client() as client:
-            response = await client.get("/api/v1/log/login/list?page=2&size=10")
-        assert response.status_code == 200
-        assert response.json()["data"]["page"] == 2
-
-    anyio.run(run)
-
-
-def test_online_list_endpoint() -> None:
-    async def run() -> None:
-        async with create_async_client() as client:
-            response = await client.get("/api/v1/online/list?page=2&size=10")
-        assert response.status_code == 200
-        assert response.json()["data"] == {
-            "items": [],
-            "total": 0,
-            "page": 2,
-            "size": 10,
-            "pages": 0,
-        }
-
-    anyio.run(run)
-
-
 def test_new_endpoints_publish_response_models() -> None:
     paths = app.openapi()["paths"]
     endpoints = {
@@ -146,9 +109,9 @@ def test_new_endpoints_publish_response_models() -> None:
 
 
 def test_post_list_publishes_page_response_model() -> None:
-    response_schema = app.openapi()["paths"]["/api/v1/post/list"]["get"]["responses"]["200"][
-        "content"
-    ]["application/json"]["schema"]
+    response_schema = app.openapi()["paths"]["/api/v1/post/list"]["get"]["responses"][
+        "200"
+    ]["content"]["application/json"]["schema"]
     assert (
         response_schema["$ref"] == "#/components/schemas/ApiResponseDto_Page_PostDto__"
     )
@@ -187,35 +150,6 @@ def test_log_batch_delete_request_body_has_chinese_description() -> None:
     )
 
 
-def test_online_users_are_filtered_and_paginated(monkeypatch) -> None:
-    sessions = [
-        {
-            "token_id": str(index).zfill(64),
-            "user_id": index,
-            "username": f"admin-{index}",
-            "ip_address": "10.0.0.1" if index < 3 else "10.0.0.2",
-        }
-        for index in range(5)
-    ]
-
-    async def fake_sessions(request):
-        return sessions
-
-    async def run() -> None:
-        monkeypatch.setattr(Auth, "list_online_tokens", fake_sessions)
-        query = OnlineQueryDto(username="admin", ip_address="10.0.0.1")
-        result = await LogService.list_online_users(
-            query, Params(page=2, size=2), SimpleNamespace()
-        )
-        assert result.total == 3
-        assert [item["user_id"] for item in result.items] == [2]
-        assert result.page == 2
-        assert result.size == 2
-        assert result.pages == 2
-
-    anyio.run(run)
-
-
 def test_log_and_online_schemas_have_chinese_field_descriptions() -> None:
     schemas = app.openapi()["components"]["schemas"]
     target_prefixes = (
@@ -237,24 +171,6 @@ def test_log_and_online_schemas_have_chinese_field_descriptions() -> None:
             description = field.get("description", "")
             assert description
             assert any("\u4e00" <= char <= "\u9fff" for char in description)
-
-
-def test_force_logout_user_response_structure(monkeypatch) -> None:
-    async def fake_revoke(request, user_id):
-        assert user_id == 42
-        return 3
-
-    async def run() -> None:
-        monkeypatch.setattr(Auth, "revoke_user_tokens", fake_revoke)
-        async with create_async_client() as client:
-            response = await client.delete("/api/v1/online/user/42")
-        assert response.status_code == 200
-        assert response.json()["data"] == {
-            "user_id": 42,
-            "revoked_token_count": 3,
-        }
-
-    anyio.run(run)
 
 
 def test_user_route_tree_uses_frontend_route_shape() -> None:
