@@ -259,7 +259,7 @@ class ExternalIdentityService:
             claims,
             request,
             mfa_code=mfa_code,
-            allow_email_link=True,
+            allow_email_link=False,
         )
 
     @classmethod
@@ -285,10 +285,14 @@ class ExternalIdentityService:
             request,
             tenant_id=tenant_id,
         )
-        if user is None and allow_email_link and claims.get("email"):
-            user = await UserDao.get_user_by_identifier(
+        if user is None and claims.get("email"):
+            email_user = await UserDao.get_user_by_identifier(
                 str(claims["email"]), request, tenant_id=tenant_id
             )
+            if allow_email_link:
+                user = email_user
+            elif email_user is not None:
+                raise HTTPException(status_code=403, detail="LDAP 外部身份尚未绑定")
         if user is None:
             username_seed = hashlib.sha256(
                 f"{provider}:{subject}".encode()

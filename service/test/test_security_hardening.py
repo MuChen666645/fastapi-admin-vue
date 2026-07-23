@@ -327,9 +327,11 @@ def test_ldap_service_account_search_escapes_filter_and_rebinds_user(
         monkeypatch.setattr(settings, "LDAP_USER_FILTER", "(uid={username})")
 
         claims = {}
+        link_options = {}
 
         async def login_external(*args, **kwargs):
             claims.update(args[2])
+            link_options.update(kwargs)
             return claims
 
         monkeypatch.setattr(ExternalIdentityService, "_login_external_user", login_external)
@@ -347,6 +349,7 @@ def test_ldap_service_account_search_escapes_filter_and_rebinds_user(
         assert calls[2][3] is True
         assert "\\2a" in calls[1][0]
         assert "*)(uid=*)" not in calls[1][0]
+        assert link_options["allow_email_link"] is False
 
         with pytest.raises(HTTPException) as error:
             await ExternalIdentityService.login_ldap(
@@ -355,6 +358,48 @@ def test_ldap_service_account_search_escapes_filter_and_rebinds_user(
                 _request(),
             )
         assert error.value.status_code == 401
+
+    anyio.run(run)
+
+
+def test_ldap_does_not_link_existing_local_account_by_email(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        local_user = SimpleNamespace(
+            id=7,
+            status="1",
+            auth_provider="local",
+            auth_subject=None,
+            tenant_id=1,
+        )
+
+        async def active_tenant(*_args, **_kwargs):
+            return SimpleNamespace(id=1)
+
+        async def no_external_subject(*_args, **_kwargs):
+            return None
+
+        async def local_user_by_email(*_args, **_kwargs):
+            return local_user
+
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
+        monkeypatch.setattr(
+            UserDao, "get_user_by_external_subject", no_external_subject
+        )
+        monkeypatch.setattr(UserDao, "get_user_by_identifier", local_user_by_email)
+
+        with pytest.raises(HTTPException, match="LDAP 外部身份尚未绑定"):
+            await ExternalIdentityService._login_external_user(
+                "ldap",
+                "directory-user",
+                {"email": "local@example.com"},
+                _request(tenant_id=1),
+                allow_email_link=False,
+            )
+
+        assert local_user.auth_provider == "local"
+        assert local_user.auth_subject is None
 
     anyio.run(run)
 
