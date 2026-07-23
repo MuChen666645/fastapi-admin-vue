@@ -181,14 +181,26 @@ class ExternalIdentityService:
             except ImportError as exc:
                 raise RuntimeError("LDAP 依赖未安装") from exc
             server = Server(settings.LDAP_SERVER_URL, get_info=ALL)
+
+            def open_bound_connection(user: str, bind_password: str):
+                connection = Connection(
+                    server,
+                    user=user,
+                    password=bind_password,
+                    auto_bind=True,
+                    raise_exceptions=True,
+                )
+                if not connection.bound:
+                    connection.unbind()
+                    raise ValueError("LDAP 绑定失败")
+                return connection
+
             if not password:
                 raise ValueError("LDAP 密码不能为空")
             if settings.LDAP_BIND_DN:
-                service_connection = Connection(
-                    server,
-                    user=settings.LDAP_BIND_DN,
-                    password=settings.LDAP_BIND_PASSWORD,
-                    auto_bind=True,
+                service_connection = open_bound_connection(
+                    settings.LDAP_BIND_DN,
+                    settings.LDAP_BIND_PASSWORD,
                 )
                 try:
                     search_filter = settings.LDAP_USER_FILTER.format(
@@ -210,21 +222,14 @@ class ExternalIdentityService:
                     }
                 finally:
                     service_connection.unbind()
-                user_connection = Connection(
-                    server,
-                    user=user_dn,
-                    password=password,
-                    auto_bind=True,
+                user_connection = open_bound_connection(
+                    user_dn,
+                    password,
                 )
                 user_connection.unbind()
                 return claims
 
-            connection = Connection(
-                server,
-                user=username,
-                password=password,
-                auto_bind=True,
-            )
+            connection = open_bound_connection(username, password)
             try:
                 connection.search(
                     settings.LDAP_BASE_DN,

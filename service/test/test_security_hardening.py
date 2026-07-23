@@ -25,7 +25,8 @@ from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
-from module_admin.service.external_identity_service import ExternalIdentityService
+from module_admin.service.external_identity_service import \
+    ExternalIdentityService
 from module_admin.service.file_service import FileService
 from module_admin.service.mfa_service import MfaService
 from module_admin.service.notification_service import NotificationService
@@ -302,9 +303,10 @@ def test_ldap_service_account_search_escapes_filter_and_rebinds_user(
                 pass
 
         class Connection:
-            def __init__(self, _server, user, password, auto_bind):
-                calls.append((user, password, auto_bind))
+            def __init__(self, _server, user, password, auto_bind, raise_exceptions):
+                calls.append((user, password, auto_bind, raise_exceptions))
                 self.user = user
+                self.bound = password != "wrong-password"
                 self.entries = []
 
             def search(self, _base, search_filter, attributes):
@@ -339,10 +341,20 @@ def test_ldap_service_account_search_escapes_filter_and_rebinds_user(
 
         assert result["sub"] == "alice"
         assert calls[0][0] == "cn=service"
+        assert calls[0][3] is True
         assert calls[2][0] == user_dn
         assert calls[2][1] == "user-password"
+        assert calls[2][3] is True
         assert "\\2a" in calls[1][0]
         assert "*)(uid=*)" not in calls[1][0]
+
+        with pytest.raises(HTTPException) as error:
+            await ExternalIdentityService.login_ldap(
+                "alice",
+                "wrong-password",
+                _request(),
+            )
+        assert error.value.status_code == 401
 
     anyio.run(run)
 
