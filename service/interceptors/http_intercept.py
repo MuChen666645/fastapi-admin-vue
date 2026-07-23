@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import JSONResponse
 
 from middleware.response_intercept import SKIP_RESPONSE_WRAPPER_HEADER
+from module_admin.error_codes import default_error_code
 
 
 class ApiExceptionInterception:
@@ -50,9 +51,7 @@ class ApiExceptionInterception:
     @staticmethod
     async def sql_Integrity(request: Request, exc: IntegrityError):
         """将数据库完整性错误转换为客户端错误。"""
-        logger.opt(
-            exception=(type(exc), exc, exc.__traceback__)
-        ).error(
+        logger.opt(exception=(type(exc), exc, exc.__traceback__)).error(
             "Database integrity error: {} {}",
             request.method,
             request.url.path,
@@ -74,6 +73,7 @@ class ApiExceptionInterception:
             status_code=500,
             content={
                 "code": 500,
+                "error_code": default_error_code(500),
                 "message": "Internal Server Error",
                 "data": None,
             },

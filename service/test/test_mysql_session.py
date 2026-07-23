@@ -99,9 +99,7 @@ def test_request_mysql_session_rolls_back_on_error() -> None:
 
 def test_request_mysql_session_rolls_back_when_commit_fails() -> None:
     async def run() -> None:
-        session_factory = FakeSessionFactory(
-            commit_error=RuntimeError("commit failed")
-        )
+        session_factory = FakeSessionFactory(commit_error=RuntimeError("commit failed"))
         request = create_request(session_factory)
         session_context = asynccontextmanager(bind_request_mysql_session)
 
@@ -126,9 +124,7 @@ def test_commit_integrity_error_returns_sanitized_client_error() -> None:
             RuntimeError("duplicate user"),
         )
         session_factory = FakeSessionFactory(commit_error=commit_error)
-        test_app = FastAPI(
-            dependencies=[Depends(bind_request_mysql_session)]
-        )
+        test_app = FastAPI(dependencies=[Depends(bind_request_mysql_session)])
         test_app.state.mysql_session_factory = session_factory
         ApiExceptionInterception(test_app)
 

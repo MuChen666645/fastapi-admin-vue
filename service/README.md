@@ -20,6 +20,7 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 - 请求 ID、W3C traceparent 链路关联和结构化 JSON 日志
 - 文件签名校验、可选 ClamAV 扫描、分片上传、预签名 URL 和文本脱敏
 - Excel 用户/角色/字典导入导出、通知收件箱、数据库备份和恢复工具
+- 持久化异步 Excel 导出任务，可查询状态并按租户下载结果文件
 - Redis 分布式任务锁、超时/重试/暂停、Prometheus 指标和可选 OTLP 链路
 - 本地/阿里云 OSS 文件上传下载、系统参数、通知公告和定时任务
 - Prometheus 指标监控，可通过 `/metrics` 抓取
@@ -140,6 +141,8 @@ TITLE=FastAPI Admin
 SUMMARY=FastAPI, SQLModel, MySQL and Redis admin service.
 VERSION=0.0.1
 OPENAPI_URL=/openapi.json
+API_V1_PREFIX=/api/v1
+API_LEGACY_ENABLED=true
 
 # MySQL
 MYSQL_HOST=127.0.0.1
@@ -183,6 +186,24 @@ SCHEDULER_TIMEZONE=Asia/Shanghai
 SCHEDULER_DEFAULT_TIMEOUT_SECONDS=300
 SCHEDULER_LOCK_TTL_SECONDS=900
 SCHEDULER_DEFAULT_MAX_RETRIES=0
+EXPORT_WORKER_ENABLED=true
+EXPORT_POLL_SECONDS=2
+EXPORT_TASK_TTL_SECONDS=86400
+SCHEDULER_WORKER_MODE=inline
+
+# 独立任务 Worker
+WORKER_ENABLED=true
+TASK_QUEUE_STREAM=fastapi:tasks
+TASK_QUEUE_GROUP=fastapi-workers
+TASK_WORKER_CONSUMER=local-worker
+TASK_HANDLER_MODULE=module_admin.service.task_handlers
+TASK_HEARTBEAT_SECONDS=15
+TASK_LOCK_RENEW_SECONDS=30
+
+# 异步导出
+EXPORT_WORKER_ENABLED=true
+EXPORT_POLL_SECONDS=2
+EXPORT_TASK_TTL_SECONDS=86400
 
 # Observability, backup, and optional identity providers
 OTEL_ENABLED=false
@@ -191,10 +212,16 @@ OTEL_EXPORTER_OTLP_ENDPOINT=
 OTEL_EXPORTER_OTLP_HEADERS=
 LOG_RETENTION_DAYS=30
 ALERT_WEBHOOK_URL=
+NOTIFICATION_WEBHOOK_URL=
+NOTIFICATION_SMS_WEBHOOK=
+NOTIFICATION_RETRY_MAX_ATTEMPTS=5
+NOTIFICATION_RETRY_BASE_SECONDS=30
 BACKUP_DIR=backups
 BACKUP_ENCRYPTION_KEY=
 BACKUP_RETENTION_DAYS=30
 BACKUP_TIMEOUT_SECONDS=900
+SECRET_MANAGER_ACTIVE_VERSION=v1
+SECRET_MANAGER_KEYS=
 OIDC_ENABLED=false
 OIDC_AUTHORIZATION_URL=
 OIDC_TOKEN_URL=
@@ -588,6 +615,8 @@ Authorization: Bearer <access_token>
 - 应用启动时自动同步带有 `Auth.has_permission(...)` 的路由到 `api_permission_catalog`。
 - 字段权限编码格式为 `field:<resource>:<field>`，通过角色 DTO 的 `field_permission_codes` 绑定；没有字段权限时，用户敏感字段会被隐藏。
 - 角色和菜单权限变更写入 `permission_change_versions`，保存操作者、版本号以及变更前后快照。
+- 支持租户成员关系、租户切换、软删除和乐观锁；写入租户上下文缺失时默认拒绝。
+- 写请求支持 `Idempotency-Key`，批量用户/角色操作记录前后快照，业务异常会回滚事务。
 
 ### 文件、通知和运维接口
 
@@ -597,19 +626,22 @@ Authorization: Bearer <access_token>
 - 系统参数中 `secret`、`password`、`sensitive` 类型会加密存储，列表、详情和按键查询只返回掩码；请勿将敏感值写入日志或提交到环境示例文件。
 - 文本脱敏接口为 `GET /file/redacted/{file_id}`，需显式启用 `FILE_REDACTION_ENABLED`。
 - 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
+- 用户、角色和字典支持异步导出：调用对应的 `/export/async` 创建任务，再轮询 `/export/tasks/{task_id}`，完成后通过 `/export/tasks/{task_id}/download` 下载。
 - 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /notice/inbox/list`、`POST /notice/{notice_id}/read`。
-- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/ops/backup/create` 执行；备份使用 Fernet 加密并按保留天数清理。恢复前必须确认目标数据库和备份文件。
+- 通知支持收件箱、Webhook、邮件和短信渠道，外部投递失败按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
+- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/ops/backup/create` 执行；`verify` 命令和 `/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。备份使用 Fernet 加密并按保留天数清理。
 
 ### 定时任务与可观测性
 
-- APScheduler 仍负责进程内调度，Redis `SET NX EX` 负责多实例互斥；任务支持超时、重试、暂停/恢复和执行日志。
+- APScheduler 负责触发调度，`SCHEDULER_WORKER_MODE=queue` 时通过 Redis Streams 投递到独立 `fastapi-worker`；Worker 使用心跳、空闲消息接管和任务锁续租保证可靠执行。
+- Redis `SET NX EX` 负责多实例互斥；任务支持超时、重试、暂停/恢复和执行日志。
 - `SCHEDULER_DEFAULT_TIMEOUT_SECONDS`、`SCHEDULER_LOCK_TTL_SECONDS` 和 `SCHEDULER_DEFAULT_MAX_RETRIES` 控制默认执行行为；任务 DTO 也可以单独设置超时和重试次数。
 - `/metrics` 除 HTTP 指标外，还暴露 MySQL/Redis 就绪状态、任务执行次数/耗时和告警投递状态。配置 `ALERT_WEBHOOK_URL` 后，任务失败会发送结构化告警。
-- 配置 `OTEL_ENABLED=true` 和 `OTEL_EXPORTER_OTLP_ENDPOINT` 后启用 FastAPI 链路并通过 OTLP 导出。日志文件按 `LOG_RETENTION_DAYS` 保留。
+- 配置 `OTEL_ENABLED=true` 和 `OTEL_EXPORTER_OTLP_ENDPOINT` 后启用 FastAPI 链路并通过 OTLP 导出。日志文件按 `LOG_RETENTION_DAYS` 保留。非开发环境的 `/docs`、`/redoc`、`/openapi.json` 和 `/metrics` 分别使用 `DOCS_AUTH_TOKEN`、`METRICS_AUTH_TOKEN` 保护。
 
 ### 数据库迁移与 Docker 排障
 
-当前数据库迁移头为 `0017_backup_permissions`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；`0009_scheduler_execution_controls` 也支持在 DDL 已执行但版本号更新失败后安全重试。
+当前数据库迁移头为 `0023_async_exports`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；部署后请检查 `/health/ready` 的 `schema` 状态为 `ok`。
 
 ```bash
 docker compose --env-file .env.development up -d --build
@@ -641,11 +673,17 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - Request IDs, W3C `traceparent` correlation, and structured JSON logs
 - File signature checks, optional ClamAV scanning, chunked uploads, presigned URLs, and text redaction
 - Excel import/export for users, roles, and dictionaries, notice inboxes, and encrypted database backups
+- Tenant memberships, tenant switching, soft deletion, optimistic locking, strict tenant-scoped queries, and rollback-safe writes
+- Idempotency keys for mutating requests and before/after audit snapshots for batch operations
+- Redis Streams task queue with an independent Worker, worker heartbeats, lock renewal, timeout, and retry controls
+- Versioned Secret Manager encryption, masked sensitive config, key rotation, encrypted backup verification, and restore rehearsal tooling
+- Inbox, webhook, email, and SMS notification delivery with bounded exponential retries
 - Redis-distributed job locks, timeout/retry/pause controls, Prometheus metrics, and optional OTLP traces
 - Local/Aliyun OSS file upload and download, system config, notices, and scheduled jobs
-- Prometheus metrics available at `/metrics`
+- Prometheus metrics available at `/metrics` (protected by `METRICS_AUTH_TOKEN` outside development)
 - SlowAPI rate limiting
-- Swagger/OpenAPI API documentation with concrete per-route response DTOs
+- Versioned routes under `/api/v1`; legacy paths remain available while `API_LEGACY_ENABLED=true`
+- Swagger/OpenAPI API documentation with concrete per-route response DTOs; operations endpoints require `DOCS_AUTH_TOKEN` outside development
 - Dockerfile and Docker Compose setup
 - Poetry dependency management
 - pre-commit, Black, isort, flake8, and Commitizen workflow
@@ -813,6 +851,7 @@ LOG_RETENTION_DAYS=30
 ALERT_WEBHOOK_URL=
 BACKUP_DIR=backups
 BACKUP_ENCRYPTION_KEY=
+BACKUP_REHEARSAL_DATABASE=fastapi_admin_restore_rehearsal
 BACKUP_RETENTION_DAYS=30
 BACKUP_TIMEOUT_SECONDS=900
 OIDC_ENABLED=false
@@ -1213,6 +1252,8 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 ### Tenants and permissions
 
 - Users, roles, menus, departments, posts, dictionaries, notices, files, jobs, configs, and logs carry `tenant_id`; reads and writes are filtered by the current tenant.
+- Tenant members can switch tenant context through `/api/v1/tenant/switch`; missing tenant context fails closed for protected business queries.
+- Mutating requests may send `Idempotency-Key`; batch user and role changes write before/after snapshots and request transactions roll back on failure.
 - Startup synchronizes routes using `Auth.has_permission(...)` into `api_permission_catalog`.
 - Field permissions use `field:<resource>:<field>` and are bound through the role DTO's `field_permission_codes`. Sensitive user fields are hidden when the actor lacks the field permission.
 - Role and menu permission changes are recorded in `permission_change_versions` with actor, version, and before/after snapshots.
@@ -1225,19 +1266,22 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - System-config values of type `secret`, `password`, or `sensitive` are encrypted at rest and returned as a mask in list, detail, and value responses. Do not log sensitive values or commit them to environment examples.
 - Text redaction is exposed through `GET /file/redacted/{file_id}` and requires `FILE_REDACTION_ENABLED=true`.
 - Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
+- Users, roles, and dictionaries also support persistent asynchronous exports: call `/export/async`, poll `/export/tasks/{task_id}`, and download from `/export/tasks/{task_id}/download` after completion.
 - Notices support recipients, inbox queries, unread filtering, and read state through `GET /notice/inbox/list` and `POST /notice/{notice_id}/read`.
-- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/ops/backup/create` endpoint. Backups are Fernet-encrypted and cleaned up according to the retention policy. Confirm the target database before restoring.
+- Notices support inbox, webhook, email, and SMS delivery. External delivery failures retry with bounded exponential backoff using `NOTIFICATION_RETRY_MAX_ATTEMPTS` and `NOTIFICATION_RETRY_BASE_SECONDS`.
+- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Backups are Fernet-encrypted and cleaned up according to the retention policy.
 
 ### Jobs and observability
 
-- APScheduler remains the in-process scheduler; a Redis `SET NX EX` lock prevents duplicate execution across instances. Jobs support timeout, retry, pause/resume, and execution logs.
+- APScheduler triggers jobs. With `SCHEDULER_WORKER_MODE=queue`, jobs are published to Redis Streams and executed by the independent `fastapi-worker` service. The Worker exposes a heartbeat, claims idle messages, and renews the task lock during long execution.
+- A Redis `SET NX EX` lock prevents duplicate execution across instances. Jobs support timeout, retry, pause/resume, and execution logs.
 - `SCHEDULER_DEFAULT_TIMEOUT_SECONDS`, `SCHEDULER_LOCK_TTL_SECONDS`, and `SCHEDULER_DEFAULT_MAX_RETRIES` define defaults; individual job DTOs can override timeout and retries.
 - `/metrics` exposes HTTP metrics plus MySQL/Redis readiness, job executions/durations, and alert delivery state. Configure `ALERT_WEBHOOK_URL` to send structured job-failure alerts.
-- Set `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT` to export FastAPI traces over OTLP. Log files are retained according to `LOG_RETENTION_DAYS`.
+- Set `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT` to export FastAPI traces over OTLP. Log files are retained according to `LOG_RETENTION_DAYS`. Outside development, `/docs`, `/redoc`, `/openapi.json`, and `/metrics` require `DOCS_AUTH_TOKEN` or `METRICS_AUTH_TOKEN`.
 
 ### Migrations and Docker troubleshooting
 
-The current migration head is `0017_backup_permissions`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. `0009_scheduler_execution_controls` is also retry-safe when its DDL ran but the version update failed.
+The current migration head is `0023_async_exports`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. Check that `/health/ready` reports `schema=ok` after deployment.
 
 ```bash
 docker compose --env-file .env.development up -d --build

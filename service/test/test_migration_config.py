@@ -5,9 +5,9 @@ ROOT = Path(__file__).parents[1]
 
 def test_alembic_has_an_initial_versioned_schema() -> None:
     config = (ROOT / "alembic.ini").read_text(encoding="utf-8")
-    migration = (
-        ROOT / "alembic" / "versions" / "0001_initial_schema.py"
-    ).read_text(encoding="utf-8")
+    migration = (ROOT / "alembic" / "versions" / "0001_initial_schema.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "script_location = %(here)s/alembic" in config
     assert 'revision = "0001_initial_schema"' in migration
@@ -16,9 +16,9 @@ def test_alembic_has_an_initial_versioned_schema() -> None:
 
 
 def test_role_data_scope_migration_is_present() -> None:
-    migration = (
-        ROOT / "alembic" / "versions" / "0002_role_data_scope.py"
-    ).read_text(encoding="utf-8")
+    migration = (ROOT / "alembic" / "versions" / "0002_role_data_scope.py").read_text(
+        encoding="utf-8"
+    )
 
     assert 'revision = "0002_role_data_scope"' in migration
     assert 'down_revision = "0001_initial_schema"' in migration
@@ -27,9 +27,9 @@ def test_role_data_scope_migration_is_present() -> None:
 
 
 def test_admin_operation_migration_is_present() -> None:
-    migration = (
-        ROOT / "alembic" / "versions" / "0003_admin_operations.py"
-    ).read_text(encoding="utf-8")
+    migration = (ROOT / "alembic" / "versions" / "0003_admin_operations.py").read_text(
+        encoding="utf-8"
+    )
 
     assert 'revision = "0003_admin_operations"' in migration
     for table_name in (

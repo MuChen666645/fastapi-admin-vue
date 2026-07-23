@@ -17,6 +17,7 @@ from loguru import logger
 from sqlmodel import select
 
 from config.env import PROJECT_ROOT, Settings, settings
+from module_admin.dao.tenant_scope import require_tenant_id
 from module_admin.entity.do.file_do import FileChunkUploadDo, FileMetadataDo
 from module_admin.service.file_security_service import FileSecurityService
 
@@ -38,15 +39,11 @@ class FileService:
             root = PROJECT_ROOT / root
         root = root.resolve()
         chunk_root = root / ".chunks"
-        cutoff = datetime.now() - timedelta(
-            seconds=app_settings.FILE_CHUNK_TTL_SECONDS
-        )
+        cutoff = datetime.now() - timedelta(seconds=app_settings.FILE_CHUNK_TTL_SECONDS)
         removed = 0
         async with session_factory() as session:
             result = await session.execute(
-                select(FileChunkUploadDo).where(
-                    FileChunkUploadDo.updated_at < cutoff
-                )
+                select(FileChunkUploadDo).where(FileChunkUploadDo.updated_at < cutoff)
             )
             for item in result.scalars().all():
                 shutil.rmtree(chunk_root / item.upload_id, ignore_errors=True)
@@ -80,7 +77,9 @@ class FileService:
         return name[:255]
 
     @classmethod
-    def _storage_key(cls, file_id: str, original_name: str, app_settings: Settings) -> str:
+    def _storage_key(
+        cls, file_id: str, original_name: str, app_settings: Settings
+    ) -> str:
         """按日期生成稳定且不包含用户输入路径的存储键。"""
         extension = Path(original_name).suffix.lower()
         prefix = app_settings.OSS_PREFIX.strip("/") or "uploads"
@@ -138,7 +137,7 @@ class FileService:
         request.state.mysql.add(
             FileChunkUploadDo(
                 upload_id=upload_id,
-                tenant_id=getattr(request.state, "tenant_id", None),
+                tenant_id=require_tenant_id(request),
                 created_by=getattr(request.state, "user_id", None),
                 original_name=original_name[:255],
                 content_type=data.content_type,
@@ -157,10 +156,10 @@ class FileService:
         session = request.state.mysql
         item = await session.get(FileChunkUploadDo, upload_id)
         user_id = getattr(request.state, "user_id", None)
-        tenant_id = getattr(request.state, "tenant_id", None)
+        tenant_id = require_tenant_id(request)
         if (
             item is None
-            or (tenant_id is not None and item.tenant_id != tenant_id)
+            or item.tenant_id != tenant_id
             or (item.created_by is not None and item.created_by != user_id)
         ):
             raise HTTPException(status_code=404, detail="分片上传会话不存在")
@@ -183,19 +182,25 @@ class FileService:
         received.add(chunk_index)
         item.received_chunks_json = json.dumps(sorted(received))
         item.updated_at = datetime.now()
-        return {"upload_id": upload_id, "chunk_index": chunk_index, "received": len(received)}
+        return {
+            "upload_id": upload_id,
+            "chunk_index": chunk_index,
+            "received": len(received),
+        }
 
     @classmethod
-    async def complete_chunk_upload(cls, upload_id: str, request: Request) -> FileMetadataDo:
+    async def complete_chunk_upload(
+        cls, upload_id: str, request: Request
+    ) -> FileMetadataDo:
         """校验所有分片、执行内容安全检查并生成文件元数据。"""
         app_settings = cls._settings(request)
         session = request.state.mysql
         item = await session.get(FileChunkUploadDo, upload_id)
         user_id = getattr(request.state, "user_id", None)
-        tenant_id = getattr(request.state, "tenant_id", None)
+        tenant_id = require_tenant_id(request)
         if (
             item is None
-            or (tenant_id is not None and item.tenant_id != tenant_id)
+            or item.tenant_id != tenant_id
             or (item.created_by is not None and item.created_by != user_id)
         ):
             raise HTTPException(status_code=404, detail="分片上传会话不存在")
@@ -296,7 +301,9 @@ class FileService:
                             break
                         total_size += len(chunk)
                         if total_size > app_settings.FILE_MAX_SIZE_BYTES:
-                            raise HTTPException(status_code=413, detail="文件大小超过限制")
+                            raise HTTPException(
+                                status_code=413, detail="文件大小超过限制"
+                            )
                         checksum.update(chunk)
                         if len(sample) < 32:
                             sample.extend(chunk[: 32 - len(sample)])
@@ -337,7 +344,7 @@ class FileService:
 
         metadata = FileMetadataDo(
             file_id=file_id,
-            tenant_id=getattr(request.state, "tenant_id", None),
+            tenant_id=require_tenant_id(request),
             original_name=original_name,
             storage_key=storage_key,
             storage_backend=app_settings.FILE_STORAGE_BACKEND,
@@ -350,6 +357,46 @@ class FileService:
         return metadata
 
     @classmethod
+    async def store_bytes(
+        cls,
+        original_name: str,
+        content: bytes,
+        tenant_id: int,
+        created_by: int,
+        session,
+        app_settings: Settings,
+        content_type: str,
+    ) -> FileMetadataDo:
+        """将服务端生成的文件写入统一存储并登记元数据。"""
+        original_name = Path(original_name).name
+        cls._validate_extension(original_name, app_settings)
+        if len(content) > app_settings.FILE_MAX_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="文件大小超过限制")
+        await FileSecurityService.scan_bytes(content, app_settings)
+        file_id = str(uuid.uuid4())
+        storage_key = cls._storage_key(file_id, original_name, app_settings)
+        if app_settings.FILE_STORAGE_BACKEND == "local":
+            target = cls._local_path(storage_key, app_settings)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(target.write_bytes, content)
+        else:
+            bucket = cls._oss_bucket(app_settings)
+            await asyncio.to_thread(bucket.put_object, storage_key, content)
+        metadata = FileMetadataDo(
+            file_id=file_id,
+            tenant_id=tenant_id,
+            original_name=original_name,
+            storage_key=storage_key,
+            storage_backend=app_settings.FILE_STORAGE_BACKEND,
+            content_type=content_type,
+            file_size=len(content),
+            checksum=hashlib.sha256(content).hexdigest(),
+            created_by=created_by,
+        )
+        session.add(metadata)
+        return metadata
+
+    @classmethod
     async def get_metadata(cls, file_id: str, request: Request) -> FileMetadataDo:
         """根据文件标识查询元数据。"""
         try:
@@ -357,10 +404,8 @@ class FileService:
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="文件不存在") from exc
         metadata = await request.state.mysql.get(FileMetadataDo, parsed_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if metadata is None or (
-            tenant_id is not None and metadata.tenant_id != tenant_id
-        ):
+        tenant_id = require_tenant_id(request)
+        if metadata is None or metadata.tenant_id != tenant_id:
             raise HTTPException(status_code=404, detail="文件不存在")
         return metadata
 
@@ -390,8 +435,7 @@ class FileService:
             media_type=metadata.content_type or "application/octet-stream",
             headers={
                 "Content-Disposition": (
-                    "attachment; filename*=UTF-8''"
-                    f"{quote(metadata.original_name)}"
+                    "attachment; filename*=UTF-8''" f"{quote(metadata.original_name)}"
                 )
             },
         )
@@ -442,9 +486,16 @@ class FileService:
     async def delete(cls, metadata: FileMetadataDo, request: Request) -> None:
         """删除文件内容及对应的元数据。"""
         app_settings = cls._settings(request)
+        await cls.delete_stored_file(metadata, app_settings)
+        await request.state.mysql.delete(metadata)
+
+    @classmethod
+    async def delete_stored_file(
+        cls, metadata: FileMetadataDo, app_settings: Settings
+    ) -> None:
+        """删除存储后端中的文件内容，不触碰数据库元数据。"""
         if metadata.storage_backend == "local":
             cls._local_path(metadata.storage_key, app_settings).unlink(missing_ok=True)
         else:
             bucket = cls._oss_bucket(app_settings)
             await asyncio.to_thread(bucket.delete_object, metadata.storage_key)
-        await request.state.mysql.delete(metadata)

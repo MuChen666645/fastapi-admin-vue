@@ -6,6 +6,7 @@ from fastapi_pagination.ext.sqlmodel import paginate
 from sqlalchemy import and_, exists, func, or_
 from sqlmodel import select
 
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
 from module_admin.entity.do.notice_do import NoticeDo, NoticeRecipientDo
 from module_admin.entity.do.user_do import UserDo
 from utils.time_utils import now_utc8_naive
@@ -24,9 +25,7 @@ class NoticeDao:
     ):
         """按标题、类型和状态分页查询通知公告。"""
         query = select(NoticeDo).order_by(NoticeDo.id.desc())
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            query = query.where(NoticeDo.tenant_id == tenant_id)
+        query = query.where(tenant_clause(request, NoticeDo))
         if title:
             query = query.where(NoticeDo.notice_title.contains(title))
         if notice_type:
@@ -39,18 +38,19 @@ class NoticeDao:
     async def get_by_id(notice_id: int, request: Request) -> NoticeDo | None:
         """按编号查询通知公告。"""
         item = await request.state.mysql.get(NoticeDo, notice_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if item is not None and tenant_id is not None and item.tenant_id != tenant_id:
+        tenant_id = require_tenant_id(request)
+        if item is not None and item.tenant_id != tenant_id:
             return None
         return item
 
     @staticmethod
     async def create(data, request: Request) -> NoticeDo:
         """创建通知公告实体。"""
+        tenant_id = require_tenant_id(request)
         item = NoticeDo(
-            **data.model_dump(exclude={"recipient_user_ids"}),
+            **data.model_dump(exclude={"recipient_user_ids", "delivery_channels"}),
             create_by=getattr(request.state, "user_id", None),
-            tenant_id=getattr(request.state, "tenant_id", None),
+            tenant_id=tenant_id,
         )
         request.state.mysql.add(item)
         await request.state.mysql.flush()
@@ -59,7 +59,9 @@ class NoticeDao:
             user_result = await request.state.mysql.execute(
                 select(UserDo.id).where(
                     UserDo.id.in_(recipient_ids),
-                    UserDo.tenant_id == getattr(request.state, "tenant_id", UserDo.tenant_id),
+                    UserDo.tenant_id == tenant_id,
+                    UserDo.status == "1",
+                    UserDo.deleted_at.is_(None),
                 )
             )
             existing_user_ids = set(user_result.scalars().all())
@@ -94,7 +96,7 @@ class NoticeDao:
             )
             .where(
                 NoticeDo.status == "1",
-                NoticeDo.tenant_id == getattr(request.state, "tenant_id", NoticeDo.tenant_id),
+                tenant_clause(request, NoticeDo),
                 or_(~has_recipients, NoticeRecipientDo.user_id == user_id),
             )
             .order_by(NoticeDo.publish_time.desc(), NoticeDo.id.desc())
@@ -122,11 +124,10 @@ class NoticeDao:
         """将当前用户可见通知标记为已读。"""
         user_id = getattr(request.state, "user_id", None)
         notice = await request.state.mysql.get(NoticeDo, notice_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
         if (
             notice is None
             or notice.status != "1"
-            or (tenant_id is not None and notice.tenant_id != tenant_id)
+            or notice.tenant_id != require_tenant_id(request)
         ):
             return False
         recipient_result = await request.state.mysql.execute(
@@ -153,8 +154,8 @@ class NoticeDao:
     async def update(notice_id: int, data, request: Request) -> NoticeDo | None:
         """更新通知公告实体。"""
         item = await request.state.mysql.get(NoticeDo, notice_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if item is None or (tenant_id is not None and item.tenant_id != tenant_id):
+        tenant_id = require_tenant_id(request)
+        if item is None or item.tenant_id != tenant_id:
             return None
         item.sqlmodel_update(data.model_dump(exclude_unset=True))
         return item
@@ -163,8 +164,8 @@ class NoticeDao:
     async def delete(notice_id: int, request: Request) -> NoticeDo | None:
         """删除通知公告实体。"""
         item = await request.state.mysql.get(NoticeDo, notice_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if item is not None and (tenant_id is None or item.tenant_id == tenant_id):
+        tenant_id = require_tenant_id(request)
+        if item is not None and item.tenant_id == tenant_id:
             await request.state.mysql.delete(item)
         elif item is not None:
             item = None

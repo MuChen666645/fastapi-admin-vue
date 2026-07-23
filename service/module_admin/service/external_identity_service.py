@@ -12,6 +12,7 @@ import jwt
 from fastapi import HTTPException, Request
 
 from config.env import settings
+from module_admin.dao.tenant_scope import login_tenant_id
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.user_do import UserDo
 from module_admin.service.mfa_service import MfaService
@@ -32,9 +33,13 @@ class ExternalIdentityService:
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(24)
         code_verifier = secrets.token_urlsafe(48)
-        code_challenge = base64.urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode("ascii")).digest()
-        ).rstrip(b"=").decode("ascii")
+        code_challenge = (
+            base64.urlsafe_b64encode(
+                hashlib.sha256(code_verifier.encode("ascii")).digest()
+            )
+            .rstrip(b"=")
+            .decode("ascii")
+        )
         payload = json.dumps({"nonce": nonce, "code_verifier": code_verifier})
         await request.app.state.redis.set(
             f"{cls.STATE_PREFIX}{state}",
@@ -54,7 +59,9 @@ class ExternalIdentityService:
             }
         )
         separator = "&" if "?" in settings.OIDC_AUTHORIZATION_URL else "?"
-        return {"authorization_url": f"{settings.OIDC_AUTHORIZATION_URL}{separator}{query}"}
+        return {
+            "authorization_url": f"{settings.OIDC_AUTHORIZATION_URL}{separator}{query}"
+        }
 
     @classmethod
     async def callback_oidc(
@@ -89,16 +96,17 @@ class ExternalIdentityService:
             )
             token_response.raise_for_status()
             tokens = token_response.json()
-            id_claims = await cls._validate_id_token(tokens.get("id_token"), nonce, client)
+            id_claims = await cls._validate_id_token(
+                tokens.get("id_token"), nonce, client
+            )
             user_response = await client.get(
                 settings.OIDC_USERINFO_URL,
                 headers={"Authorization": f"Bearer {tokens['access_token']}"},
             )
             user_response.raise_for_status()
             userinfo_claims = user_response.json()
-        if (
-            userinfo_claims.get("sub")
-            and str(userinfo_claims["sub"]) != str(id_claims["sub"])
+        if userinfo_claims.get("sub") and str(userinfo_claims["sub"]) != str(
+            id_claims["sub"]
         ):
             raise HTTPException(status_code=401, detail="OIDC 用户主体不一致")
         claims = {**userinfo_claims, **id_claims}
@@ -139,7 +147,11 @@ class ExternalIdentityService:
             connection = Connection(
                 server,
                 user=bind_dn,
-                password=password if not settings.LDAP_BIND_DN else settings.LDAP_BIND_PASSWORD,
+                password=(
+                    password
+                    if not settings.LDAP_BIND_DN
+                    else settings.LDAP_BIND_PASSWORD
+                ),
                 auto_bind=True,
             )
             connection.search(
@@ -183,7 +195,7 @@ class ExternalIdentityService:
         """按外部主体查找或创建本地用户并签发令牌对。"""
         if not subject:
             raise HTTPException(status_code=401, detail="外部身份缺少主体标识")
-        tenant_id = getattr(request.state, "tenant_id", None) or settings.DEFAULT_TENANT_ID
+        tenant_id = login_tenant_id(request)
         user = await UserDao.get_user_by_external_subject(
             provider,
             subject,
@@ -195,7 +207,9 @@ class ExternalIdentityService:
                 str(claims["email"]), request, tenant_id=tenant_id
             )
         if user is None:
-            username_seed = hashlib.sha256(f"{provider}:{subject}".encode()).hexdigest()[:16]
+            username_seed = hashlib.sha256(
+                f"{provider}:{subject}".encode()
+            ).hexdigest()[:16]
             user = UserDo(
                 username=f"{provider}_{username_seed}",
                 password=FastApiAdmin.password_hash(secrets.token_urlsafe(32)),
@@ -242,12 +256,19 @@ class ExternalIdentityService:
                 algorithms=[algorithm],
                 audience=settings.OIDC_AUDIENCE,
                 issuer=settings.OIDC_ISSUER,
-                options={
-                    "require": ["exp", "iat", "iss", "sub", "aud", "nonce"]
-                },
+                options={"require": ["exp", "iat", "iss", "sub", "aud", "nonce"]},
             )
-        except (KeyError, StopIteration, TypeError, ValueError, jwt.PyJWTError, httpx.HTTPError) as exc:
-            raise HTTPException(status_code=401, detail="OIDC ID Token 校验失败") from exc
+        except (
+            KeyError,
+            StopIteration,
+            TypeError,
+            ValueError,
+            jwt.PyJWTError,
+            httpx.HTTPError,
+        ) as exc:
+            raise HTTPException(
+                status_code=401, detail="OIDC ID Token 校验失败"
+            ) from exc
         if claims.get("nonce") != nonce:
             raise HTTPException(status_code=401, detail="OIDC nonce 校验失败")
         return claims

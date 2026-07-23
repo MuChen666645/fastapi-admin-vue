@@ -16,12 +16,10 @@ from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
 from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
-from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
-                                           OperationLogDo)
+from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.notice_do import NoticeDo
-from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
-                                                    UserPostDo)
+from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.system_config_do import SystemConfigDo
@@ -192,7 +190,14 @@ async def _find_id(session_factory, model, field, value) -> int:
         result = await session.execute(select(model).where(field == value))
         item = result.scalars().first()
         assert item is not None
-        for primary_key in ("id", "dept_id", "post_id", "menu_id", "dict_id", "dict_code"):
+        for primary_key in (
+            "id",
+            "dept_id",
+            "post_id",
+            "menu_id",
+            "dict_id",
+            "dict_code",
+        ):
             identifier = getattr(item, primary_key, None)
             if identifier is not None:
                 return identifier
@@ -246,7 +251,9 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
             )
             await session.execute(delete(UserDo).where(UserDo.id.in_(case.user_ids)))
         if case.job_ids:
-            await session.execute(delete(JobLogDo).where(JobLogDo.job_id.in_(case.job_ids)))
+            await session.execute(
+                delete(JobLogDo).where(JobLogDo.job_id.in_(case.job_ids))
+            )
             await session.execute(
                 delete(ScheduledJobDo).where(ScheduledJobDo.id.in_(case.job_ids))
             )
@@ -254,7 +261,9 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
             await session.execute(
                 delete(RoleMenuDo).where(RoleMenuDo.menu_id.in_(case.menu_ids))
             )
-            await session.execute(delete(MenuDo).where(MenuDo.menu_id.in_(case.menu_ids)))
+            await session.execute(
+                delete(MenuDo).where(MenuDo.menu_id.in_(case.menu_ids))
+            )
         if case.dict_data_ids:
             await session.execute(
                 delete(DictDataDo).where(DictDataDo.dict_code.in_(case.dict_data_ids))
@@ -264,7 +273,9 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
                 delete(DictTypeDo).where(DictTypeDo.dict_id.in_(case.dict_type_ids))
             )
         if case.notice_ids:
-            await session.execute(delete(NoticeDo).where(NoticeDo.id.in_(case.notice_ids)))
+            await session.execute(
+                delete(NoticeDo).where(NoticeDo.id.in_(case.notice_ids))
+            )
         if case.config_ids:
             await session.execute(
                 delete(SystemConfigDo).where(SystemConfigDo.id.in_(case.config_ids))
@@ -273,7 +284,9 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
             await session.execute(
                 delete(UserPostDo).where(UserPostDo.post_id.in_(case.post_ids))
             )
-            await session.execute(delete(PostDo).where(PostDo.post_id.in_(case.post_ids)))
+            await session.execute(
+                delete(PostDo).where(PostDo.post_id.in_(case.post_ids))
+            )
         if case.department_ids:
             for department_id in sorted(case.department_ids, reverse=True):
                 await session.execute(
@@ -480,7 +493,10 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 )
             )
             dict_type_id = await _find_id(
-                app.state.mysql_session_factory, DictTypeDo, DictTypeDo.dict_type, dict_type
+                app.state.mysql_session_factory,
+                DictTypeDo,
+                DictTypeDo.dict_type,
+                dict_type,
             )
             case.dict_type_ids.append(dict_type_id)
             _assert_success(
@@ -528,7 +544,9 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                     json={"config_value": "after"},
                 )
             )
-            config_value = _assert_success(await client.get(f"/config/value/{config_key}"))
+            config_value = _assert_success(
+                await client.get(f"/config/value/{config_key}")
+            )
             assert config_value["config_value"] == "after"
 
             notice_title = f"集成公告-{suffix}"
@@ -542,7 +560,10 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 )
             )
             notice_id = await _find_id(
-                app.state.mysql_session_factory, NoticeDo, NoticeDo.notice_title, notice_title
+                app.state.mysql_session_factory,
+                NoticeDo,
+                NoticeDo.notice_title,
+                notice_title,
             )
             case.notice_ids.append(notice_id)
             _assert_success(
@@ -566,7 +587,10 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 )
             )
             job_id = await _find_id(
-                app.state.mysql_session_factory, ScheduledJobDo, ScheduledJobDo.job_key, job_key
+                app.state.mysql_session_factory,
+                ScheduledJobDo,
+                ScheduledJobDo.job_key,
+                job_key,
             )
             case.job_ids.append(job_id)
             _assert_success(

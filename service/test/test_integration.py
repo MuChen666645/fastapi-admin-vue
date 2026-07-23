@@ -14,8 +14,7 @@ from starlette.requests import Request
 from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.organization_dao import OrganizationDao
-from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
-                                           OperationLogDo)
+from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
@@ -131,17 +130,23 @@ async def _seed_reset_password_case(session_factory) -> ResetPasswordCase:
         )
 
 
-async def _cleanup_reset_password_case(session_factory, case: ResetPasswordCase) -> None:
+async def _cleanup_reset_password_case(
+    session_factory, case: ResetPasswordCase
+) -> None:
     user_ids = [case.admin_user_id, case.target_user_id]
     async with session_factory() as session:
-        await session.execute(delete(LoginLogDo).where(LoginLogDo.user_id.in_(user_ids)))
+        await session.execute(
+            delete(LoginLogDo).where(LoginLogDo.user_id.in_(user_ids))
+        )
         await session.execute(
             delete(OperationLogDo).where(OperationLogDo.user_id.in_(user_ids))
         )
         await session.execute(
             delete(ExceptionLogDo).where(ExceptionLogDo.user_id.in_(user_ids))
         )
-        await session.execute(delete(UserRoleDo).where(UserRoleDo.user_id.in_(user_ids)))
+        await session.execute(
+            delete(UserRoleDo).where(UserRoleDo.user_id.in_(user_ids))
+        )
         await session.execute(delete(UserDo).where(UserDo.id.in_(user_ids)))
         if case.created_role:
             await session.execute(

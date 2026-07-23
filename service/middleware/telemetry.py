@@ -2,8 +2,7 @@
 
 from fastapi import FastAPI
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import \
-    OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -20,9 +19,7 @@ def configure_telemetry(application: FastAPI, app_settings) -> None:
             name, value = item.split("=", 1)
             headers[name.strip()] = value.strip()
     provider = TracerProvider(
-        resource=Resource.create(
-            {"service.name": app_settings.OTEL_SERVICE_NAME}
-        )
+        resource=Resource.create({"service.name": app_settings.OTEL_SERVICE_NAME})
     )
     exporter = OTLPSpanExporter(
         endpoint=app_settings.OTEL_EXPORTER_OTLP_ENDPOINT,

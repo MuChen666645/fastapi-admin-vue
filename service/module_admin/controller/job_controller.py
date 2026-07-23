@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.job_dto import (JobRunResultDto,
-                                             ScheduledJobCreateDto,
-                                             ScheduledJobDto,
-                                             ScheduledJobUpdateDto)
+from module_admin.entity.dto.job_dto import (
+    JobRunResultDto,
+    ScheduledJobCreateDto,
+    ScheduledJobDto,
+    ScheduledJobUpdateDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.job_service import JobService
 

@@ -15,8 +15,10 @@ from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.dto.role_dto import CreateRoleDto
-from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
-                                              LoginUserRequestByUsernameDto)
+from module_admin.entity.dto.user_dto import (
+    LoginUserRequestByPhoneDto,
+    LoginUserRequestByUsernameDto,
+)
 from module_admin.service.code_service import CodeService
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.user_service import UserService
@@ -82,7 +84,9 @@ def test_disabled_users_cannot_get_tokens_from_either_login_path(
         for login in (username_login, phone_login):
             with pytest.raises(HTTPException) as exception:
                 if isinstance(login, LoginUserRequestByUsernameDto):
-                    await UserService.get_user_by_username_services(login, make_request())
+                    await UserService.get_user_by_username_services(
+                        login, make_request()
+                    )
                 else:
                     await UserService.get_user_by_phone_services(login, make_request())
             assert exception.value.status_code == 403
@@ -171,6 +175,8 @@ def test_validation_errors_keep_field_details() -> None:
         body = response.json()
         assert response.status_code == 422
         assert body["code"] == 422
+        assert body["error_code"] == "VALIDATION_ERROR"
+        assert body["data"]["errors"][0]["loc"] == ["query", "value"]
         assert body["message"][0]["loc"] == ["query", "value"]
         assert body["message"][0]["type"] == "int_parsing"
 
@@ -184,4 +190,6 @@ def test_role_code_unique_migration_is_headed_after_existing_migrations() -> Non
 
     assert 'revision = "0004_role_code_unique"' in migration
     assert 'down_revision = "0003_admin_operations"' in migration
-    assert 'op.create_index("uq_roles_code", "roles", ["code"], unique=True)' in migration
+    assert (
+        'op.create_index("uq_roles_code", "roles", ["code"], unique=True)' in migration
+    )

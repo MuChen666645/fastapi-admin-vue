@@ -5,26 +5,27 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
 from module_admin.entity.do.system_config_do import SystemConfigDo
 
 
 class SystemConfigDao:
     @staticmethod
     def _tenant_filter(request: Request):
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return (
-            SystemConfigDo.tenant_id == tenant_id
-            if tenant_id is not None
-            else True
-        )
+        return tenant_clause(request, SystemConfigDo)
+
     """持久化并查询系统参数。"""
 
     @staticmethod
-    async def list_configs(request: Request, name: str | None, key: str | None, params: Params):
+    async def list_configs(
+        request: Request, name: str | None, key: str | None, params: Params
+    ):
         """按名称或键名分页查询系统参数。"""
-        query = select(SystemConfigDo).where(
-            SystemConfigDao._tenant_filter(request)
-        ).order_by(SystemConfigDo.id.desc())
+        query = (
+            select(SystemConfigDo)
+            .where(SystemConfigDao._tenant_filter(request))
+            .order_by(SystemConfigDo.id.desc())
+        )
         if name:
             query = query.where(SystemConfigDo.config_name.contains(name))
         if key:
@@ -58,7 +59,7 @@ class SystemConfigDao:
         """创建系统参数实体。"""
         item = SystemConfigDo(
             **data.model_dump(),
-            tenant_id=getattr(request.state, "tenant_id", None),
+            tenant_id=require_tenant_id(request),
         )
         request.state.mysql.add(item)
         return item

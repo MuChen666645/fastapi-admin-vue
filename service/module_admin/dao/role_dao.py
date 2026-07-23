@@ -3,21 +3,33 @@ from typing import Union
 from fastapi import Request
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
+from sqlalchemy import false, update
 from sqlmodel import delete, select
 
-from config.env import settings
+from module_admin.dao.tenant_scope import (
+    current_tenant_id,
+    require_tenant_id,
+    tenant_clause,
+)
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
-from module_admin.entity.do.role_do import (RoleDeptDo, RoleDo, RoleMenuDo,
-                                            RolePermissionDo)
-from module_admin.entity.dto.role_dto import (CreateRoleDto, RoleListDto,
-                                              UpdataRoleDto)
+from module_admin.entity.do.role_do import (
+    RoleDeptDo,
+    RoleDo,
+    RoleMenuDo,
+    RolePermissionDo,
+)
+from module_admin.entity.dto.role_dto import CreateRoleDto, RoleListDto, UpdataRoleDto
 from utils.time_utils import now_utc8_naive
 
 
 class RoleCodeConflictError(ValueError):
     """角色编码已经被其他角色使用。"""
+
+
+class RoleVersionConflictError(ValueError):
+    """角色版本已被其他请求更新。"""
 
 
 class RoleDao:
@@ -35,7 +47,11 @@ class RoleDao:
         result = await mysql.execute(
             select(DepartmentDo.dept_id).where(
                 DepartmentDo.dept_id.in_(unique_dept_ids),
-                DepartmentDo.tenant_id == tenant_id if tenant_id is not None else True,
+                (
+                    DepartmentDo.tenant_id == tenant_id
+                    if tenant_id is not None
+                    else false()
+                ),
             )
         )
         existing_ids = set(result.scalars().all())
@@ -58,7 +74,7 @@ class RoleDao:
         result = await mysql.execute(
             select(MenuDo.menu_id).where(
                 MenuDo.menu_id.in_(unique_menu_ids),
-                MenuDo.tenant_id == tenant_id if tenant_id is not None else True,
+                MenuDo.tenant_id == tenant_id if tenant_id is not None else false(),
             )
         )
         existing_menu_ids = set(result.scalars().all())
@@ -77,11 +93,7 @@ class RoleDao:
         unique_codes = list(dict.fromkeys(permission_codes))
         if not unique_codes:
             return []
-        invalid_codes = [
-            code
-            for code in unique_codes
-            if not code.startswith("field:")
-        ]
+        invalid_codes = [code for code in unique_codes if not code.startswith("field:")]
         if invalid_codes:
             raise ValueError(f"Invalid field permission codes: {invalid_codes}")
         result = await mysql.execute(
@@ -122,7 +134,10 @@ class RoleDao:
         mysql, code: str, role_id: int | None = None
     ) -> None:
         """在写入前检查角色编码，避免把可预期冲突暴露为数据库错误。"""
-        statement = select(RoleDo.id).where(RoleDo.code == code)
+        statement = select(RoleDo.id).where(
+            RoleDo.code == code,
+            RoleDo.deleted_at.is_(None),
+        )
         if role_id is not None:
             statement = statement.where(RoleDo.id != role_id)
         result = await mysql.execute(statement)
@@ -130,7 +145,9 @@ class RoleDao:
             raise RoleCodeConflictError("角色编码已存在")
 
     @staticmethod
-    async def create_role_by_role_name(roles: CreateRoleDto, request: Request) -> RoleDo:
+    async def create_role_by_role_name(
+        roles: CreateRoleDto, request: Request
+    ) -> RoleDo:
         """创建角色.
 
         Args:
@@ -146,7 +163,7 @@ class RoleDao:
         )
         role_data.setdefault(
             "tenant_id",
-            getattr(request.state, "tenant_id", settings.DEFAULT_TENANT_ID),
+            require_tenant_id(request),
         )
         await RoleDao._ensure_role_code_available(mysql, roles.code)
         tenant_id = role_data.get("tenant_id")
@@ -181,8 +198,12 @@ class RoleDao:
         role = await mysql.get(RoleDo, role_id)
         if role is None:
             return None
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None and role.tenant_id != tenant_id:
+        tenant_id = current_tenant_id(request)
+        if (
+            tenant_id is None
+            or role.tenant_id != tenant_id
+            or role.deleted_at is not None
+        ):
             return None
         result = await mysql.execute(
             select(RoleMenuDo.menu_id)
@@ -217,9 +238,8 @@ class RoleDao:
         if not unique_role_ids:
             return []
         statement = select(RoleDo).where(RoleDo.id.in_(unique_role_ids))
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            statement = statement.where(RoleDo.tenant_id == tenant_id)
+        statement = statement.where(tenant_clause(request, RoleDo))
+        statement = statement.where(RoleDo.deleted_at.is_(None))
         result = await request.state.mysql.execute(statement)
         return list(result.scalars().all())
 
@@ -235,10 +255,12 @@ class RoleDao:
             RoleDo: 角色对象.
         """
         mysql = request.state.mysql
-        stmt = select(RoleDo).where(RoleDo.name == role_name)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            stmt = stmt.where(RoleDo.tenant_id == tenant_id)
+        stmt = select(RoleDo).where(
+            RoleDo.name == role_name,
+            tenant_clause(request, RoleDo),
+        )
+        stmt = stmt.where(tenant_clause(request, RoleDo))
+        stmt = stmt.where(RoleDo.deleted_at.is_(None))
         result = await mysql.execute(stmt)
         role = result.scalars().first()
         return role
@@ -254,13 +276,17 @@ class RoleDao:
         role = await mysql.get(RoleDo, role_id)
         if role is None:
             return "角色不存在"
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None and role.tenant_id != tenant_id:
+        tenant_id = current_tenant_id(request)
+        if (
+            tenant_id is None
+            or role.tenant_id != tenant_id
+            or role.deleted_at is not None
+        ):
             return "角色不存在"
-        await mysql.execute(delete(RoleMenuDo).where(RoleMenuDo.role_id == role_id))
-        await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role_id))
-        await mysql.execute(delete(RolePermissionDo).where(RolePermissionDo.role_id == role_id))
-        await mysql.delete(role)
+        role.status = "0"
+        role.deleted_at = now_utc8_naive()
+        role.version = getattr(role, "version", 1) + 1
+        role.update_time = now_utc8_naive()
         return None
 
     @staticmethod
@@ -271,18 +297,25 @@ class RoleDao:
             request (Request): 请求对象.
         """
         mysql = request.state.mysql
-        stmt = select(RoleDo).where(RoleDo.name == role_name)
+        stmt = select(RoleDo).where(
+            RoleDo.name == role_name,
+            tenant_clause(request, RoleDo),
+        )
         result = await mysql.execute(stmt)
         role = result.scalars().first()
         if role is None:
             return "角色不存在"
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None and role.tenant_id != tenant_id:
+        tenant_id = current_tenant_id(request)
+        if (
+            tenant_id is None
+            or role.tenant_id != tenant_id
+            or role.deleted_at is not None
+        ):
             return "角色不存在"
-        await mysql.execute(delete(RoleMenuDo).where(RoleMenuDo.role_id == role.id))
-        await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role.id))
-        await mysql.execute(delete(RolePermissionDo).where(RolePermissionDo.role_id == role.id))
-        await mysql.delete(role)
+        role.status = "0"
+        role.deleted_at = now_utc8_naive()
+        role.version = getattr(role, "version", 1) + 1
+        role.update_time = now_utc8_naive()
         return None
 
     @staticmethod
@@ -302,10 +335,15 @@ class RoleDao:
         role_db: RoleDo = await mysql.get(RoleDo, role_id)
         if role_db is None:
             return "角色不存在"
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None and role_db.tenant_id != tenant_id:
+        tenant_id = current_tenant_id(request)
+        if (
+            tenant_id is None
+            or role_db.tenant_id != tenant_id
+            or role_db.deleted_at is not None
+        ):
             return "角色不存在"
         role_data = roles.model_dump(exclude_unset=True)
+        expected_version = role_data.pop("version", None)
         menu_ids = role_data.pop("menu_ids", None)
         dept_ids = role_data.pop("dept_ids", None)
         field_permission_codes = role_data.pop("field_permission_codes", None)
@@ -314,15 +352,17 @@ class RoleDao:
         if role_data.get("data_scope") is None:
             role_data.pop("data_scope", None)
         if menu_ids is not None:
-            menu_ids = await RoleDao._validate_menu_ids(mysql, menu_ids, role_db.tenant_id)
-            await mysql.execute(
-                delete(RoleMenuDo).where(RoleMenuDo.role_id == role_id)
+            menu_ids = await RoleDao._validate_menu_ids(
+                mysql, menu_ids, role_db.tenant_id
             )
+            await mysql.execute(delete(RoleMenuDo).where(RoleMenuDo.role_id == role_id))
             mysql.add_all(
                 [RoleMenuDo(role_id=role_id, menu_id=menu_id) for menu_id in menu_ids]
             )
         if dept_ids is not None:
-            dept_ids = await RoleDao._validate_dept_ids(mysql, dept_ids, role_db.tenant_id)
+            dept_ids = await RoleDao._validate_dept_ids(
+                mysql, dept_ids, role_db.tenant_id
+            )
             await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role_id))
             mysql.add_all(
                 [RoleDeptDo(role_id=role_id, dept_id=dept_id) for dept_id in dept_ids]
@@ -333,7 +373,22 @@ class RoleDao:
             await RoleDao._replace_field_permissions(
                 mysql, role_id, field_permission_codes
             )
-        role_db.sqlmodel_update(role_data)
+        if expected_version is not None and role_db.version != expected_version:
+            raise RoleVersionConflictError("角色版本已过期")
+        role_data["version"] = RoleDo.version + 1
+        role_data["update_time"] = now_utc8_naive()
+        result = await mysql.execute(
+            update(RoleDo)
+            .where(
+                RoleDo.id == role_id,
+                RoleDo.tenant_id == tenant_id,
+                RoleDo.deleted_at.is_(None),
+                RoleDo.version == (expected_version or role_db.version),
+            )
+            .values(**role_data)
+        )
+        if result.rowcount != 1:
+            raise RoleVersionConflictError("角色版本已过期")
         return None
 
     @staticmethod
@@ -343,9 +398,8 @@ class RoleDao:
         """批量修改角色状态。"""
         mysql = request.state.mysql
         statement = select(RoleDo).where(RoleDo.id.in_(role_ids))
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            statement = statement.where(RoleDo.tenant_id == tenant_id)
+        statement = statement.where(tenant_clause(request, RoleDo))
+        statement = statement.where(RoleDo.deleted_at.is_(None))
         result = await mysql.execute(statement)
         roles = result.scalars().all()
         role_map = {role.id: role for role in roles}
@@ -356,6 +410,7 @@ class RoleDao:
         update_time = now_utc8_naive()
         for role in roles:
             role.status = status
+            role.version = getattr(role, "version", 1) + 1
             role.update_time = update_time
         return None
 
@@ -370,7 +425,6 @@ class RoleDao:
             query = query.where(RoleDo.name == name)
         if code:
             query = query.where(RoleDo.code == code)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            query = query.where(RoleDo.tenant_id == tenant_id)
+        query = query.where(tenant_clause(request, RoleDo))
+        query = query.where(RoleDo.deleted_at.is_(None))
         return await paginate(mysql, query, params=params)

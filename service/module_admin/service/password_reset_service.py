@@ -17,8 +17,10 @@ from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo
-from module_admin.entity.dto.user_dto import (ConfirmPasswordResetRequestDto,
-                                              ForgotPasswordRequestDto)
+from module_admin.entity.dto.user_dto import (
+    ConfirmPasswordResetRequestDto,
+    ForgotPasswordRequestDto,
+)
 from module_admin.service.user_service import UserService
 from utils.fastapi_admin import FastApiAdmin
 from utils.time_utils import now_utc8_naive
@@ -62,7 +64,9 @@ class PasswordResetNotifier:
 
     @staticmethod
     def _send_email(message: EmailMessage) -> None:
-        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=5) as smtp:
+        with smtplib.SMTP_SSL(
+            settings.SMTP_HOST, settings.SMTP_PORT, timeout=5
+        ) as smtp:
             smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
             smtp.send_message(message)
 
@@ -136,7 +140,9 @@ class PasswordResetService:
         request: Request,
     ) -> dict[str, str]:
         """验证令牌后更新密码并撤销全部登录会话。"""
-        reset = await UserDao.get_password_reset_token(cls._token_hash(data.token), request)
+        reset = await UserDao.get_password_reset_token(
+            cls._token_hash(data.token), request
+        )
         now = now_utc8_naive()
         if reset is None or reset.expires_at <= now:
             raise HTTPException(status_code=400, detail="密码找回令牌无效或已过期")

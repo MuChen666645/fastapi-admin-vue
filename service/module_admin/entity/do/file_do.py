@@ -14,7 +14,7 @@ class FileChunkUploadDo(SQLModel, table=True):
     __tablename__ = "file_chunk_uploads"
 
     upload_id: str = Field(primary_key=True, max_length=36)
-    tenant_id: int | None = Field(default=None, index=True)
+    tenant_id: int | None = Field(default=1, index=True)
     created_by: int | None = Field(default=None, index=True)
     original_name: str = Field(max_length=255)
     content_type: str | None = Field(default=None, max_length=255)
@@ -33,7 +33,7 @@ class FileMetadataDo(SQLModel, table=True):
 
     __tablename__ = "file_metadata"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     file_id: str = Field(title="文件标识", primary_key=True, max_length=36)
     original_name: str = Field(title="原始文件名", max_length=255)

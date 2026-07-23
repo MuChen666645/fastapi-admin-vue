@@ -8,7 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ScheduledJobCreateDto(BaseModel):
     """创建持久化定时任务。"""
 
-    job_name: str = Field(title="任务名称", min_length=1, max_length=100, description="任务名称，支持中文、字母、数字、下划线、点、冒号和中划线")
+    job_name: str = Field(
+        title="任务名称",
+        min_length=1,
+        max_length=100,
+        description="任务名称，支持中文、字母、数字、下划线、点、冒号和中划线",
+    )
     job_key: str = Field(
         title="任务标识",
         min_length=1,
@@ -16,12 +21,30 @@ class ScheduledJobCreateDto(BaseModel):
         pattern=r"^[A-Za-z][A-Za-z0-9_.:-]*$",
         description="任务标识，支持字母、数字、下划线、点、冒号和中划线，必须以字母开头",
     )
-    task_name: str = Field(title="处理器名称", min_length=1, max_length=200, description="处理器名称")
-    cron_expression: str = Field(title="Cron 表达式", min_length=9, max_length=100, description="Cron 表达式")
-    args_json: str = Field(title="任务参数", default="{}", max_length=10000, description="任务参数，必须是合法的 JSON")
-    timeout_seconds: int = Field(title="超时时间", default=300, gt=0, le=86400, description="单次执行超时时间")
-    max_retries: int = Field(title="最大重试次数", default=0, ge=0, le=10, description="失败后的自动重试次数")
-    status: str = Field(title="任务状态", default="1", pattern="^[01]$", description="任务状态，0表示停用，1表示启用")
+    task_name: str = Field(
+        title="处理器名称", min_length=1, max_length=200, description="处理器名称"
+    )
+    cron_expression: str = Field(
+        title="Cron 表达式", min_length=9, max_length=100, description="Cron 表达式"
+    )
+    args_json: str = Field(
+        title="任务参数",
+        default="{}",
+        max_length=10000,
+        description="任务参数，必须是合法的 JSON",
+    )
+    timeout_seconds: int = Field(
+        title="超时时间", default=300, gt=0, le=86400, description="单次执行超时时间"
+    )
+    max_retries: int = Field(
+        title="最大重试次数", default=0, ge=0, le=10, description="失败后的自动重试次数"
+    )
+    status: str = Field(
+        title="任务状态",
+        default="1",
+        pattern="^[01]$",
+        description="任务状态，0表示停用，1表示启用",
+    )
 
     @field_validator("args_json")
     @classmethod
@@ -39,18 +62,48 @@ class ScheduledJobUpdateDto(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     job_name: str | None = Field(
-        title="任务名称", default=None, min_length=1, max_length=100, description="任务名称，支持中文、字母、数字、下划线、点、冒号和中划线"
+        title="任务名称",
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="任务名称，支持中文、字母、数字、下划线、点、冒号和中划线",
     )
     task_name: str | None = Field(
-        title="处理器名称", default=None, min_length=1, max_length=200, description="处理器名称"
+        title="处理器名称",
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="处理器名称",
     )
     cron_expression: str | None = Field(
-        title="Cron 表达式", default=None, min_length=9, max_length=100, description="Cron 表达式"
+        title="Cron 表达式",
+        default=None,
+        min_length=9,
+        max_length=100,
+        description="Cron 表达式",
     )
-    args_json: str | None = Field(title="任务参数", default=None, max_length=10000, description="任务参数，必须是合法的 JSON")
-    timeout_seconds: int | None = Field(title="超时时间", default=None, gt=0, le=86400, description="单次执行超时时间")
-    max_retries: int | None = Field(title="最大重试次数", default=None, ge=0, le=10, description="失败后的自动重试次数")
-    status: str | None = Field(title="任务状态", default=None, pattern="^[01]$", description="任务状态，0表示停用，1表示启用")
+    args_json: str | None = Field(
+        title="任务参数",
+        default=None,
+        max_length=10000,
+        description="任务参数，必须是合法的 JSON",
+    )
+    timeout_seconds: int | None = Field(
+        title="超时时间", default=None, gt=0, le=86400, description="单次执行超时时间"
+    )
+    max_retries: int | None = Field(
+        title="最大重试次数",
+        default=None,
+        ge=0,
+        le=10,
+        description="失败后的自动重试次数",
+    )
+    status: str | None = Field(
+        title="任务状态",
+        default=None,
+        pattern="^[01]$",
+        description="任务状态，0表示停用，1表示启用",
+    )
 
     @field_validator("args_json")
     @classmethod
@@ -69,8 +122,12 @@ class ScheduledJobDto(ScheduledJobCreateDto):
     model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(title="任务编号", description="任务编号")
-    last_run_time: datetime | None = Field(title="上次执行时间", description="上次执行时间")
-    next_run_time: datetime | None = Field(title="下次执行时间", description="下次执行时间")
+    last_run_time: datetime | None = Field(
+        title="上次执行时间", description="上次执行时间"
+    )
+    next_run_time: datetime | None = Field(
+        title="下次执行时间", description="下次执行时间"
+    )
     last_status: str | None = Field(title="上次执行状态", description="上次执行状态")
     last_message: str | None = Field(title="上次执行消息", description="上次执行消息")
     create_by: int | None = Field(title="创建人", description="创建人")

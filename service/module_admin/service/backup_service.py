@@ -4,12 +4,14 @@ import asyncio
 import base64
 import hashlib
 import os
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
 from cryptography.fernet import Fernet
 from fastapi import HTTPException
+from loguru import logger
 
 from config.env import PROJECT_ROOT, Settings, settings
 
@@ -75,7 +77,11 @@ class BackupService:
                 check=True,
                 timeout=app_settings.BACKUP_TIMEOUT_SECONDS,
             )
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        except (
+            OSError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             raise HTTPException(status_code=503, detail="数据库备份失败") from exc
         target.write_bytes(cls._fernet(app_settings).encrypt(result.stdout))
         cls._cleanup(root, app_settings)
@@ -92,7 +98,11 @@ class BackupService:
         if not candidate.is_absolute():
             candidate = root / candidate
         candidate = candidate.resolve()
-        if candidate.parent != root or candidate.suffix != ".enc" or not candidate.is_file():
+        if (
+            candidate.parent != root
+            or candidate.suffix != ".enc"
+            or not candidate.is_file()
+        ):
             raise HTTPException(status_code=400, detail="备份文件路径无效")
         try:
             dump = cls._fernet(app_settings).decrypt(candidate.read_bytes())
@@ -121,8 +131,156 @@ class BackupService:
                 check=True,
                 timeout=app_settings.BACKUP_TIMEOUT_SECONDS,
             )
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        except (
+            OSError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             raise HTTPException(status_code=503, detail="数据库恢复失败") from exc
+
+    @classmethod
+    async def verify_backup(
+        cls, backup_path: str, app_settings: Settings | None = None
+    ) -> dict[str, object]:
+        """只解密并校验备份结构，用于恢复演练前的完整性检查。"""
+        app_settings = cls._settings(app_settings)
+        root = cls._root(app_settings)
+        candidate = Path(backup_path)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        candidate = candidate.resolve()
+        if (
+            candidate.parent != root
+            or candidate.suffix != ".enc"
+            or not candidate.is_file()
+        ):
+            raise HTTPException(status_code=400, detail="备份文件路径无效")
+        try:
+            dump = cls._fernet(app_settings).decrypt(candidate.read_bytes())
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="备份文件无法解密") from exc
+        if b"CREATE TABLE" not in dump or b"alembic_version" not in dump:
+            raise HTTPException(status_code=400, detail="备份文件结构无效")
+        return {
+            "filename": candidate.name,
+            "bytes": len(dump),
+            "sha256": hashlib.sha256(dump).hexdigest(),
+            "verified": True,
+        }
+
+    @classmethod
+    async def rehearse_restore(
+        cls, backup_path: str, app_settings: Settings | None = None
+    ) -> dict[str, object]:
+        """在独立临时数据库实际导入备份并校验迁移版本，完成后删除临时库。"""
+        app_settings = cls._settings(app_settings)
+        rehearsal_database = app_settings.BACKUP_REHEARSAL_DATABASE.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_]+", rehearsal_database):
+            raise HTTPException(
+                status_code=400,
+                detail="BACKUP_REHEARSAL_DATABASE 必须配置为安全的数据库名称",
+            )
+        root = cls._root(app_settings)
+        candidate = Path(backup_path)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        candidate = candidate.resolve()
+        if (
+            candidate.parent != root
+            or candidate.suffix != ".enc"
+            or not candidate.is_file()
+        ):
+            raise HTTPException(status_code=400, detail="备份文件路径无效")
+        try:
+            dump = cls._fernet(app_settings).decrypt(candidate.read_bytes())
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="备份文件无法解密") from exc
+        if b"CREATE TABLE" not in dump or b"alembic_version" not in dump:
+            raise HTTPException(status_code=400, detail="备份文件结构无效")
+
+        env = os.environ.copy()
+        env["MYSQL_PWD"] = app_settings.MYSQL_PASSWORD
+        base_command = [
+            "mysql",
+            "--protocol=tcp",
+            "--host",
+            app_settings.MYSQL_HOST,
+            "--port",
+            str(app_settings.MYSQL_POST),
+            "--user",
+            app_settings.MYSQL_USERNAME,
+        ]
+        use_database = re.compile(rb"(?im)^USE\s+`?[^`;\r\n]+`?;")
+        rehearsal_dump = use_database.sub(
+            f"USE `{rehearsal_database}`;".encode("ascii"), dump
+        )
+        try:
+            await asyncio.to_thread(
+                subprocess.run,
+                [*base_command, "--execute", f"CREATE DATABASE `{rehearsal_database}`"],
+                env=env,
+                capture_output=True,
+                check=True,
+                timeout=app_settings.BACKUP_TIMEOUT_SECONDS,
+            )
+            await asyncio.to_thread(
+                subprocess.run,
+                [*base_command, rehearsal_database],
+                input=rehearsal_dump,
+                env=env,
+                capture_output=True,
+                check=True,
+                timeout=app_settings.BACKUP_TIMEOUT_SECONDS,
+            )
+            result = await asyncio.to_thread(
+                subprocess.run,
+                [
+                    *base_command,
+                    rehearsal_database,
+                    "--batch",
+                    "--skip-column-names",
+                    "--execute",
+                    "SELECT version_num FROM alembic_version LIMIT 1",
+                ],
+                env=env,
+                capture_output=True,
+                check=True,
+                timeout=app_settings.BACKUP_TIMEOUT_SECONDS,
+            )
+            version = result.stdout.decode("utf-8", errors="replace").strip()
+            if version != app_settings.DATABASE_SCHEMA_VERSION:
+                raise HTTPException(
+                    status_code=409,
+                    detail="备份恢复后的数据库版本与当前迁移头不一致",
+                )
+            return {
+                "filename": candidate.name,
+                "database": rehearsal_database,
+                "schema_version": version,
+                "verified": version == app_settings.DATABASE_SCHEMA_VERSION,
+            }
+        except (
+            OSError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
+            raise HTTPException(status_code=503, detail="备份恢复演练失败") from exc
+        finally:
+            try:
+                await asyncio.to_thread(
+                    subprocess.run,
+                    [
+                        *base_command,
+                        "--execute",
+                        f"DROP DATABASE IF EXISTS `{rehearsal_database}`",
+                    ],
+                    env=env,
+                    capture_output=True,
+                    check=True,
+                    timeout=app_settings.BACKUP_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                logger.exception("删除备份恢复演练数据库失败", database=rehearsal_database)
 
     @staticmethod
     def _cleanup(root: Path, app_settings: Settings) -> None:

@@ -5,6 +5,7 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
 from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
 from utils.time_utils import now_utc8_naive
 
@@ -12,12 +13,12 @@ from utils.time_utils import now_utc8_naive
 class DictionaryDao:
     @staticmethod
     def _tenant_id(request: Request) -> int | None:
-        return getattr(request.state, "tenant_id", None)
+        return require_tenant_id(request)
 
     @staticmethod
     def _tenant_filter(model, request: Request):
-        tenant_id = DictionaryDao._tenant_id(request)
-        return model.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, model)
+
     """字典类型和字典数据数据库操作。"""
 
     @staticmethod
@@ -37,9 +38,11 @@ class DictionaryDao:
         request: Request, name: str | None, status: str | None, params: Params
     ):
         """构造并分页查询过滤后的字典类型。"""
-        query = select(DictTypeDo).where(
-            DictionaryDao._tenant_filter(DictTypeDo, request)
-        ).order_by(DictTypeDo.dict_id)
+        query = (
+            select(DictTypeDo)
+            .where(DictionaryDao._tenant_filter(DictTypeDo, request))
+            .order_by(DictTypeDo.dict_id)
+        )
         if name:
             query = query.where(DictTypeDo.dict_name.contains(name))
         if status is not None:
@@ -103,9 +106,11 @@ class DictionaryDao:
         request: Request, dict_type: str | None, status: str | None, params: Params
     ):
         """构造并分页查询过滤后的字典数据。"""
-        query = select(DictDataDo).where(
-            DictionaryDao._tenant_filter(DictDataDo, request)
-        ).order_by(DictDataDo.dict_sort, DictDataDo.dict_code)
+        query = (
+            select(DictDataDo)
+            .where(DictionaryDao._tenant_filter(DictDataDo, request))
+            .order_by(DictDataDo.dict_sort, DictDataDo.dict_code)
+        )
         if dict_type:
             query = query.where(DictDataDo.dict_type == dict_type)
         if status is not None:

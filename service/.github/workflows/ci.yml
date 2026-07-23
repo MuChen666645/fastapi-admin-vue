@@ -38,7 +38,70 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Compile Python sources
-        run: poetry run python -m compileall -q module_admin config alembic test
+        run: poetry run python -m compileall -q main.py module_admin config middleware interceptors scripts alembic test
+
+      - name: Check formatting
+        run: |
+          # 历史目录尚未统一使用 Black，显式限定当前强制检查范围。
+          poetry run black --check --workers 1 \
+            main.py \
+            alembic/versions/0018_tenant_memberships.py \
+            alembic/versions/0019_idempotency_batch_audit.py \
+            alembic/versions/0020_notification_deliveries.py \
+            alembic/versions/0021_tenant_operations_permissions.py \
+            alembic/versions/0022_role_lifecycle.py \
+            alembic/versions/0023_async_exports.py \
+            module_admin/v1.py \
+            module_admin/auth/authorization.py \
+            module_admin/controller/secret_controller.py \
+            module_admin/controller/tenant_controller.py \
+            module_admin/controller/backup_controller.py \
+            module_admin/controller/dictionary_controller.py \
+            module_admin/controller/role_controller.py \
+            module_admin/controller/user_controller.py \
+            module_admin/dao/tenant_dao.py \
+            module_admin/dao/tenant_scope.py \
+            module_admin/entity/do/notification_do.py \
+            module_admin/entity/do/operation_do.py \
+            module_admin/entity/do/export_do.py \
+            module_admin/entity/do/tenant_do.py \
+            module_admin/entity/dto/tenant_dto.py \
+            module_admin/error_codes.py \
+            module_admin/service/system_config_service.py \
+            module_admin/service/idempotency_service.py \
+            module_admin/service/job_worker.py \
+            module_admin/service/notification_service.py \
+            module_admin/service/secret_manager.py \
+            module_admin/service/excel_service.py \
+            module_admin/service/export_service.py \
+            module_admin/service/file_service.py \
+            module_admin/service/task_handlers.py \
+            module_admin/service/task_queue.py \
+            module_admin/service/tenant_service.py \
+            middleware/idempotency_middleware.py \
+            scripts/task_worker.py
+          poetry run isort --check-only --profile black .
+
+      - name: Run lint
+        run: poetry run flake8 --max-line-length=88 .
+
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit
+          pip-audit
+
+      - name: Build application image
+        run: docker build --tag fastapi-admin-vue:${{ github.sha }} .
+
+      - name: Scan application image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: fastapi-admin-vue:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
 
       - name: Validate migrations
         env:
@@ -119,14 +182,21 @@ jobs:
       MYSQL_USERNAME: root
       MYSQL_PASSWORD: integration-root-password
       MYSQL_DATABASES: fastapi_admin
+      TIMEZONE: Asia/Shanghai
       REDIS_HOST: 127.0.0.1
       REDIS_POST: 6379
       REDIS_USERNAME: ""
       REDIS_PASSWORD: ""
+      REDIS_DB: 0
       SECRET_KEY: integration-only-secret-key-that-is-long-enough
       ACCESS_KEY_ID: integration
       ACCESSKEY_SECRET: integration
-      HOSTS: '["127.0.0.1", "localhost"]'
+      HOSTS: '["testserver", "127.0.0.1", "localhost"]'
+      TRUSTED_PROXIES: '[]'
+      ORIGINS: '["http://127.0.0.1"]'
+      MEDOTHS: '["GET", "POST", "PUT", "DELETE", "OPTIONS"]'
+      HEADERS: '["*"]'
+      CREDENTIALS: "false"
       RUN_INTEGRATION_TESTS: "1"
 
     steps:

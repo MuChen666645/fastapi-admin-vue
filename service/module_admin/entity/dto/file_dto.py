@@ -30,7 +30,9 @@ class FileChunkInitDto(BaseModel):
     """分片上传初始化参数。"""
 
     filename: str = Field(min_length=1, max_length=255, description="文件名")
-    content_type: str | None = Field(default=None, max_length=255, description="文件类型")
+    content_type: str | None = Field(
+        default=None, max_length=255, description="文件类型"
+    )
     total_size: int = Field(gt=0, description="文件总大小")
     total_chunks: int = Field(gt=0, le=10000, description="分片总数")
 

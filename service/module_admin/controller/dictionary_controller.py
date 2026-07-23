@@ -4,15 +4,18 @@ from fastapi import APIRouter, Depends, File, Path, Query, Request, UploadFile
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.dictionary_dto import (DictDataCreateDto,
-                                                    DictDataDto,
-                                                    DictDataUpdateDto,
-                                                    DictTypeCreateDto,
-                                                    DictTypeDto,
-                                                    DictTypeUpdateDto)
+from module_admin.entity.dto.dictionary_dto import (
+    DictDataCreateDto,
+    DictDataDto,
+    DictDataUpdateDto,
+    DictTypeCreateDto,
+    DictTypeDto,
+    DictTypeUpdateDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.dictionary_service import DictionaryService
 from module_admin.service.excel_service import ExcelService
+from module_admin.service.export_service import ExportService
 
 
 def permission(code: str):
@@ -34,6 +37,36 @@ class DictionaryController:
     async def export_dictionary(request: Request):
         """导出当前租户字典。"""
         return await ExcelService.export_dictionary(request)
+
+    @dictionary.post(
+        "/export/async",
+        summary="创建异步字典导出任务",
+        dependencies=permission("system:dict:list"),
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def create_async_dictionary_export(request: Request):
+        """创建持久化的字典 Excel 导出任务。"""
+        return await ExportService.create("dictionary", request)
+
+    @dictionary.get(
+        "/export/tasks/{task_id}",
+        summary="查询异步字典导出任务",
+        dependencies=permission("system:dict:list"),
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def get_async_dictionary_export(task_id: str, request: Request):
+        """查询当前用户创建的字典导出任务状态。"""
+        return await ExportService.get_task(task_id, request)
+
+    @dictionary.get(
+        "/export/tasks/{task_id}/download",
+        summary="下载异步字典导出文件",
+        dependencies=permission("system:dict:list"),
+        response_model=None,
+    )
+    async def download_async_dictionary_export(task_id: str, request: Request):
+        """下载已完成的字典导出文件。"""
+        return await ExportService.get_download(task_id, request)
 
     @dictionary.post(
         "/import",
@@ -104,7 +137,9 @@ class DictionaryController:
         dependencies=permission("system:dict:remove"),
         responses={200: {"model": ApiResponseDto[None]}},
     )
-    async def delete_type(request: Request, dict_id: int = Path(description="字典类型ID")):
+    async def delete_type(
+        request: Request, dict_id: int = Path(description="字典类型ID")
+    ):
         """删除字典类型。"""
         return await DictionaryService.delete_type(dict_id, request)
 
@@ -130,7 +165,9 @@ class DictionaryController:
         dependencies=permission("system:dict:query"),
         responses={200: {"model": ApiResponseDto[DictDataDto]}},
     )
-    async def get_data(request: Request, dict_code: int = Path(description="字典数据ID")):
+    async def get_data(
+        request: Request, dict_code: int = Path(description="字典数据ID")
+    ):
         """查询字典数据详情。"""
         return await DictionaryService.data_detail(dict_code, request)
 
@@ -164,6 +201,8 @@ class DictionaryController:
         dependencies=permission("system:dict:remove"),
         responses={200: {"model": ApiResponseDto[None]}},
     )
-    async def delete_data(request: Request, dict_code: int = Path(description="字典数据ID")):
+    async def delete_data(
+        request: Request, dict_code: int = Path(description="字典数据ID")
+    ):
         """删除字典数据。"""
         return await DictionaryService.delete_data(dict_code, request)

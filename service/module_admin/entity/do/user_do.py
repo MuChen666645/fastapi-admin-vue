@@ -25,9 +25,7 @@ class UserDo(SQLModel, table=True):
     password_changed_at: datetime | None = Field(
         default=None, description="密码修改时间"
     )
-    must_change_password: bool = Field(
-        default=True, description="是否强制首次修改密码"
-    )
+    must_change_password: bool = Field(default=True, description="是否强制首次修改密码")
     email: str | None = Field(default=None, description="邮箱", unique=True)
     phone: str | None = Field(
         default=None, description="手机号", max_length=11, unique=True
@@ -40,7 +38,7 @@ class UserDo(SQLModel, table=True):
         description="角色ID",
     )
     tenant_id: int | None = Field(
-        default=None,
+        default=1,
         foreign_key="tenants.id",
         ondelete="RESTRICT",
         nullable=True,
@@ -62,6 +60,10 @@ class UserDo(SQLModel, table=True):
     avatar: str | None = Field(default=None, description="用户头像")
     update_time: datetime | None = Field(default=None, description="更新时间")
     status: str = Field(default="1", max_length=1, description="状态,0禁用,1正常")
+    version: int = Field(default=1, nullable=False, description="乐观锁版本号")
+    deleted_at: datetime | None = Field(
+        default=None, index=True, description="删除时间"
+    )
     mfa_enabled: bool = Field(default=False, description="是否启用多因素认证")
     mfa_secret_encrypted: str | None = Field(
         default=None,

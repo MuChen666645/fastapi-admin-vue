@@ -41,9 +41,7 @@ async def _ensure_alembic_version_capacity() -> None:
     try:
         async with engine.begin() as connection:
             tables = await connection.run_sync(
-                lambda sync_connection: set(
-                    inspect(sync_connection).get_table_names()
-                )
+                lambda sync_connection: set(inspect(sync_connection).get_table_names())
             )
             if "alembic_version" in tables:
                 await connection.execute(

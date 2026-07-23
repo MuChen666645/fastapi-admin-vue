@@ -6,8 +6,7 @@ from config.env import settings
 from config.rate_limit import limiter
 from module_admin.entity.dto.external_auth_dto import ExternalAuthStartDto
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.service.external_identity_service import \
-    ExternalIdentityService
+from module_admin.service.external_identity_service import ExternalIdentityService
 
 
 class ExternalAuthController:

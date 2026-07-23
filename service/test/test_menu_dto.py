@@ -1,5 +1,7 @@
-from module_admin.entity.dto.menu_dto import (CreateMenubyIframeDto,
-                                              CreateMenuByRouterDto)
+from module_admin.entity.dto.menu_dto import (
+    CreateMenubyIframeDto,
+    CreateMenuByRouterDto,
+)
 
 
 def test_menu_visibility_fields_have_database_safe_defaults() -> None:

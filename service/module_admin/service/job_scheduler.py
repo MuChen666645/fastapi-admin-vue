@@ -6,6 +6,7 @@ import json
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -15,6 +16,7 @@ from sqlmodel import select
 
 from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.service.alert_service import AlertService
+from module_admin.service.task_queue import TaskQueue
 from utils.time_utils import now_utc8_naive
 
 TaskHandler = Callable[[dict[str, Any]], Any | Awaitable[Any]]
@@ -31,6 +33,12 @@ class JobScheduler:
     end
     return 0
     """
+    _RENEW_LOCK_SCRIPT = """
+    if redis.call('GET', KEYS[1]) == ARGV[1] then
+        return redis.call('EXPIRE', KEYS[1], ARGV[2])
+    end
+    return 0
+    """
 
     def __init__(
         self,
@@ -42,6 +50,10 @@ class JobScheduler:
         default_max_retries: int = 0,
         metrics=None,
         alert_webhook_url: str = "",
+        worker_mode: str = "inline",
+        queue_stream: str = "fastapi:tasks",
+        queue_group: str = "fastapi-workers",
+        lock_renew_seconds: int | None = None,
     ) -> None:
         """创建延迟解析当前数据库会话工厂的调度器。"""
         self._session_factory_provider = session_factory_provider
@@ -55,6 +67,13 @@ class JobScheduler:
         self._instance_id = uuid.uuid4().hex
         self._metrics = metrics
         self._alert_webhook_url = alert_webhook_url
+        self._worker_mode = worker_mode
+        self._queue = (
+            TaskQueue(redis, queue_stream, queue_group)
+            if redis is not None and worker_mode == "queue"
+            else None
+        )
+        self._lock_renew_seconds = lock_renew_seconds or max(1, lock_ttl // 3)
 
     def register_task(self, task_name: str, handler: TaskHandler) -> None:
         """按名称注册进程内任务处理器。"""
@@ -101,12 +120,14 @@ class JobScheduler:
                     scheduled_job.remove()
 
         for job in jobs:
-            if job.id is None or job.task_name not in self._handlers:
+            if job.id is None or (
+                self._worker_mode == "inline" and job.task_name not in self._handlers
+            ):
                 continue
             try:
                 trigger = CronTrigger.from_crontab(job.cron_expression)
                 self._scheduler.add_job(
-                    self._execute,
+                    self._dispatch,
                     trigger=trigger,
                     id=f"{self.JOB_PREFIX}{job.id}",
                     replace_existing=True,
@@ -117,6 +138,15 @@ class JobScheduler:
 
     async def run_now(self, job_id: int) -> tuple[str, str | None]:
         """立即执行一次启用的定时任务。"""
+        return await self._dispatch(job_id=job_id)
+
+    async def _dispatch(self, job_id: int) -> tuple[str, str | None]:
+        """按运行模式直接执行或投递到独立 Worker。"""
+        if self._worker_mode == "queue":
+            if self._queue is None:
+                return "failed", "可靠任务队列未初始化"
+            await self._queue.enqueue(job_id)
+            return "queued", None
         return await self._execute(job_id=job_id)
 
     async def _execute(self, job_id: int) -> tuple[str, str | None]:
@@ -124,6 +154,7 @@ class JobScheduler:
         lock_key = f"scheduled-job:lock:{job_id}"
         lock_value = f"{self._instance_id}:{uuid.uuid4().hex}"
         lock_acquired = False
+        heartbeat_task = None
         if self._redis is not None:
             try:
                 acquired = await self._redis.set(
@@ -137,8 +168,13 @@ class JobScheduler:
             if not acquired and not hasattr(self._redis, "_data"):
                 return "skipped", "任务正在其他实例执行"
             lock_acquired = True
+            heartbeat_task = asyncio.create_task(self._renew_lock(lock_key, lock_value))
         session_factory = self._session_factory_provider()
         if session_factory is None:
+            if heartbeat_task is not None:
+                heartbeat_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await heartbeat_task
             if lock_acquired:
                 await self._release_lock(lock_key, lock_value)
             return "failed", "数据库会话未初始化"
@@ -151,7 +187,9 @@ class JobScheduler:
                 handler = self._handlers.get(job.task_name)
                 if handler is None:
                     message = f"任务处理器未注册：{job.task_name}"
-                    await self._save_result(session, job, "failed", message, started_at, self._metrics)
+                    await self._save_result(
+                        session, job, "failed", message, started_at, self._metrics
+                    )
                     await AlertService.notify_job_failure(
                         self._alert_webhook_url,
                         job.id,
@@ -178,7 +216,14 @@ class JobScheduler:
                                     timeout=timeout,
                                 )
                             message = None if result is None else str(result)[:2000]
-                            await self._save_result(session, job, "success", message, started_at, self._metrics)
+                            await self._save_result(
+                                session,
+                                job,
+                                "success",
+                                message,
+                                started_at,
+                                self._metrics,
+                            )
                             return "success", message
                         except Exception:
                             if attempt >= retries:
@@ -199,11 +244,33 @@ class JobScheduler:
                         self._metrics,
                     )
                     logger.exception("定时任务执行失败", job_id=job_id)
-                    await self._save_result(session, job, "failed", message, started_at, self._metrics)
+                    await self._save_result(
+                        session, job, "failed", message, started_at, self._metrics
+                    )
                     return "failed", message
         finally:
+            if heartbeat_task is not None:
+                heartbeat_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await heartbeat_task
             if lock_acquired:
                 await self._release_lock(lock_key, lock_value)
+
+    async def _renew_lock(self, lock_key: str, lock_value: str) -> None:
+        """仅在当前实例仍是持有者时周期性续租任务锁。"""
+        while True:
+            await asyncio.sleep(self._lock_renew_seconds)
+            if hasattr(self._redis, "_data"):
+                if await self._redis.get(lock_key) == lock_value:
+                    await self._redis.set(lock_key, lock_value, ex=self._lock_ttl)
+                continue
+            await self._redis.eval(
+                self._RENEW_LOCK_SCRIPT,
+                1,
+                lock_key,
+                lock_value,
+                self._lock_ttl,
+            )
 
     async def _release_lock(self, lock_key: str, lock_value: str) -> None:
         """仅在锁仍由当前执行持有时释放任务锁。"""

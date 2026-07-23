@@ -122,7 +122,8 @@ class MfaService:
             if cls.verify_code(secret, code):
                 return
             recovery_codes = json.loads(
-                cls._decrypt(getattr(user, "mfa_recovery_codes_encrypted", None)) or "[]"
+                cls._decrypt(getattr(user, "mfa_recovery_codes_encrypted", None))
+                or "[]"
             )
         except (json.JSONDecodeError, TypeError):
             recovery_codes = []

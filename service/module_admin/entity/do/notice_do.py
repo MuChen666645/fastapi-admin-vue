@@ -13,11 +13,13 @@ class NoticeDo(SQLModel, table=True):
 
     __tablename__ = "notices"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(title="公告编号", default=None, primary_key=True)
     notice_title: str = Field(title="公告标题", max_length=100, index=True)
-    notice_type: str = Field(title="公告类型", default="notice", max_length=20, index=True)
+    notice_type: str = Field(
+        title="公告类型", default="notice", max_length=20, index=True
+    )
     notice_content: str = Field(
         title="公告内容", sa_column=Column(Text, nullable=False)
     )

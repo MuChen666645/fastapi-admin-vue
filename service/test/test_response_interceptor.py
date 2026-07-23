@@ -5,8 +5,10 @@ from fastapi.responses import StreamingResponse
 from httpx import ASGITransport, AsyncClient
 
 from interceptors.http_intercept import ApiExceptionInterception
-from middleware.response_intercept import (SKIP_RESPONSE_WRAPPER_HEADER,
-                                           ResponseInterceptor)
+from middleware.response_intercept import (
+    SKIP_RESPONSE_WRAPPER_HEADER,
+    ResponseInterceptor,
+)
 
 
 def run_async(coroutine):
@@ -91,6 +93,7 @@ def test_unhandled_exception_uses_sanitized_response_contract() -> None:
         assert response.status_code == 500
         assert response.json() == {
             "code": 500,
+            "error_code": "INTERNAL_ERROR",
             "message": "Internal Server Error",
             "data": None,
         }

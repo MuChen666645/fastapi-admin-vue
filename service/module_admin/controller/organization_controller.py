@@ -4,14 +4,16 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.organization_dto import (DepartmentCreateDto,
-                                                      DepartmentDto,
-                                                      DepartmentUpdateDto,
-                                                      PostCreateDto, PostDto,
-                                                      PostUpdateDto)
+from module_admin.entity.dto.organization_dto import (
+    DepartmentCreateDto,
+    DepartmentDto,
+    DepartmentUpdateDto,
+    PostCreateDto,
+    PostDto,
+    PostUpdateDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.service.organization_service import (DepartmentService,
-                                                       PostService)
+from module_admin.service.organization_service import DepartmentService, PostService
 
 
 def permission(code: str):
@@ -44,7 +46,9 @@ class DepartmentController:
         dependencies=permission("system:dept:query"),
         responses={200: {"model": ApiResponseDto[DepartmentDto]}},
     )
-    async def get_department(request: Request, dept_id: int = Path(description="部门ID")):
+    async def get_department(
+        request: Request, dept_id: int = Path(description="部门ID")
+    ):
         """查询部门详情。"""
         return await DepartmentService.detail(dept_id, request)
 
@@ -78,7 +82,9 @@ class DepartmentController:
         dependencies=permission("system:dept:remove"),
         responses={200: {"model": ApiResponseDto[None]}},
     )
-    async def delete_department(request: Request, dept_id: int = Path(description="部门ID")):
+    async def delete_department(
+        request: Request, dept_id: int = Path(description="部门ID")
+    ):
         """删除部门。"""
         return await DepartmentService.delete(dept_id, request)
 

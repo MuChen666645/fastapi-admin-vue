@@ -42,3 +42,25 @@ class BackupController:
         """仅从配置备份目录恢复加密备份。"""
         app_settings = getattr(request.app.state, "settings", settings)
         await BackupService.restore_backup(data.filename, app_settings)
+
+    @backup.post(
+        "/verify",
+        summary="校验数据库备份",
+        dependencies=[Depends(Auth.has_permission("system:backup:verify"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def verify(data: BackupRestoreDto, request: Request):
+        """解密并校验备份结构，不修改目标数据库。"""
+        app_settings = getattr(request.app.state, "settings", settings)
+        return await BackupService.verify_backup(data.filename, app_settings)
+
+    @backup.post(
+        "/rehearse",
+        summary="执行备份恢复演练",
+        dependencies=[Depends(Auth.has_permission("system:backup:rehearse"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def rehearse(data: BackupRestoreDto, request: Request):
+        """在独立临时数据库导入备份并校验迁移版本。"""
+        app_settings = getattr(request.app.state, "settings", settings)
+        return await BackupService.rehearse_restore(data.filename, app_settings)

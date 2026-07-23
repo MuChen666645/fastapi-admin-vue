@@ -12,7 +12,9 @@ class RoleDto(BaseModel):
 
     name: str | None = Field(default=None, max_length=50, description="角色名称")
     code: str | None = Field(default=None, max_length=50, description="角色编码")
-    description: str | None = Field(default=None, max_length=255, description="角色描述")
+    description: str | None = Field(
+        default=None, max_length=255, description="角色描述"
+    )
     data_scope: str | None = Field(
         default=None,
         pattern="^[1-5]$",
@@ -29,8 +31,8 @@ class CreateRoleDto(RoleDto):
 
     name: str = Field(..., min_length=1, max_length=50, description="角色名称")
     code: str = Field(..., min_length=1, max_length=50, description="角色编码")
-    data_scope: str = Field(default="5", pattern="^[1-5]$" , description="数据权限范围")
-    menu_ids: list[int] = Field(default_factory=list , description="菜单ID列表")
+    data_scope: str = Field(default="5", pattern="^[1-5]$", description="数据权限范围")
+    menu_ids: list[int] = Field(default_factory=list, description="菜单ID列表")
     dept_ids: list[int] = Field(
         default_factory=list,
         description="自定义数据权限使用的部门列表",
@@ -38,6 +40,7 @@ class CreateRoleDto(RoleDto):
 
 
 class UpdataRoleDto(RoleDto):
+    version: int | None = Field(default=None, ge=1, description="乐观锁版本号")
     field_permission_codes: list[str] | None = Field(
         default=None,
         description="字段权限编码列表",
@@ -45,8 +48,12 @@ class UpdataRoleDto(RoleDto):
     """修改角色请求模型。"""
 
     menu_ids: list[int] | None = Field(default=None, description="菜单ID列表")
-    data_scope: str | None = Field(default=None, pattern="^[1-5]$", description="数据权限范围")
-    dept_ids: list[int] | None = Field(default=None, description="自定义数据权限使用的部门列表")
+    data_scope: str | None = Field(
+        default=None, pattern="^[1-5]$", description="数据权限范围"
+    )
+    dept_ids: list[int] | None = Field(
+        default=None, description="自定义数据权限使用的部门列表"
+    )
 
 
 class BatchUpdateRoleStatusDto(BaseModel):
@@ -54,8 +61,8 @@ class BatchUpdateRoleStatusDto(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    role_ids: list[int] = Field(..., min_length=1 , description="角色ID列表")
-    status: str = Field(..., pattern="^[01]$" , description="状态：0停用，1正常")
+    role_ids: list[int] = Field(..., min_length=1, description="角色ID列表")
+    status: str = Field(..., pattern="^[01]$", description="状态：0停用，1正常")
 
 
 class RoleListDto(RoleDto):
@@ -65,6 +72,8 @@ class RoleListDto(RoleDto):
     create_time: datetime = Field(description="创建时间")
     update_time: datetime = Field(description="更新时间")
     status: str = Field(description="状态：0停用，1正常")
+    version: int = Field(description="乐观锁版本号")
+    deleted_at: datetime | None = Field(default=None, description="删除时间")
     data_scope: str = Field(default="5", pattern="^[1-5]$", description="数据权限范围")
 
 
@@ -76,4 +85,6 @@ class RoleDetailDto(RoleListDto):
     """角色详情响应模型。"""
 
     menu_ids: list[int] = Field(default_factory=list, description="菜单ID列表")
-    dept_ids: list[int] = Field(default_factory=list, description="自定义数据权限使用的部门列表")
+    dept_ids: list[int] = Field(
+        default_factory=list, description="自定义数据权限使用的部门列表"
+    )

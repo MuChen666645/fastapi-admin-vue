@@ -10,15 +10,20 @@ from module_admin.dao.menu_dao import MenuDao
 from module_admin.dao.role_dao import RoleDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.dto.menu_dto import CreateMenuByButtonDto, UpdMenuDto
-from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
-                                              CreateRoleDto, UpdataRoleDto)
-from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
-                                              BatchUserIdsDto,
-                                              BindUserRolesDto,
-                                              LoginUserRequestByPhoneDto,
-                                              ResetUserPasswordRequestDto,
-                                              UpdateUserPasswordRequestDto,
-                                              UpdateUserRequestDto)
+from module_admin.entity.dto.role_dto import (
+    BatchUpdateRoleStatusDto,
+    CreateRoleDto,
+    UpdataRoleDto,
+)
+from module_admin.entity.dto.user_dto import (
+    BatchUpdateUserStatusDto,
+    BatchUserIdsDto,
+    BindUserRolesDto,
+    LoginUserRequestByPhoneDto,
+    ResetUserPasswordRequestDto,
+    UpdateUserPasswordRequestDto,
+    UpdateUserRequestDto,
+)
 from module_admin.service.code_service import CodeService
 from module_admin.service.menu_service import MenuService
 from module_admin.service.role_service import RoleService

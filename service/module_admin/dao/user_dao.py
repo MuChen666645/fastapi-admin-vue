@@ -6,21 +6,28 @@ from typing import Union
 from fastapi import Request
 from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
-from sqlalchemy import or_
+from sqlalchemy import or_, update
 from sqlmodel import delete, select
 
 from config.env import settings
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
 from module_admin.entity.do.menu_do import MenuDo
-from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
-                                                    UserPostDo)
+from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo, RoleMenuDo
-from module_admin.entity.do.user_do import (PasswordResetTokenDo, UserDo,
-                                            UserPasswordHistoryDo, UserRoleDo)
-from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
-                                              LoginUserRequestByUsernameDto,
-                                              RegisterUserRequestByUsernameDto,
-                                              UpdateUserRequestDto)
+from module_admin.entity.do.tenant_do import TenantMemberDo
+from module_admin.entity.do.user_do import (
+    PasswordResetTokenDo,
+    UserDo,
+    UserPasswordHistoryDo,
+    UserRoleDo,
+)
+from module_admin.entity.dto.user_dto import (
+    LoginUserRequestByPhoneDto,
+    LoginUserRequestByUsernameDto,
+    RegisterUserRequestByUsernameDto,
+    UpdateUserRequestDto,
+)
 from module_admin.service.data_scope_service import DataScopeService
 from utils.time_utils import now_utc8_naive
 
@@ -31,8 +38,7 @@ class UserDao:
     @staticmethod
     def _tenant_filter(request: Request, model):
         """为用户相关查询生成当前租户过滤条件。"""
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return model.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, model)
 
     @staticmethod
     async def create_user_by_username(
@@ -53,7 +59,7 @@ class UserDao:
         user_data = users.model_dump(exclude={"post_ids"})
         user_data.setdefault(
             "tenant_id",
-            getattr(request.state, "tenant_id", settings.DEFAULT_TENANT_ID),
+            require_tenant_id(request),
         )
         if getattr(request.state, "user_id", None) is not None:
             scope = await DataScopeService.resolve(request)
@@ -81,13 +87,24 @@ class UserDao:
             existing_post_ids = await DataScopeService.filter_post_ids(
                 request, post_ids
             )
-            missing_post_ids = [post_id for post_id in post_ids if post_id not in existing_post_ids]
+            missing_post_ids = [
+                post_id for post_id in post_ids if post_id not in existing_post_ids
+            ]
             if missing_post_ids:
                 raise ValueError(f"岗位不存在: {missing_post_ids}")
         user = UserDo(**user_data)
         mysql.add(user)
         await mysql.flush()
-        mysql.add_all([UserPostDo(user_id=user.id, post_id=post_id) for post_id in post_ids])
+        mysql.add(
+            TenantMemberDo(
+                user_id=user.id,
+                tenant_id=user_data["tenant_id"],
+                is_default=True,
+            )
+        )
+        mysql.add_all(
+            [UserPostDo(user_id=user.id, post_id=post_id) for post_id in post_ids]
+        )
         return user
 
     @staticmethod
@@ -106,7 +123,10 @@ class UserDao:
 
         """
         mysql = request.state.mysql
-        stmt = select(UserDo).where(UserDo.username == users.username)
+        stmt = select(UserDo).where(
+            UserDo.username == users.username,
+            UserDo.deleted_at.is_(None),
+        )
         result = await mysql.execute(stmt)
         user = result.scalars().first()
         return user
@@ -125,7 +145,10 @@ class UserDao:
             UserDo: 用户对象.
         """
         mysql = request.state.mysql
-        stmt = select(UserDo).where(UserDo.phone == users.phone)
+        stmt = select(UserDo).where(
+            UserDo.phone == users.phone,
+            UserDo.deleted_at.is_(None),
+        )
         result = await mysql.execute(stmt)
         user = result.scalars().first()
         return user
@@ -135,7 +158,9 @@ class UserDao:
         identifier: str, request: Request, tenant_id: int | None = None
     ) -> Union[UserDo, None]:
         """按用户名、邮箱或手机号查找用户。"""
-        tenant_filter = UserDo.tenant_id == tenant_id if tenant_id is not None else True
+        tenant_filter = (
+            UserDo.tenant_id == tenant_id if tenant_id is not None else False
+        )
         result = await request.state.mysql.execute(
             select(UserDo).where(
                 or_(
@@ -144,6 +169,7 @@ class UserDao:
                     UserDo.phone == identifier,
                 ),
                 tenant_filter,
+                UserDo.deleted_at.is_(None),
             )
         )
         return result.scalars().first()
@@ -156,12 +182,15 @@ class UserDao:
         tenant_id: int | None = None,
     ) -> UserDo | None:
         """按外部身份提供商和主体标识查找用户。"""
-        tenant_filter = UserDo.tenant_id == tenant_id if tenant_id is not None else True
+        tenant_filter = (
+            UserDo.tenant_id == tenant_id if tenant_id is not None else False
+        )
         result = await request.state.mysql.execute(
             select(UserDo).where(
                 UserDo.auth_provider == provider,
                 UserDo.auth_subject == subject,
                 tenant_filter,
+                UserDo.deleted_at.is_(None),
             )
         )
         return result.scalars().first()
@@ -203,10 +232,12 @@ class UserDao:
         """
         mysql = request.state.mysql
         scope = await DataScopeService.resolve(request)
-        filters = [UserDo.id == user_id, scope.user_id_clause(UserDo.id)]
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            filters.append(UserDo.tenant_id == tenant_id)
+        filters = [
+            UserDo.id == user_id,
+            scope.user_id_clause(UserDo.id),
+            UserDao._tenant_filter(request, UserDo),
+            UserDo.deleted_at.is_(None),
+        ]
         result = await mysql.execute(select(UserDo).where(*filters))
         return result.scalars().first()
 
@@ -227,9 +258,7 @@ class UserDao:
         )
         if enabled_only:
             role_query = role_query.where(RoleDo.status == "1")
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None:
-            role_query = role_query.where(RoleDo.tenant_id == tenant_id)
+        role_query = role_query.where(tenant_clause(request, RoleDo))
         role_result = await mysql.execute(role_query)
         return list(role_result.scalars().all())
 
@@ -248,9 +277,7 @@ class UserDao:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_admin_user_ids(
-        user_ids: list[int], request: Request
-    ) -> set[int]:
+    async def get_admin_user_ids(user_ids: list[int], request: Request) -> set[int]:
         """返回通过任一关联方式拥有保留管理员角色的用户 ID。"""
         unique_user_ids = list(dict.fromkeys(user_ids))
         if not unique_user_ids:
@@ -275,9 +302,7 @@ class UserDao:
                 UserDao._tenant_filter(request, RoleDo),
             )
         )
-        result = await request.state.mysql.execute(
-            assigned_admins.union(legacy_admins)
-        )
+        result = await request.state.mysql.execute(assigned_admins.union(legacy_admins))
         return set(result.scalars().all())
 
     @staticmethod
@@ -296,7 +321,7 @@ class UserDao:
             .join(UserPostDo, UserPostDo.post_id == PostDo.post_id)
             .where(
                 UserPostDo.user_id == user_id,
-                PostDo.tenant_id == getattr(request.state, "tenant_id", PostDo.tenant_id),
+                tenant_clause(request, PostDo),
             )
             .order_by(PostDo.post_sort, PostDo.post_id)
         )
@@ -327,8 +352,7 @@ class UserDao:
                 .where(
                     RoleMenuDo.role_id.in_(role_ids),
                     MenuDo.status == "1",
-                    MenuDo.tenant_id
-                    == getattr(request.state, "tenant_id", MenuDo.tenant_id),
+                    tenant_clause(request, MenuDo),
                     MenuDo.perms.is_not(None),
                     MenuDo.perms != "",
                 )
@@ -356,23 +380,29 @@ class UserDao:
     ):
         """按条件分页查询用户。"""
         scope = await DataScopeService.resolve(request)
-        query = select(
-            UserDo.id,
-            UserDo.create_time,
-            UserDo.username,
-            UserDo.email,
-            UserDo.phone,
-            UserDo.role_id,
-            UserDo.dept_id,
-            UserDo.nickname,
-            UserDo.sex,
-            UserDo.avatar,
-            UserDo.update_time,
-            UserDo.status,
-        ).where(
-            scope.user_id_clause(UserDo.id),
-            UserDao._tenant_filter(request, UserDo),
-        ).order_by(UserDo.id)
+        query = (
+            select(
+                UserDo.id,
+                UserDo.create_time,
+                UserDo.username,
+                UserDo.email,
+                UserDo.phone,
+                UserDo.role_id,
+                UserDo.dept_id,
+                UserDo.nickname,
+                UserDo.sex,
+                UserDo.avatar,
+                UserDo.update_time,
+                UserDo.status,
+                UserDo.version,
+            )
+            .where(
+                scope.user_id_clause(UserDo.id),
+                UserDao._tenant_filter(request, UserDo),
+                UserDo.deleted_at.is_(None),
+            )
+            .order_by(UserDo.id)
+        )
         if username:
             query = query.where(UserDo.username.contains(username))
         if phone:
@@ -407,7 +437,7 @@ class UserDao:
             .where(
                 MenuDo.status == "1",
                 MenuDo.menu_type != "F",
-                MenuDo.tenant_id == getattr(request.state, "tenant_id", MenuDo.tenant_id),
+                tenant_clause(request, MenuDo),
             )
             .order_by(MenuDo.sort, MenuDo.menu_id)
         )
@@ -415,10 +445,9 @@ class UserDao:
             role_ids = [role.id for role in roles]
             if not role_ids:
                 return []
-            menu_query = (
-                menu_query.join(RoleMenuDo, RoleMenuDo.menu_id == MenuDo.menu_id)
-                .where(RoleMenuDo.role_id.in_(role_ids))
-            )
+            menu_query = menu_query.join(
+                RoleMenuDo, RoleMenuDo.menu_id == MenuDo.menu_id
+            ).where(RoleMenuDo.role_id.in_(role_ids))
 
         result = await mysql.execute(menu_query)
         return list({menu.menu_id: menu for menu in result.scalars().all()}.values())
@@ -433,6 +462,7 @@ class UserDao:
         if user_db is None:
             return "用户不存在"
         user_data = users.model_dump(exclude_unset=True)
+        expected_version = user_data.pop("version", None)
         user_data.pop("role_id", None)
         post_ids = user_data.pop("post_ids", None)
         if "dept_id" in user_data:
@@ -454,10 +484,23 @@ class UserDao:
                 ]
                 if missing_post_ids:
                     return f"岗位不存在: {missing_post_ids}"
-            await mysql.execute(delete(UserPostDo).where(UserPostDo.user_id == user_id))
-            mysql.add_all([UserPostDo(user_id=user_id, post_id=post_id) for post_id in post_ids])
         user_data["update_time"] = now_utc8_naive()
-        user_db.sqlmodel_update(user_data)
+        user_data["version"] = UserDo.version + 1
+        filters = [
+            UserDo.id == user_id,
+            UserDao._tenant_filter(request, UserDo),
+            UserDo.deleted_at.is_(None),
+        ]
+        if expected_version is not None:
+            filters.append(UserDo.version == expected_version)
+        result = await mysql.execute(update(UserDo).where(*filters).values(**user_data))
+        if result.rowcount != 1:
+            return "USER_VERSION_CONFLICT" if expected_version is not None else "USER_NOT_FOUND"
+        if post_ids is not None:
+            await mysql.execute(delete(UserPostDo).where(UserPostDo.user_id == user_id))
+            mysql.add_all(
+                [UserPostDo(user_id=user_id, post_id=post_id) for post_id in post_ids]
+            )
         return None
 
     @staticmethod
@@ -484,7 +527,9 @@ class UserDao:
         return None
 
     @staticmethod
-    async def _apply_password_hash(user_db: UserDo, password: str, request: Request) -> None:
+    async def _apply_password_hash(
+        user_db: UserDo, password: str, request: Request
+    ) -> None:
         """记录旧密码并更新密码版本。"""
         mysql = request.state.mysql
         if user_db.password:
@@ -500,6 +545,7 @@ class UserDao:
         user_db.password = password
         user_db.password_changed_at = now_utc8_naive()
         user_db.must_change_password = False
+        user_db.version = getattr(user_db, "version", 1) + 1
         user_db.update_time = now_utc8_naive()
 
     @staticmethod
@@ -537,6 +583,7 @@ class UserDao:
             ]
         )
         user.role_id = None
+        user.version = getattr(user, "version", 1) + 1
         user.update_time = now_utc8_naive()
         return None
 
@@ -553,6 +600,7 @@ class UserDao:
                 UserDo.id.in_(unique_user_ids),
                 scope.user_id_clause(UserDo.id),
                 UserDao._tenant_filter(request, UserDo),
+                UserDo.deleted_at.is_(None),
             )
         )
         users = result.scalars().all()
@@ -566,6 +614,7 @@ class UserDao:
         update_time = now_utc8_naive()
         for user in users:
             user.status = status
+            user.version = getattr(user, "version", 1) + 1
             user.update_time = update_time
         return None
 
@@ -573,7 +622,7 @@ class UserDao:
     async def batch_delete_users(
         user_ids: list[int], request: Request
     ) -> Union[str, None]:
-        """在一个事务中删除用户及其角色关联。"""
+        """在一个事务中软删除用户并保留历史关联。"""
         mysql = request.state.mysql
         unique_user_ids = list(dict.fromkeys(user_ids))
         scope = await DataScopeService.resolve(request)
@@ -582,6 +631,7 @@ class UserDao:
                 UserDo.id.in_(unique_user_ids),
                 scope.user_id_clause(UserDo.id),
                 UserDao._tenant_filter(request, UserDo),
+                UserDo.deleted_at.is_(None),
             )
         )
         existing_user_ids = set(result.scalars().all())
@@ -591,31 +641,33 @@ class UserDao:
         if missing_user_ids:
             return f"用户不存在: {missing_user_ids}"
 
+        update_time = now_utc8_naive()
         await mysql.execute(
-            delete(UserRoleDo).where(UserRoleDo.user_id.in_(unique_user_ids))
-        )
-        await mysql.execute(
-            delete(UserPostDo).where(UserPostDo.user_id.in_(unique_user_ids))
-        )
-        await mysql.execute(
-            delete(UserDo).where(
+            update(UserDo)
+            .where(
                 UserDo.id.in_(unique_user_ids),
                 UserDao._tenant_filter(request, UserDo),
+                UserDo.deleted_at.is_(None),
+            )
+            .values(
+                status="0",
+                deleted_at=update_time,
+                version=UserDo.version + 1,
+                update_time=update_time,
             )
         )
         return None
 
     @staticmethod
-    async def delete_user_by_id(
-        user_id: int, request: Request
-    ) -> Union[str, None]:
+    async def delete_user_by_id(user_id: int, request: Request) -> Union[str, None]:
         """删除一个用户及其全部角色关联。"""
-        mysql = request.state.mysql
         user = await UserDao.get_user_by_id(user_id, request)
         if user is None:
             return "用户不存在"
 
-        await mysql.execute(delete(UserRoleDo).where(UserRoleDo.user_id == user_id))
-        await mysql.execute(delete(UserPostDo).where(UserPostDo.user_id == user_id))
-        await mysql.delete(user)
+        update_time = now_utc8_naive()
+        user.status = "0"
+        user.deleted_at = update_time
+        user.version = getattr(user, "version", 1) + 1
+        user.update_time = update_time
         return None

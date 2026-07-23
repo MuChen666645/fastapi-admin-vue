@@ -4,13 +4,16 @@ from fastapi import HTTPException, Request
 from fastapi_pagination import Params
 
 from module_admin.dao.notice_dao import NoticeDao
+from module_admin.service.notification_service import NotificationService
 
 
 class NoticeService:
     """协调通知公告的生命周期操作。"""
 
     @staticmethod
-    async def list_notices(request: Request, title, notice_type, status, params: Params):
+    async def list_notices(
+        request: Request, title, notice_type, status, params: Params
+    ):
         """分页查询通知公告。"""
         return await NoticeDao.list_notices(request, title, notice_type, status, params)
 
@@ -25,7 +28,9 @@ class NoticeService:
     @staticmethod
     async def create(data, request: Request):
         """创建通知公告。"""
-        return await NoticeDao.create(data, request)
+        notice = await NoticeDao.create(data, request)
+        await NotificationService.enqueue(notice, data, request)
+        return notice
 
     @staticmethod
     async def list_inbox(request: Request, unread_only: bool, params: Params):

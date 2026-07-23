@@ -83,9 +83,7 @@ def test_resolve_uses_custom_role_ids_only() -> None:
                     return Result([10])
                 return Result([])
 
-        request = SimpleNamespace(
-            state=SimpleNamespace(user_id=7, mysql=Mysql())
-        )
+        request = SimpleNamespace(state=SimpleNamespace(user_id=7, mysql=Mysql()))
         scope = await DataScopeService.resolve(request)
 
         assert scope.department_ids == frozenset({10})
@@ -111,9 +109,7 @@ def test_non_all_scope_rejects_user_without_department(monkeypatch) -> None:
                 raise AssertionError("user should not be created")
 
         monkeypatch.setattr(DataScopeService, "resolve", resolve)
-        request = SimpleNamespace(
-            state=SimpleNamespace(user_id=7, mysql=Mysql())
-        )
+        request = SimpleNamespace(state=SimpleNamespace(user_id=7, mysql=Mysql()))
         users = RegisterUserRequestByUsernameDto(
             username="new-user",
             phone="13800138000",

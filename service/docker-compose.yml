@@ -53,6 +53,35 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+  fastapi-worker:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    depends_on:
+      fastapi-mysql:
+        condition: service_healthy
+      fastapi-redis:
+        condition: service_healthy
+      fastapi-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - ${APP_ENV_FILE:-.env.development}
+    networks:
+      - common-network
+    command: ["python", "-m", "scripts.task_worker"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
   fastapi-mysql:
     image: mysql:8.0.41
     command: ["--default-authentication-plugin=mysql_native_password"]

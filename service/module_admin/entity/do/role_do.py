@@ -16,7 +16,7 @@ class RoleDo(SQLModel, table=True):
     name: str = Field(max_length=100, nullable=False, unique=True)
     code: str = Field(max_length=100, nullable=False, unique=True)
     tenant_id: int | None = Field(
-        default=None,
+        default=1,
         foreign_key="tenants.id",
         ondelete="RESTRICT",
         nullable=True,
@@ -27,6 +27,8 @@ class RoleDo(SQLModel, table=True):
     create_time: datetime = Field(default_factory=now_utc8_naive)
     update_time: datetime = Field(default_factory=now_utc8_naive)
     status: str = Field(default="1", max_length=1)
+    version: int = Field(default=1, nullable=False, description="乐观锁版本号")
+    deleted_at: datetime | None = Field(default=None, index=True, description="删除时间")
     data_scope: str = Field(
         default="5",
         max_length=1,

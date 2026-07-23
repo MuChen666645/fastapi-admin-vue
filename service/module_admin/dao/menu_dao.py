@@ -6,23 +6,31 @@ from fastapi import Request
 from sqlalchemy import delete
 from sqlmodel import select
 
+from module_admin.dao.tenant_scope import (
+    current_tenant_id,
+    require_tenant_id,
+    tenant_clause,
+)
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleMenuDo
-from module_admin.entity.dto.menu_dto import (CreateMenuByButtonDto,
-                                              CreateMenubyIframeDto,
-                                              CreateMenuByLinkDto,
-                                              CreateMenuByRouterDto,
-                                              GetMenuDto, MenuListDto,
-                                              UpdMenuDto)
+from module_admin.entity.dto.menu_dto import (
+    CreateMenuByButtonDto,
+    CreateMenubyIframeDto,
+    CreateMenuByLinkDto,
+    CreateMenuByRouterDto,
+    GetMenuDto,
+    MenuListDto,
+    UpdMenuDto,
+)
 from utils.time_utils import now_utc8_naive
 
 
 class MenuDao:
     @staticmethod
     def _tenant_filter(request: Request):
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return MenuDo.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, MenuDo)
+
     """菜单模块物理层."""
 
     @staticmethod
@@ -42,7 +50,7 @@ class MenuDao:
             return "父菜单不能是当前菜单"
 
         parent = await mysql.get(MenuDo, parent_id)
-        if parent is not None and tenant_id is not None and parent.tenant_id != tenant_id:
+        if parent is None or tenant_id is None or parent.tenant_id != tenant_id:
             parent = None
         if parent is None:
             return "父菜单不存在"
@@ -63,7 +71,9 @@ class MenuDao:
             if not ancestor_id:
                 break
             current = await mysql.get(MenuDo, ancestor_id)
-            if current is not None and tenant_id is not None and current.tenant_id != tenant_id:
+            if current is not None and (
+                tenant_id is None or current.tenant_id != tenant_id
+            ):
                 current = None
             if current is None:
                 return "父菜单层级不存在"
@@ -141,7 +151,7 @@ class MenuDao:
         """校验父节点并在同一事务中创建菜单及按钮权限。"""
         mysql = request.state.mysql
         menu_data = menus.model_dump()
-        menu_data["tenant_id"] = getattr(request.state, "tenant_id", None)
+        menu_data["tenant_id"] = require_tenant_id(request)
         parent_id = menu_data.get("parent_id") or None
         menu_data["parent_id"] = parent_id
 
@@ -150,16 +160,18 @@ class MenuDao:
             menu_id=None,
             parent_id=parent_id,
             menu_type=menus.menu_type,
-            tenant_id=getattr(request.state, "tenant_id", None),
+            tenant_id=require_tenant_id(request),
         )
         if parent_error is not None:
             return parent_error
 
         duplicate_result = await mysql.execute(
-            select(MenuDo.menu_id).where(
+            select(MenuDo.menu_id)
+            .where(
                 MenuDo.menu_name == menus.menu_name,
                 MenuDao._tenant_filter(request),
-            ).limit(1)
+            )
+            .limit(1)
         )
         if duplicate_result.scalars().first() is not None:
             return "菜单名称已存在"
@@ -251,8 +263,10 @@ class MenuDao:
         """
         mysql = request.state.mysql
         menu_db = await mysql.get(MenuDo, menu_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if menu_db is not None and tenant_id is not None and menu_db.tenant_id != tenant_id:
+        tenant_id = current_tenant_id(request)
+        if menu_db is not None and (
+            tenant_id is None or menu_db.tenant_id != tenant_id
+        ):
             menu_db = None
         if menu_db is None:
             return "菜单不存在"
@@ -269,7 +283,7 @@ class MenuDao:
             menu_id=menu_id,
             parent_id=effective_parent_id,
             menu_type=effective_menu_type,
-            tenant_id=getattr(request.state, "tenant_id", None),
+            tenant_id=require_tenant_id(request),
         )
         if parent_error is not None:
             return parent_error
@@ -304,8 +318,8 @@ class MenuDao:
         """根据菜单ID删除菜单."""
         mysql = request.state.mysql
         menu = await mysql.get(MenuDo, menu_id)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if menu is not None and tenant_id is not None and menu.tenant_id != tenant_id:
+        tenant_id = current_tenant_id(request)
+        if menu is not None and (tenant_id is None or menu.tenant_id != tenant_id):
             menu = None
         if menu is None:
             return "菜单不存在"

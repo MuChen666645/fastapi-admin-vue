@@ -12,7 +12,7 @@ class MenuDo(SQLModel, table=True):
 
     __tablename__ = "menu"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
     menu_id: int = Field(primary_key=True, description="菜单ID")
     parent_id: int | None = Field(
         default=None,

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class StatusMixin(BaseModel):
     """包含通用状态的组织请求。"""
+
     model_config = ConfigDict(from_attributes=True)
 
     status: str = Field(default="1", description="状态：0停用，1正常")
@@ -23,9 +24,7 @@ class StatusMixin(BaseModel):
 class DepartmentCreateDto(StatusMixin):
     """新增部门请求。"""
 
-    parent_id: int | None = Field(
-        default=None, description="父部门ID，根部门传0或null"
-    )
+    parent_id: int | None = Field(default=None, description="父部门ID，根部门传0或null")
     dept_name: str = Field(max_length=50, description="部门名称")
     order_num: int = Field(default=0, description="显示顺序")
     leader: str | None = Field(default=None, max_length=50, description="负责人")
@@ -35,6 +34,7 @@ class DepartmentCreateDto(StatusMixin):
 
 class DepartmentUpdateDto(BaseModel):
     """修改部门请求。"""
+
     model_config = ConfigDict(from_attributes=True)
 
     parent_id: int | None = Field(default=None, description="父部门ID")
@@ -56,6 +56,7 @@ class DepartmentUpdateDto(BaseModel):
 
 class DepartmentDto(DepartmentCreateDto):
     """部门响应。"""
+
     dept_id: int
     ancestors: str
     create_time: datetime
@@ -74,6 +75,7 @@ class PostCreateDto(StatusMixin):
 
 class PostUpdateDto(BaseModel):
     """修改岗位请求。"""
+
     model_config = ConfigDict(from_attributes=True)
 
     post_code: str | None = Field(default=None, max_length=64, description="岗位编码")
@@ -93,6 +95,7 @@ class PostUpdateDto(BaseModel):
 
 class PostDto(PostCreateDto):
     """岗位响应。"""
+
     post_id: int
     create_time: datetime
     update_time: datetime

@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     SUMMARY: str = Field(min_length=1)
     VERSION: str = Field(min_length=1)
     OPENAPI_URL: str = Field(min_length=1)
+    API_V1_PREFIX: str = Field(default="/api/v1", min_length=1)
+    API_LEGACY_ENABLED: bool = True
+    DOCS_AUTH_TOKEN: str = ""
+    METRICS_AUTH_TOKEN: str = ""
     # 响应模型属于 API 合约，不属于部署参数。
     RESPONSES: dict[int, dict[str, str | type]] = {
         422: {"description": "Validation Error", "model": HttpResponses},
@@ -108,7 +112,7 @@ class Settings(BaseSettings):
     ADMIN_ROLE_CODE: str = Field(min_length=1)
     DEFAULT_TENANT_ID: int = Field(default=1, gt=0)
     # 该值必须跟随迁移头，不能由部署配置覆盖。
-    DATABASE_SCHEMA_VERSION: str = "0017_backup_permissions"
+    DATABASE_SCHEMA_VERSION: str = "0023_async_exports"
 
     # 限流、验证码和登录失败锁定策略。
     RATE_LIMIT_DEFAULT: str = Field(min_length=1)
@@ -195,6 +199,7 @@ class Settings(BaseSettings):
     SCHEDULER_DEFAULT_TIMEOUT_SECONDS: int = Field(default=300, gt=0)
     SCHEDULER_LOCK_TTL_SECONDS: int = Field(default=900, gt=0)
     SCHEDULER_DEFAULT_MAX_RETRIES: int = Field(default=0, ge=0, le=10)
+    SCHEDULER_WORKER_MODE: Literal["inline", "queue"] = "inline"
 
     # 网络访问策略；非开发环境必须显式收紧主机和跨域范围。
     HOSTS: list[str]
@@ -209,10 +214,27 @@ class Settings(BaseSettings):
     OTEL_EXPORTER_OTLP_HEADERS: str = ""
     LOG_RETENTION_DAYS: int = Field(default=30, gt=0)
     ALERT_WEBHOOK_URL: str = ""
+    NOTIFICATION_WEBHOOK_URL: str = ""
+    NOTIFICATION_SMS_WEBHOOK: str = ""
+    NOTIFICATION_RETRY_MAX_ATTEMPTS: int = Field(default=5, ge=1, le=20)
+    NOTIFICATION_RETRY_BASE_SECONDS: int = Field(default=30, gt=0)
     BACKUP_DIR: str = "backups"
     BACKUP_ENCRYPTION_KEY: str = ""
+    BACKUP_REHEARSAL_DATABASE: str = ""
     BACKUP_RETENTION_DAYS: int = Field(default=30, gt=0)
     BACKUP_TIMEOUT_SECONDS: int = Field(default=900, gt=0)
+    EXPORT_WORKER_ENABLED: bool = True
+    EXPORT_POLL_SECONDS: int = Field(default=2, gt=0)
+    EXPORT_TASK_TTL_SECONDS: int = Field(default=86400, gt=0)
+    SECRET_MANAGER_ACTIVE_VERSION: str = Field(default="v1", min_length=1)
+    SECRET_MANAGER_KEYS: str = ""
+    WORKER_ENABLED: bool = False
+    TASK_QUEUE_STREAM: str = "fastapi:tasks"
+    TASK_QUEUE_GROUP: str = "fastapi-workers"
+    TASK_WORKER_CONSUMER: str = ""
+    TASK_HANDLER_MODULE: str = "module_admin.service.task_handlers"
+    TASK_HEARTBEAT_SECONDS: int = Field(default=15, gt=0)
+    TASK_LOCK_RENEW_SECONDS: int = Field(default=30, gt=0)
     OIDC_ENABLED: bool = False
     OIDC_AUTHORIZATION_URL: str = ""
     OIDC_TOKEN_URL: str = ""
@@ -256,6 +278,11 @@ class Settings(BaseSettings):
             "OIDC_CLIENT_SECRET",
             "LDAP_BIND_PASSWORD",
             "ALERT_WEBHOOK_URL",
+            "NOTIFICATION_WEBHOOK_URL",
+            "NOTIFICATION_SMS_WEBHOOK",
+            "DOCS_AUTH_TOKEN",
+            "METRICS_AUTH_TOKEN",
+            "SECRET_MANAGER_KEYS",
         )
         for field in secret_fields:
             file_value = data.get(f"{field}_FILE") or os.getenv(f"{field}_FILE")
@@ -282,9 +309,7 @@ class Settings(BaseSettings):
         placeholder_values = [
             name
             for name, value in secret_values.items()
-            if any(
-                marker in value.casefold() for marker in PLACEHOLDER_SECRET_MARKERS
-            )
+            if any(marker in value.casefold() for marker in PLACEHOLDER_SECRET_MARKERS)
         ]
         if len(self.SECRET_KEY) < 32 or placeholder_values:
             fields = ", ".join(placeholder_values or ["SECRET_KEY"])
@@ -300,6 +325,10 @@ class Settings(BaseSettings):
             )
         if not self.REDIS_PASSWORD:
             raise ValueError("REDIS_PASSWORD is required outside development")
+        if not self.DOCS_AUTH_TOKEN or not self.METRICS_AUTH_TOKEN:
+            raise ValueError(
+                "DOCS_AUTH_TOKEN and METRICS_AUTH_TOKEN are required outside development"
+            )
         if self.FILE_STORAGE_BACKEND == "oss" and (
             not self.OSS_ENDPOINT or not self.OSS_BUCKET
         ):

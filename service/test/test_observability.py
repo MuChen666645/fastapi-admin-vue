@@ -5,9 +5,11 @@ from httpx import ASGITransport, AsyncClient
 from prometheus_client import generate_latest
 
 from main import create_app
-from middleware.observability_middleware import (TRACEPARENT_HEADER,
-                                                 ApplicationMetrics,
-                                                 ObservabilityMiddleware)
+from middleware.observability_middleware import (
+    TRACEPARENT_HEADER,
+    ApplicationMetrics,
+    ObservabilityMiddleware,
+)
 
 
 def test_observability_propagates_request_and_trace_context() -> None:
@@ -33,8 +35,7 @@ def test_observability_propagates_request_and_trace_context() -> None:
                 headers={
                     "X-Request-ID": "request-123",
                     TRACEPARENT_HEADER: (
-                        "00-4bf92f3577b34da6a3ce929d0e0e4736-"
-                        "00f067aa0ba902b7-01"
+                        "00-4bf92f3577b34da6a3ce929d0e0e4736-" "00f067aa0ba902b7-01"
                     ),
                 },
             )

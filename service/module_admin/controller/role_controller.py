@@ -1,15 +1,19 @@
 """ 角色模块控制器. """
 
-from fastapi import (APIRouter, Depends, FastAPI, File, Path, Query, Request,
-                     UploadFile)
+from fastapi import APIRouter, Depends, FastAPI, File, Path, Query, Request, UploadFile
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
-                                              CreateRoleDto, RoleDetailDto,
-                                              RoleListDto, UpdataRoleDto)
+from module_admin.entity.dto.role_dto import (
+    BatchUpdateRoleStatusDto,
+    CreateRoleDto,
+    RoleDetailDto,
+    RoleListDto,
+    UpdataRoleDto,
+)
 from module_admin.service.excel_service import ExcelService
+from module_admin.service.export_service import ExportService
 from module_admin.service.role_service import RoleService
 
 
@@ -44,6 +48,39 @@ class RoleController:
     async def export_roles(request: Request):
         """导出当前租户角色。"""
         return await ExcelService.export_roles(request)
+
+    @staticmethod
+    @role.post(
+        "/export/async",
+        summary="创建异步角色导出任务",
+        dependencies=[Depends(Auth.has_permission("system:role:list"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def create_async_role_export(request: Request):
+        """创建持久化的角色 Excel 导出任务。"""
+        return await ExportService.create("roles", request)
+
+    @staticmethod
+    @role.get(
+        "/export/tasks/{task_id}",
+        summary="查询异步角色导出任务",
+        dependencies=[Depends(Auth.has_permission("system:role:list"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def get_async_role_export(task_id: str, request: Request):
+        """查询当前用户创建的角色导出任务状态。"""
+        return await ExportService.get_task(task_id, request)
+
+    @staticmethod
+    @role.get(
+        "/export/tasks/{task_id}/download",
+        summary="下载异步角色导出文件",
+        dependencies=[Depends(Auth.has_permission("system:role:list"))],
+        response_model=None,
+    )
+    async def download_async_role_export(task_id: str, request: Request):
+        """下载已完成的角色导出文件。"""
+        return await ExportService.get_download(task_id, request)
 
     @staticmethod
     @role.post(
@@ -83,7 +120,9 @@ class RoleController:
         dependencies=[Depends(Auth.has_permission("system:role:edit"))],
         responses={200: {"model": ApiResponseDto[None]}},
     )
-    async def batch_update_role_status(roles: BatchUpdateRoleStatusDto, request: Request):
+    async def batch_update_role_status(
+        roles: BatchUpdateRoleStatusDto, request: Request
+    ):
         """批量启用或禁用角色."""
         return await RoleService.batch_update_role_status_services(roles, request)
 

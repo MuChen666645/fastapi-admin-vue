@@ -5,22 +5,27 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
 from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 
 
 class JobDao:
     @staticmethod
     def _tenant_filter(model, request: Request):
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return model.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, model)
+
     """持久化定时任务和执行日志。"""
 
     @staticmethod
-    async def list_jobs(request: Request, name: str | None, status: str | None, params: Params):
+    async def list_jobs(
+        request: Request, name: str | None, status: str | None, params: Params
+    ):
         """按名称和状态分页查询定时任务。"""
-        query = select(ScheduledJobDo).where(
-            JobDao._tenant_filter(ScheduledJobDo, request)
-        ).order_by(ScheduledJobDo.id.desc())
+        query = (
+            select(ScheduledJobDo)
+            .where(JobDao._tenant_filter(ScheduledJobDo, request))
+            .order_by(ScheduledJobDo.id.desc())
+        )
         if name:
             query = query.where(ScheduledJobDo.job_name.contains(name))
         if status is not None:
@@ -55,7 +60,7 @@ class JobDao:
         item = ScheduledJobDo(
             **data.model_dump(),
             create_by=getattr(request.state, "user_id", None),
-            tenant_id=getattr(request.state, "tenant_id", None),
+            tenant_id=require_tenant_id(request),
         )
         request.state.mysql.add(item)
         return item

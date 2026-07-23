@@ -13,7 +13,7 @@ class SystemConfigDo(SQLModel, table=True):
 
     __tablename__ = "system_configs"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(title="参数编号", default=None, primary_key=True)
     config_name: str = Field(title="参数名称", max_length=100, index=True)
@@ -23,7 +23,9 @@ class SystemConfigDo(SQLModel, table=True):
         default=None,
         sa_column=Column(Text, nullable=True),
     )
-    config_type: str = Field(title="参数类型", default="text", max_length=20, index=True)
+    config_type: str = Field(
+        title="参数类型", default="text", max_length=20, index=True
+    )
     is_builtin: bool = Field(title="是否内置", default=False, index=True)
     remark: str | None = Field(title="备注", default=None, max_length=500)
     create_time: datetime = Field(title="创建时间", default_factory=now_utc8_naive)

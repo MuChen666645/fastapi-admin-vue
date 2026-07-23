@@ -236,7 +236,18 @@ INSERT IGNORE INTO permissions (
     ('Job delete', 'monitor:job:remove', 'monitor', 'button', '/job/{job_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job delete'),
     ('Job run', 'monitor:job:run', 'monitor', 'button', '/job/{job_id}/run', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Job run'),
     ('Backup create', 'system:backup:create', 'system', 'button', '/ops/backup/create', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup create'),
-    ('Backup restore', 'system:backup:restore', 'system', 'button', '/ops/backup/restore', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup restore');
+    ('Backup restore', 'system:backup:restore', 'system', 'button', '/ops/backup/restore', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup restore'),
+    ('Backup verify', 'system:backup:verify', 'system', 'button', '/ops/backup/verify', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup verify'),
+    ('Backup restore rehearsal', 'system:backup:rehearse', 'system', 'button', '/ops/backup/rehearse', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Backup restore rehearsal'),
+    ('Tenant list', 'system:tenant:list', 'system', 'button', '/tenant/list/all', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant list'),
+    ('Tenant add', 'system:tenant:add', 'system', 'button', '/tenant/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant add'),
+    ('Tenant edit', 'system:tenant:edit', 'system', 'button', '/tenant/{tenant_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant edit'),
+    ('Tenant remove', 'system:tenant:remove', 'system', 'button', '/tenant/{tenant_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant remove'),
+    ('Tenant member list', 'system:tenant:member:list', 'system', 'button', '/tenant/{tenant_id}/members', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant member list'),
+    ('Tenant member add', 'system:tenant:member:add', 'system', 'button', '/tenant/{tenant_id}/members', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant member add'),
+    ('Tenant member edit', 'system:tenant:member:edit', 'system', 'button', '/tenant/{tenant_id}/members/{user_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant member edit'),
+    ('Tenant member remove', 'system:tenant:member:remove', 'system', 'button', '/tenant/{tenant_id}/members/{user_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Tenant member remove'),
+    ('Secret rotation', 'system:secret:rotate', 'system', 'button', '/ops/secrets/rotate', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Secret rotation');
 INSERT IGNORE INTO menu (
     menu_id, parent_id, menu_name, icon, menu_path, component,
     is_hidden, is_cache, menu_type, sort, link_url, perms, status,

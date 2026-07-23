@@ -3,8 +3,18 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import (APIRouter, Depends, FastAPI, File, Form, Header, Path,
-                     Query, Request, UploadFile)
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    Path,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi_pagination import Page, Params
 
 from config.env import settings
@@ -12,22 +22,26 @@ from config.rate_limit import limiter
 from module_admin.auth.authorization import Auth
 from module_admin.entity.dto.mfa_dto import MfaCodeDto, MfaSetupDto
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
-                                              BatchUserIdsDto,
-                                              BindUserRolesDto,
-                                              ConfirmPasswordResetRequestDto,
-                                              ForgotPasswordRequestDto,
-                                              LoginUserRequestByPhoneDto,
-                                              LoginUserRequestByUsernameDto,
-                                              RefreshTokenRequestDto,
-                                              RegisterUserRequestByUsernameDto,
-                                              ResetUserPasswordRequestDto,
-                                              TokenDto,
-                                              UpdateUserPasswordRequestDto,
-                                              UpdateUserRequestDto,
-                                              UserInfoDto, UserInfoUserDto,
-                                              UserRouteDto)
+from module_admin.entity.dto.user_dto import (
+    BatchUpdateUserStatusDto,
+    BatchUserIdsDto,
+    BindUserRolesDto,
+    ConfirmPasswordResetRequestDto,
+    ForgotPasswordRequestDto,
+    LoginUserRequestByPhoneDto,
+    LoginUserRequestByUsernameDto,
+    RefreshTokenRequestDto,
+    RegisterUserRequestByUsernameDto,
+    ResetUserPasswordRequestDto,
+    TokenDto,
+    UpdateUserPasswordRequestDto,
+    UpdateUserRequestDto,
+    UserInfoDto,
+    UserInfoUserDto,
+    UserRouteDto,
+)
 from module_admin.service.excel_service import ExcelService
+from module_admin.service.export_service import ExportService
 from module_admin.service.password_reset_service import PasswordResetService
 from module_admin.service.user_service import UserService
 
@@ -241,6 +255,39 @@ class UserController:
     ):
         """替换用户的全部角色关联。"""
         return await UserService.bind_user_roles_services(user_id, roles, request)
+
+    @staticmethod
+    @user.post(
+        "/export/async",
+        summary="创建异步用户导出任务",
+        dependencies=[Depends(Auth.has_permission("system:user:list"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def create_async_user_export(request: Request):
+        """创建持久化的用户 Excel 导出任务。"""
+        return await ExportService.create("users", request)
+
+    @staticmethod
+    @user.get(
+        "/export/tasks/{task_id}",
+        summary="查询异步用户导出任务",
+        dependencies=[Depends(Auth.has_permission("system:user:list"))],
+        responses={200: {"model": ApiResponseDto[dict]}},
+    )
+    async def get_async_user_export(task_id: str, request: Request):
+        """查询当前用户创建的导出任务状态。"""
+        return await ExportService.get_task(task_id, request)
+
+    @staticmethod
+    @user.get(
+        "/export/tasks/{task_id}/download",
+        summary="下载异步用户导出文件",
+        dependencies=[Depends(Auth.has_permission("system:user:list"))],
+        response_model=None,
+    )
+    async def download_async_user_export(task_id: str, request: Request):
+        """下载已完成的用户导出文件。"""
+        return await ExportService.get_download(task_id, request)
 
     @staticmethod
     @user.get(

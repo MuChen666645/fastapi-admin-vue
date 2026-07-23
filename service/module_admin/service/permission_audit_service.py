@@ -6,8 +6,7 @@ from fastapi import Request
 from sqlalchemy import func
 from sqlmodel import select
 
-from module_admin.entity.do.permission_audit_do import \
-    PermissionChangeVersionDo
+from module_admin.entity.do.permission_audit_do import PermissionChangeVersionDo
 
 
 class PermissionAuditService:
@@ -27,7 +26,9 @@ class PermissionAuditService:
             return
         async with session_factory() as session:
             version_result = await session.execute(
-                select(func.coalesce(func.max(PermissionChangeVersionDo.version), 0)).where(
+                select(
+                    func.coalesce(func.max(PermissionChangeVersionDo.version), 0)
+                ).where(
                     PermissionChangeVersionDo.resource_type == resource_type,
                     PermissionChangeVersionDo.resource_id == str(resource_id),
                 )
@@ -41,12 +42,16 @@ class PermissionAuditService:
                     resource_id=str(resource_id),
                     version=version,
                     action=action,
-                    before_json=json.dumps(before, ensure_ascii=False, default=str)
-                    if before is not None
-                    else None,
-                    after_json=json.dumps(after, ensure_ascii=False, default=str)
-                    if after is not None
-                    else None,
+                    before_json=(
+                        json.dumps(before, ensure_ascii=False, default=str)
+                        if before is not None
+                        else None
+                    ),
+                    after_json=(
+                        json.dumps(after, ensure_ascii=False, default=str)
+                        if after is not None
+                        else None
+                    ),
                 )
             )
             await session.commit()

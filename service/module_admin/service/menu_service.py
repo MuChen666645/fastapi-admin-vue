@@ -6,14 +6,16 @@ from fastapi import HTTPException, Request
 
 from module_admin.auth.authorization import Auth
 from module_admin.dao.menu_dao import MenuDao
-from module_admin.entity.dto.menu_dto import (CreateMenuByButtonDto,
-                                              CreateMenubyIframeDto,
-                                              CreateMenuByLinkDto,
-                                              CreateMenuByRouterDto,
-                                              GetMenuDto, MenuListDto,
-                                              UpdMenuDto)
-from module_admin.service.permission_audit_service import \
-    PermissionAuditService
+from module_admin.entity.dto.menu_dto import (
+    CreateMenuByButtonDto,
+    CreateMenubyIframeDto,
+    CreateMenuByLinkDto,
+    CreateMenuByRouterDto,
+    GetMenuDto,
+    MenuListDto,
+    UpdMenuDto,
+)
+from module_admin.service.permission_audit_service import PermissionAuditService
 from utils.fastapi_admin import FastApiAdmin
 
 
@@ -56,21 +58,35 @@ class MenuService:
             request,
             requested_menu_type=menus.menu_type,
         )
-        MenuService._raise_create_error(await MenuDao.create_menu_by_btn(menus, request))
+        MenuService._raise_create_error(
+            await MenuDao.create_menu_by_btn(menus, request)
+        )
         created = await MenuDao.get_menu_list_all(request, menus.menu_name)
         if created:
             await PermissionAuditService.record(
-                request, "menu", created[0].menu_id, "create", None, created[0].model_dump()
+                request,
+                "menu",
+                created[0].menu_id,
+                "create",
+                None,
+                created[0].model_dump(),
             )
 
     @staticmethod
     async def create_menu_by_link(menus: CreateMenuByLinkDto, request: Request) -> None:
         """创建外链菜单。"""
-        MenuService._raise_create_error(await MenuDao.create_menu_by_link(menus, request))
+        MenuService._raise_create_error(
+            await MenuDao.create_menu_by_link(menus, request)
+        )
         created = await MenuDao.get_menu_list_all(request, menus.menu_name)
         if created:
             await PermissionAuditService.record(
-                request, "menu", created[0].menu_id, "create", None, created[0].model_dump()
+                request,
+                "menu",
+                created[0].menu_id,
+                "create",
+                None,
+                created[0].model_dump(),
             )
 
     @staticmethod
@@ -78,11 +94,18 @@ class MenuService:
         menus: CreateMenubyIframeDto, request: Request
     ) -> None:
         """创建 Iframe 菜单。"""
-        MenuService._raise_create_error(await MenuDao.create_menu_by_iframe(menus, request))
+        MenuService._raise_create_error(
+            await MenuDao.create_menu_by_iframe(menus, request)
+        )
         created = await MenuDao.get_menu_list_all(request, menus.menu_name)
         if created:
             await PermissionAuditService.record(
-                request, "menu", created[0].menu_id, "create", None, created[0].model_dump()
+                request,
+                "menu",
+                created[0].menu_id,
+                "create",
+                None,
+                created[0].model_dump(),
             )
 
     @staticmethod
@@ -90,11 +113,18 @@ class MenuService:
         menus: CreateMenuByRouterDto, request: Request
     ) -> None:
         """创建路由菜单。"""
-        MenuService._raise_create_error(await MenuDao.create_menu_by_router(menus, request))
+        MenuService._raise_create_error(
+            await MenuDao.create_menu_by_router(menus, request)
+        )
         created = await MenuDao.get_menu_list_all(request, menus.menu_name)
         if created:
             await PermissionAuditService.record(
-                request, "menu", created[0].menu_id, "create", None, created[0].model_dump()
+                request,
+                "menu",
+                created[0].menu_id,
+                "create",
+                None,
+                created[0].model_dump(),
             )
 
     @staticmethod
@@ -106,9 +136,7 @@ class MenuService:
         return FastApiAdmin.create_three(menu, "menu_id", "parent_id")
 
     @staticmethod
-    async def get_menu_by_id_services(
-        menu_id: int, request: Request
-    ) -> GetMenuDto:
+    async def get_menu_by_id_services(menu_id: int, request: Request) -> GetMenuDto:
         """按 ID 查询菜单详情。"""
         menu = await MenuDao.get_menu_by_id(menu_id, request)
         if menu is None:

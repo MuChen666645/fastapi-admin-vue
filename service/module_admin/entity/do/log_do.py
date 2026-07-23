@@ -13,7 +13,7 @@ class LoginLogDo(SQLModel, table=True):
 
     __tablename__ = "login_logs"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(
@@ -36,7 +36,7 @@ class OperationLogDo(SQLModel, table=True):
 
     __tablename__ = "operation_logs"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(
@@ -61,7 +61,7 @@ class ExceptionLogDo(SQLModel, table=True):
 
     __tablename__ = "exception_logs"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(

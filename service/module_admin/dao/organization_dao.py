@@ -5,8 +5,8 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
-from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
-                                                    UserPostDo)
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
+from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.service.data_scope_service import DataScopeService
 from utils.time_utils import now_utc8_naive
@@ -15,8 +15,8 @@ from utils.time_utils import now_utc8_naive
 class OrganizationDao:
     @staticmethod
     def _tenant_filter(model, request: Request):
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return model.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, model)
+
     """部门和岗位数据库操作。"""
 
     @staticmethod
@@ -30,7 +30,9 @@ class OrganizationDao:
                 return None
         key = DepartmentDo.dept_id if model is DepartmentDo else PostDo.post_id
         result = await request.state.mysql.execute(
-            select(model).where(key == item_id, OrganizationDao._tenant_filter(model, request))
+            select(model).where(
+                key == item_id, OrganizationDao._tenant_filter(model, request)
+            )
         )
         return result.scalars().first()
 
@@ -38,10 +40,14 @@ class OrganizationDao:
     async def list_departments(request: Request, name: str | None, status: str | None):
         """按名称和状态查询部门。"""
         scope = await DataScopeService.resolve(request)
-        query = select(DepartmentDo).where(
-            scope.department_id_clause(DepartmentDo.dept_id),
-            OrganizationDao._tenant_filter(DepartmentDo, request),
-        ).order_by(DepartmentDo.order_num, DepartmentDo.dept_id)
+        query = (
+            select(DepartmentDo)
+            .where(
+                scope.department_id_clause(DepartmentDo.dept_id),
+                OrganizationDao._tenant_filter(DepartmentDo, request),
+            )
+            .order_by(DepartmentDo.order_num, DepartmentDo.dept_id)
+        )
         if name:
             query = query.where(DepartmentDo.dept_name.contains(name))
         if status is not None:
@@ -57,9 +63,10 @@ class OrganizationDao:
         parent_id = values.get("parent_id") or None
         parent = None
         if parent_id:
-            if (
-                getattr(request.state, "user_id", None) is not None
-                and not await DataScopeService.can_access_department(parent_id, request)
+            if getattr(
+                request.state, "user_id", None
+            ) is not None and not await DataScopeService.can_access_department(
+                parent_id, request
             ):
                 return "No data permission"
             parent_result = await mysql.execute(
@@ -81,7 +88,7 @@ class OrganizationDao:
             DepartmentDo(
                 **values,
                 ancestors=ancestors,
-                tenant_id=getattr(request.state, "tenant_id", None),
+                tenant_id=require_tenant_id(request),
             )
         )
         return None
@@ -112,7 +119,9 @@ class OrganizationDao:
                 return "上级部门不能是当前部门的子部门"
 
             old_prefix = f"{dept.ancestors},{dept_id}"
-            new_ancestors = f"{parent.ancestors},{parent.dept_id}".strip(",") if parent else "0"
+            new_ancestors = (
+                f"{parent.ancestors},{parent.dept_id}".strip(",") if parent else "0"
+            )
             new_prefix = f"{new_ancestors},{dept_id}"
             child_result = await mysql.execute(
                 select(DepartmentDo).where(
@@ -140,18 +149,22 @@ class OrganizationDao:
         if dept is None:
             return "部门不存在"
         child_result = await mysql.execute(
-            select(DepartmentDo.dept_id).where(
+            select(DepartmentDo.dept_id)
+            .where(
                 DepartmentDo.parent_id == dept_id,
                 OrganizationDao._tenant_filter(DepartmentDo, request),
-            ).limit(1)
+            )
+            .limit(1)
         )
         if child_result.scalars().first() is not None:
             return "部门存在子部门，不能删除"
         user_result = await mysql.execute(
-            select(UserDo.id).where(
+            select(UserDo.id)
+            .where(
                 UserDo.dept_id == dept_id,
-                UserDo.tenant_id == getattr(request.state, "tenant_id", UserDo.tenant_id),
-            ).limit(1)
+                UserDo.tenant_id == require_tenant_id(request),
+            )
+            .limit(1)
         )
         if user_result.scalars().first() is not None:
             return "部门存在用户，不能删除"
@@ -164,10 +177,14 @@ class OrganizationDao:
     ):
         """按名称和状态查询岗位。"""
         scope = await DataScopeService.resolve(request)
-        query = select(PostDo).where(
-            scope.post_id_clause(PostDo.post_id),
-            OrganizationDao._tenant_filter(PostDo, request),
-        ).order_by(PostDo.post_sort, PostDo.post_id)
+        query = (
+            select(PostDo)
+            .where(
+                scope.post_id_clause(PostDo.post_id),
+                OrganizationDao._tenant_filter(PostDo, request),
+            )
+            .order_by(PostDo.post_sort, PostDo.post_id)
+        )
         if name:
             query = query.where(PostDo.post_name.contains(name))
         if status is not None:
@@ -185,7 +202,7 @@ class OrganizationDao:
         mysql.add(
             PostDo(
                 **data.model_dump(),
-                tenant_id=getattr(request.state, "tenant_id", None),
+                tenant_id=require_tenant_id(request),
             )
         )
         return None

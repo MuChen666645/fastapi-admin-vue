@@ -27,9 +27,15 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("upload_id"),
     )
-    op.create_index("ix_file_chunk_uploads_tenant_id", "file_chunk_uploads", ["tenant_id"])
-    op.create_index("ix_file_chunk_uploads_created_by", "file_chunk_uploads", ["created_by"])
-    op.create_index("ix_file_chunk_uploads_created_at", "file_chunk_uploads", ["created_at"])
+    op.create_index(
+        "ix_file_chunk_uploads_tenant_id", "file_chunk_uploads", ["tenant_id"]
+    )
+    op.create_index(
+        "ix_file_chunk_uploads_created_by", "file_chunk_uploads", ["created_by"]
+    )
+    op.create_index(
+        "ix_file_chunk_uploads_created_at", "file_chunk_uploads", ["created_at"]
+    )
 
 
 def downgrade() -> None:

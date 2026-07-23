@@ -29,9 +29,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_dict_types_dict_name", "dict_types", ["dict_name"])
     op.create_index("ix_dict_types_status", "dict_types", ["status"])
-    op.create_index(
-        "ix_dict_types_dict_type", "dict_types", ["dict_type"], unique=True
-    )
+    op.create_index("ix_dict_types_dict_type", "dict_types", ["dict_type"], unique=True)
 
     op.create_table(
         "dict_data",
@@ -165,7 +163,9 @@ def upgrade() -> None:
         sa.Column("avatar", sa.String(length=255), nullable=True),
         sa.Column("update_time", sa.DateTime(), nullable=True),
         sa.Column("status", sa.String(length=1), nullable=False),
-        sa.ForeignKeyConstraint(["dept_id"], ["departments.dept_id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["dept_id"], ["departments.dept_id"], ondelete="RESTRICT"
+        ),
         sa.ForeignKeyConstraint(["role_id"], ["roles.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("email"),
@@ -208,9 +208,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_operation_logs_user_id", "operation_logs", ["user_id"])
-    op.create_index(
-        "ix_operation_logs_status_code", "operation_logs", ["status_code"]
-    )
+    op.create_index("ix_operation_logs_status_code", "operation_logs", ["status_code"])
     op.create_index("ix_operation_logs_username", "operation_logs", ["username"])
     op.create_index("ix_operation_logs_path", "operation_logs", ["path"])
     op.create_index(

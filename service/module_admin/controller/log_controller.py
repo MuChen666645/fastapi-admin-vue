@@ -2,16 +2,20 @@
 
 from datetime import datetime
 
-from fastapi import (APIRouter, Body, Depends, HTTPException, Path, Query,
-                     Request)
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from fastapi_pagination import Page, Params
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.log_dto import (BatchLogIdsDto, ExceptionLogDto,
-                                             ForceLogoutUserResultDto,
-                                             LoginLogDto, LogQueryDto,
-                                             OnlineQueryDto, OnlineSessionDto,
-                                             OperationLogDto)
+from module_admin.entity.dto.log_dto import (
+    BatchLogIdsDto,
+    ExceptionLogDto,
+    ForceLogoutUserResultDto,
+    LoginLogDto,
+    LogQueryDto,
+    OnlineQueryDto,
+    OnlineSessionDto,
+    OperationLogDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.log_service import LogService
 
@@ -23,7 +27,9 @@ class LogController:
     online = APIRouter(prefix="/online", tags=["在线用户管理"])
 
     @staticmethod
-    async def _list(log_type: str, query: LogQueryDto, params: Params, request: Request):
+    async def _list(
+        log_type: str, query: LogQueryDto, params: Params, request: Request
+    ):
         """将带类型的日志查询委托给日志服务。"""
         return await LogService.list_logs(log_type, query, params, request)
 
@@ -53,9 +59,7 @@ class LogController:
     )
     async def login_logs(
         request: Request,
-        username: str | None = Query(
-            default=None, description="用户名，支持模糊查询"
-        ),
+        username: str | None = Query(default=None, description="用户名，支持模糊查询"),
         status: str | None = Query(
             default=None, pattern="^[01]$", description="登录状态：0失败，1成功"
         ),
@@ -79,9 +83,7 @@ class LogController:
     )
     async def operation_logs(
         request: Request,
-        username: str | None = Query(
-            default=None, description="用户名，支持模糊查询"
-        ),
+        username: str | None = Query(default=None, description="用户名，支持模糊查询"),
         status: str | None = Query(
             default=None, pattern="^[01]$", description="登录状态：0失败，1成功"
         ),
@@ -105,9 +107,7 @@ class LogController:
     )
     async def exception_logs(
         request: Request,
-        username: str | None = Query(
-            default=None, description="用户名，支持模糊查询"
-        ),
+        username: str | None = Query(default=None, description="用户名，支持模糊查询"),
         status: str | None = Query(
             default=None, pattern="^[01]$", description="登录状态：0失败，1成功"
         ),
@@ -151,9 +151,7 @@ class LogController:
     )
     async def online_users(
         request: Request,
-        username: str | None = Query(
-            default=None, description="用户名，支持模糊查询"
-        ),
+        username: str | None = Query(default=None, description="用户名，支持模糊查询"),
         ip_address: str | None = Query(
             default=None, description="登录IP，支持模糊查询"
         ),
@@ -171,9 +169,7 @@ class LogController:
     )
     async def revoke_token(
         request: Request,
-        token_id: str = Path(
-            min_length=64, max_length=64, description="Token会话ID"
-        ),
+        token_id: str = Path(min_length=64, max_length=64, description="Token会话ID"),
     ):
         """强制指定 Token 会话下线。"""
         if not await Auth.revoke_token_by_id(request, token_id):

@@ -14,7 +14,7 @@ class PermissionChangeVersionDo(SQLModel, table=True):
     __tablename__ = "permission_change_versions"
 
     id: int | None = Field(default=None, primary_key=True)
-    tenant_id: int | None = Field(default=None, index=True)
+    tenant_id: int | None = Field(default=1, index=True)
     actor_user_id: int | None = Field(default=None, index=True)
     resource_type: str = Field(max_length=50, nullable=False, index=True)
     resource_id: str = Field(max_length=100, nullable=False)

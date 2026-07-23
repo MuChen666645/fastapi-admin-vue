@@ -12,23 +12,28 @@ from module_admin.dao.log_dao import LogDao
 from module_admin.dao.permission_dao import PermissionDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.log_do import LoginLogDo
-from module_admin.entity.dto.user_dto import (BatchUpdateUserStatusDto,
-                                              BatchUserIdsDto,
-                                              BindUserRolesDto,
-                                              LoginUserRequestByPhoneDto,
-                                              LoginUserRequestByUsernameDto,
-                                              RefreshTokenRequestDto,
-                                              RegisterUserRequestByUsernameDto,
-                                              ResetUserPasswordRequestDto,
-                                              TokenDto,
-                                              UpdateUserPasswordRequestDto,
-                                              UpdateUserRequestDto)
+from module_admin.entity.dto.user_dto import (
+    BatchUpdateUserStatusDto,
+    BatchUserIdsDto,
+    BindUserRolesDto,
+    LoginUserRequestByPhoneDto,
+    LoginUserRequestByUsernameDto,
+    RefreshTokenRequestDto,
+    RegisterUserRequestByUsernameDto,
+    ResetUserPasswordRequestDto,
+    TokenDto,
+    UpdateUserPasswordRequestDto,
+    UpdateUserRequestDto,
+)
 from module_admin.service.code_service import CodeService
+from module_admin.service.idempotency_service import IdempotencyService
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.mfa_service import MfaService
-from module_admin.service.password_policy import (PasswordPolicyError,
-                                                  matches_history,
-                                                  validate_password)
+from module_admin.service.password_policy import (
+    PasswordPolicyError,
+    matches_history,
+    validate_password,
+)
 from utils.fastapi_admin import FastApiAdmin
 from utils.time_utils import now_utc8_naive
 
@@ -199,9 +204,7 @@ class UserService:
         raise HTTPException(status_code=401, detail="密码错误")
 
     @staticmethod
-    async def _validate_new_password(
-        password: str, user, request: Request
-    ) -> None:
+    async def _validate_new_password(password: str, user, request: Request) -> None:
         """执行密码策略和历史密码校验。"""
         try:
             validate_password(password, getattr(user, "username", None))
@@ -219,9 +222,7 @@ class UserService:
             raise HTTPException(status_code=400, detail="新密码不能重复使用历史密码")
 
     @staticmethod
-    async def _ensure_user_enabled(
-        request: Request, user, identifier: str
-    ) -> None:
+    async def _ensure_user_enabled(request: Request, user, identifier: str) -> None:
         """拒绝停用账号登录，并记录登录失败原因。"""
         if str(getattr(user, "status", None)) != "1":
             await UserService._record_login(
@@ -253,7 +254,8 @@ class UserService:
             {
                 "user_id": user.id,
                 "username": user.username,
-                "tenant_id": getattr(user, "tenant_id", None),
+                "tenant_id": getattr(request.state, "tenant_id", None)
+                or getattr(user, "tenant_id", None),
                 "password_changed_at": password_changed_at,
                 "must_change_password": bool(
                     getattr(user, "must_change_password", False)
@@ -298,7 +300,9 @@ class UserService:
         await UserService._ensure_login_ip_allowed(request, users.username)
         user = await UserDao.get_user_by_username(users, request)
         if user is None:
-            await UserService._record_login(request, users.username, "0", "用户名不存在")
+            await UserService._record_login(
+                request, users.username, "0", "用户名不存在"
+            )
             raise HTTPException(status_code=404, detail="用户名不存在")
         await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):
@@ -393,9 +397,7 @@ class UserService:
         await MfaService.disable(code, request)
 
     @staticmethod
-    async def get_user_by_id_services(
-        user_id: int, request: Request
-    ) -> dict:
+    async def get_user_by_id_services(user_id: int, request: Request) -> dict:
         """通过用户ID获取用户信息服务.
 
         Args:
@@ -501,7 +503,16 @@ class UserService:
         await UserService._ensure_can_manage_users([user_id], request)
         result = await UserDao.update_user_by_id(user_id, users, request)
         if result is not None:
-            raise HTTPException(status_code=404, detail=result)
+            status_code = 409 if result == "USER_VERSION_CONFLICT" else 404
+            raise HTTPException(status_code=status_code, detail=result)
+        await IdempotencyService.record_batch(
+            request,
+            "user_update",
+            "user",
+            [user_id],
+            None,
+            users.model_dump(exclude_unset=True, exclude={"version"}),
+        )
         return None
 
     @staticmethod
@@ -601,9 +612,7 @@ class UserService:
                 status_code=404, detail=f"角色不存在: {missing_role_ids}"
             )
 
-        disabled_role_ids = [
-            role.id for role in requested_roles if role.status != "1"
-        ]
+        disabled_role_ids = [role.id for role in requested_roles if role.status != "1"]
         if disabled_role_ids:
             raise HTTPException(
                 status_code=400, detail=f"角色已停用: {disabled_role_ids}"
@@ -625,9 +634,7 @@ class UserService:
                     detail=f"无权授予角色: {unauthorized_role_ids}",
                 )
 
-        result = await UserDao.bind_user_roles(
-            user_id, requested_role_ids, request
-        )
+        result = await UserDao.bind_user_roles(user_id, requested_role_ids, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
         return None
@@ -643,6 +650,14 @@ class UserService:
         )
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        await IdempotencyService.record_batch(
+            request,
+            "user_status_update",
+            "user",
+            users.user_ids,
+            None,
+            {"status": users.status},
+        )
         return None
 
     @staticmethod
@@ -654,6 +669,14 @@ class UserService:
         result = await UserDao.batch_delete_users(users.user_ids, request)
         if result is not None:
             raise HTTPException(status_code=404, detail=result)
+        await IdempotencyService.record_batch(
+            request,
+            "user_soft_delete",
+            "user",
+            users.user_ids,
+            None,
+            {"status": "0", "deleted": True},
+        )
         return None
 
     @staticmethod

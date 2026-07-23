@@ -38,7 +38,9 @@ class FileSecurityService:
         try:
             text = content.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise HTTPException(status_code=400, detail="仅支持 UTF-8 文本文件脱敏") from exc
+            raise HTTPException(
+                status_code=400, detail="仅支持 UTF-8 文本文件脱敏"
+            ) from exc
         for pattern in app_settings.FILE_SENSITIVE_PATTERNS:
             text = re.sub(pattern, "[REDACTED]", text)
         return text.encode("utf-8")
@@ -56,7 +58,9 @@ class FileSecurityService:
             return
         extension = Path(original_name).suffix.lower()
         signatures = cls._SIGNATURES.get(extension)
-        if not signatures or not any(sample.startswith(signature) for signature in signatures):
+        if not signatures or not any(
+            sample.startswith(signature) for signature in signatures
+        ):
             raise HTTPException(status_code=400, detail="文件内容与扩展名不匹配")
         if extension == ".webp" and sample[8:12] != b"WEBP":
             raise HTTPException(status_code=400, detail="文件内容与扩展名不匹配")
@@ -70,7 +74,11 @@ class FileSecurityService:
             ".pdf": "application/pdf",
         }
         expected = expected_types.get(extension)
-        if expected and declared and declared not in {expected, "application/octet-stream"}:
+        if (
+            expected
+            and declared
+            and declared not in {expected, "application/octet-stream"}
+        ):
             raise HTTPException(status_code=400, detail="文件 MIME 类型不匹配")
 
     @classmethod

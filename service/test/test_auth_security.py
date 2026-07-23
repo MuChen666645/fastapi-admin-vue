@@ -10,8 +10,7 @@ from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.mfa_service import MfaService
-from module_admin.service.password_policy import (PasswordPolicyError,
-                                                  validate_password)
+from module_admin.service.password_policy import PasswordPolicyError, validate_password
 
 
 class FakeUserSession:

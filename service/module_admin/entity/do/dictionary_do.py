@@ -12,7 +12,7 @@ class DictTypeDo(SQLModel, table=True):
 
     __tablename__ = "dict_types"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     dict_id: int | None = Field(default=None, primary_key=True)
     dict_name: str = Field(max_length=100, index=True)
@@ -28,7 +28,7 @@ class DictDataDo(SQLModel, table=True):
 
     __tablename__ = "dict_data"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     dict_code: int | None = Field(default=None, primary_key=True)
     dict_sort: int = Field(default=0)

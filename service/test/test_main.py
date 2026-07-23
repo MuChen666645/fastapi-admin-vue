@@ -69,12 +69,8 @@ def test_lifespan_initializes_and_releases_runtime_dependencies(
     def start_serve() -> None:
         startup_calls.append("started")
 
-    monkeypatch.setattr(
-        RedisServe, "get_redis_server", staticmethod(get_redis_server)
-    )
-    monkeypatch.setattr(
-        MysqlServe, "get_mysql_config", staticmethod(get_mysql_config)
-    )
+    monkeypatch.setattr(RedisServe, "get_redis_server", staticmethod(get_redis_server))
+    monkeypatch.setattr(MysqlServe, "get_mysql_config", staticmethod(get_mysql_config))
     monkeypatch.setattr(FastApiAdmin, "start_serve", staticmethod(start_serve))
 
     async def run() -> None:
@@ -104,12 +100,8 @@ def test_lifespan_closes_redis_when_mysql_startup_fails(
     async def get_mysql_config():
         raise MysqlServe.MysqlError("database unavailable")
 
-    monkeypatch.setattr(
-        RedisServe, "get_redis_server", staticmethod(get_redis_server)
-    )
-    monkeypatch.setattr(
-        MysqlServe, "get_mysql_config", staticmethod(get_mysql_config)
-    )
+    monkeypatch.setattr(RedisServe, "get_redis_server", staticmethod(get_redis_server))
+    monkeypatch.setattr(MysqlServe, "get_mysql_config", staticmethod(get_mysql_config))
 
     async def run() -> None:
         with pytest.raises(MysqlServe.MysqlError, match="database unavailable"):
@@ -136,12 +128,8 @@ def test_lifespan_closes_redis_when_mysql_disposal_fails(
     async def get_mysql_config():
         return engine, object()
 
-    monkeypatch.setattr(
-        RedisServe, "get_redis_server", staticmethod(get_redis_server)
-    )
-    monkeypatch.setattr(
-        MysqlServe, "get_mysql_config", staticmethod(get_mysql_config)
-    )
+    monkeypatch.setattr(RedisServe, "get_redis_server", staticmethod(get_redis_server))
+    monkeypatch.setattr(MysqlServe, "get_mysql_config", staticmethod(get_mysql_config))
 
     async def run() -> None:
         with pytest.raises(RuntimeError, match="database close failed"):

@@ -6,8 +6,8 @@ from fastapi import HTTPException, Request
 from sqlalchemy import false, func, or_, select, true
 
 from config.env import settings
-from module_admin.entity.do.organization_do import (DepartmentDo, PostDo,
-                                                    UserPostDo)
+from module_admin.dao.tenant_scope import tenant_clause
+from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
 
@@ -63,8 +63,7 @@ class DataScopeService:
 
     @staticmethod
     def _tenant_filter(model, request: Request):
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return model.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, model)
 
     @staticmethod
     def _department_descendant_clause(column, department_id: int):
@@ -85,9 +84,7 @@ class DataScopeService:
 
         mysql = request.state.mysql
         legacy_role_id = (
-            select(UserDo.role_id)
-            .where(UserDo.id == actor_user_id)
-            .scalar_subquery()
+            select(UserDo.role_id).where(UserDo.id == actor_user_id).scalar_subquery()
         )
         assigned_role_ids = select(UserRoleDo.role_id).where(
             UserRoleDo.user_id == actor_user_id
@@ -110,8 +107,7 @@ class DataScopeService:
             return scope
 
         scope_codes = {
-            getattr(role, "data_scope", None) or DataScopeService.SELF
-            for role in roles
+            getattr(role, "data_scope", None) or DataScopeService.SELF for role in roles
         }
         department_ids: set[int] = set()
 
@@ -130,10 +126,10 @@ class DataScopeService:
             department_ids.update(result.scalars().all())
 
         current_dept_result = await mysql.execute(
-                select(UserDo.dept_id).where(
-                    UserDo.id == actor_user_id,
-                    DataScopeService._tenant_filter(UserDo, request),
-                )
+            select(UserDo.dept_id).where(
+                UserDo.id == actor_user_id,
+                DataScopeService._tenant_filter(UserDo, request),
+            )
         )
         current_dept_id = current_dept_result.scalars().first()
         if current_dept_id and DataScopeService.CURRENT_DEPARTMENT in scope_codes:
@@ -147,7 +143,7 @@ class DataScopeService:
                         DataScopeService._department_descendant_clause(
                             DepartmentDo.ancestors, current_dept_id
                         ),
-                    )
+                    ),
                 )
             )
             department_ids.update(result.scalars().all())

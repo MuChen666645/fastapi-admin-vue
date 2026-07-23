@@ -21,12 +21,13 @@ from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.file_do import FileChunkUploadDo
 from module_admin.entity.do.job_do import ScheduledJobDo
 from module_admin.entity.do.system_config_do import SystemConfigDo
-from module_admin.entity.dto.system_config_dto import (SystemConfigCreateDto,
-                                                       SystemConfigUpdateDto)
+from module_admin.entity.dto.system_config_dto import (
+    SystemConfigCreateDto,
+    SystemConfigUpdateDto,
+)
 from module_admin.service.data_scope_service import DataScope, DataScopeService
 from module_admin.service.excel_service import ExcelService
-from module_admin.service.external_identity_service import \
-    ExternalIdentityService
+from module_admin.service.external_identity_service import ExternalIdentityService
 from module_admin.service.file_service import FileService
 from module_admin.service.job_scheduler import JobScheduler
 from module_admin.service.mfa_service import MfaService
@@ -84,9 +85,11 @@ def test_user_list_and_batch_mutations_include_tenant_filter(
         await UserDao.batch_update_user_status([7], "0", request)
         await UserDao.batch_delete_users([7], request)
 
-        user_queries = [str(statement) for statement in statements if "users" in str(statement)]
+        user_queries = [
+            str(statement) for statement in statements if "users" in str(statement)
+        ]
         assert user_queries
-        assert all("users.tenant_id" in query for query in user_queries)
+        assert all("tenant_members.tenant_id" in query for query in user_queries)
 
     anyio.run(run)
 
@@ -148,9 +151,7 @@ def test_oidc_start_uses_nonce_and_pkce(monkeypatch: pytest.MonkeyPatch) -> None
 def test_oidc_id_token_signature_and_claims_are_validated() -> None:
     async def run() -> None:
         private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        jwk = json.loads(
-            jwt.algorithms.RSAAlgorithm.to_jwk(private_key.public_key())
-        )
+        jwk = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(private_key.public_key()))
         jwk["kid"] = "test-key"
         token = jwt.encode(
             {
@@ -343,7 +344,7 @@ def test_permission_queries_use_modern_user_role_binding_and_tenant() -> None:
 
         sql = "\n".join(str(statement) for statement in statements)
         assert "user_role.user_id" in sql
-        assert "users.tenant_id" in sql
+        assert "tenant_members.tenant_id" in sql
         assert "roles.tenant_id" in sql
 
     anyio.run(run)
@@ -491,6 +492,14 @@ def test_system_config_standard_crud_paths(monkeypatch: pytest.MonkeyPatch) -> N
             request,
         )
         assert str(captured["update_data"].config_value).startswith("enc:v1:")
+        item.config_type = "secret"
+        item.config_value = captured["update_data"].config_value
+        await SystemConfigService.update(
+            2,
+            SystemConfigUpdateDto(config_value=SystemConfigService.MASKED_VALUE),
+            request,
+        )
+        assert captured["update_data"].config_value == item.config_value
         await SystemConfigService.delete(2, request)
 
     anyio.run(run)
@@ -598,7 +607,9 @@ def test_chunk_init_and_upload_write_tenant_owned_files(tmp_path: Path) -> None:
     anyio.run(run)
 
 
-def test_expired_chunk_cleanup_removes_database_rows_and_directories(tmp_path: Path) -> None:
+def test_expired_chunk_cleanup_removes_database_rows_and_directories(
+    tmp_path: Path,
+) -> None:
     async def run() -> None:
         upload_id = "12345678-1234-5678-1234-567812345678"
         chunk_root = tmp_path / ".chunks"

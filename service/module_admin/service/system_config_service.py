@@ -1,14 +1,12 @@
 """系统参数业务服务。"""
 
-import base64
-import hashlib
-
-from cryptography.fernet import Fernet
 from fastapi import HTTPException, Request
 from fastapi_pagination import Params
+from sqlmodel import select
 
-from config.env import settings
 from module_admin.dao.system_config_dao import SystemConfigDao
+from module_admin.entity.do.system_config_do import SystemConfigDo
+from module_admin.service.secret_manager import SecretManager
 
 
 class SystemConfigService:
@@ -17,14 +15,6 @@ class SystemConfigService:
     SECRET_CONFIG_TYPES = frozenset({"secret", "password", "sensitive"})
     MASKED_VALUE = "********"
     ENCRYPTED_PREFIX = "enc:v1:"
-
-    @staticmethod
-    def _fernet() -> Fernet:
-        """使用应用密钥派生系统参数加密密钥。"""
-        key = base64.urlsafe_b64encode(
-            hashlib.sha256(settings.SECRET_KEY.encode("utf-8")).digest()
-        )
-        return Fernet(key)
 
     @classmethod
     def _is_secret(cls, config_type: str | None) -> bool:
@@ -36,10 +26,7 @@ class SystemConfigService:
         """对敏感参数加密存储，普通参数保持原值。"""
         if value is None or not cls._is_secret(config_type):
             return value
-        if value.startswith(cls.ENCRYPTED_PREFIX):
-            return value
-        encrypted = cls._fernet().encrypt(value.encode("utf-8")).decode("ascii")
-        return f"{cls.ENCRYPTED_PREFIX}{encrypted}"
+        return SecretManager.encrypt(value)
 
     @classmethod
     def _safe_item(cls, item):
@@ -47,6 +34,20 @@ class SystemConfigService:
         if not cls._is_secret(getattr(item, "config_type", None)):
             return item
         return item.model_copy(update={"config_value": cls.MASKED_VALUE})
+
+    @classmethod
+    async def rotate_secrets(cls, request: Request) -> int:
+        """将当前租户全部敏感参数轮换到 active key version。"""
+        result = await request.state.mysql.execute(
+            select(SystemConfigDo).where(
+                SystemConfigDo.config_type.in_(cls.SECRET_CONFIG_TYPES),
+                SystemConfigDao._tenant_filter(request),
+            )
+        )
+        items = list(result.scalars().all())
+        for item in items:
+            item.config_value = SecretManager.rotate(item.config_value)
+        return len(items)
 
     @classmethod
     async def list_configs(
@@ -88,9 +89,7 @@ class SystemConfigService:
             raise HTTPException(status_code=409, detail="系统参数键名已存在")
         protected = data.model_copy(
             update={
-                "config_value": cls._protect_value(
-                    data.config_value, data.config_type
-                )
+                "config_value": cls._protect_value(data.config_value, data.config_type)
             }
         )
         item = await SystemConfigDao.create(protected, request)
@@ -105,13 +104,19 @@ class SystemConfigService:
         values = data.model_dump(exclude_unset=True)
         config_type = values.get("config_type", item.config_type)
         if "config_value" in values:
-            values["config_value"] = cls._protect_value(
-                values["config_value"], config_type
-            )
+            if (
+                cls._is_secret(config_type)
+                and values["config_value"] == cls.MASKED_VALUE
+            ):
+                values["config_value"] = cls._protect_value(
+                    item.config_value, config_type
+                )
+            else:
+                values["config_value"] = cls._protect_value(
+                    values["config_value"], config_type
+                )
         elif cls._is_secret(config_type) and item.config_value:
-            values["config_value"] = cls._protect_value(
-                item.config_value, config_type
-            )
+            values["config_value"] = cls._protect_value(item.config_value, config_type)
         protected = data.model_copy(update=values)
         await SystemConfigDao.update(item.id, protected, request)
 

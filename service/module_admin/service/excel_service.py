@@ -1,6 +1,7 @@
 """用户、角色和字典的 Excel 导入导出服务。"""
 
 from io import BytesIO
+from types import SimpleNamespace
 
 from fastapi import HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
@@ -9,14 +10,14 @@ from sqlmodel import select
 
 from module_admin.dao.permission_dao import PermissionDao
 from module_admin.dao.role_dao import RoleDao
+from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.entity.dto.role_dto import CreateRoleDto
 from module_admin.entity.dto.user_dto import RegisterUserRequestByUsernameDto
-from module_admin.service.password_policy import (PasswordPolicyError,
-                                                  validate_password)
+from module_admin.service.password_policy import PasswordPolicyError, validate_password
 from utils.fastapi_admin import FastApiAdmin
 
 
@@ -26,7 +27,7 @@ class ExcelService:
     MAX_ROWS = 5000
 
     @staticmethod
-    def _download(filename: str, headers: list[str], rows: list[list[object]]):
+    def _workbook_bytes(headers: list[str], rows: list[list[object]]) -> bytes:
         workbook = Workbook()
         sheet = workbook.active
         sheet.append(headers)
@@ -34,9 +35,12 @@ class ExcelService:
             sheet.append(row)
         stream = BytesIO()
         workbook.save(stream)
-        stream.seek(0)
+        return stream.getvalue()
+
+    @classmethod
+    def _download(cls, filename: str, headers: list[str], rows: list[list[object]]):
         return StreamingResponse(
-            stream,
+            BytesIO(cls._workbook_bytes(headers, rows)),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
@@ -44,7 +48,9 @@ class ExcelService:
         )
 
     @classmethod
-    async def _rows(cls, upload: UploadFile, required_headers: set[str]) -> list[dict[str, object]]:
+    async def _rows(
+        cls, upload: UploadFile, required_headers: set[str]
+    ) -> list[dict[str, object]]:
         content = await upload.read(20 * 1024 * 1024 + 1)
         if len(content) > 20 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="Excel 文件过大")
@@ -64,47 +70,152 @@ class ExcelService:
                 raise HTTPException(status_code=413, detail="Excel 行数超过限制")
             if not any(value not in (None, "") for value in values):
                 continue
-            rows.append({header: values[pos] if pos < len(values) else None for pos, header in enumerate(headers)})
+            rows.append(
+                {
+                    header: values[pos] if pos < len(values) else None
+                    for pos, header in enumerate(headers)
+                }
+            )
         workbook.close()
         return rows
 
     @staticmethod
     def _tenant_filter(model, request: Request):
-        tenant_id = getattr(request.state, "tenant_id", None)
-        return model.tenant_id == tenant_id if tenant_id is not None else True
+        return tenant_clause(request, model)
+
+    @classmethod
+    async def build_export(
+        cls, resource: str, mysql, tenant_id: int, actor_user_id: int
+    ) -> tuple[str, list[str], list[list[object]]]:
+        """在指定会话中生成导出数据，异步任务和同步接口共用此逻辑。"""
+        request = SimpleNamespace(
+            state=SimpleNamespace(
+                mysql=mysql,
+                tenant_id=tenant_id,
+                user_id=actor_user_id,
+            )
+        )
+        if resource == "users":
+            result = await mysql.execute(
+                select(UserDo)
+                .where(cls._tenant_filter(UserDo, request))
+                .order_by(UserDo.id)
+            )
+            field_permissions = {
+                field_name: await PermissionDao.has_field_permission(
+                    actor_user_id, "user", field_name, request
+                )
+                for field_name in ("email", "phone", "avatar")
+            }
+            return (
+                "users.xlsx",
+                [
+                    "username",
+                    "email",
+                    "phone",
+                    "avatar",
+                    "nickname",
+                    "status",
+                    "dept_id",
+                ],
+                [
+                    [
+                        item.username,
+                        item.email if field_permissions["email"] else None,
+                        item.phone if field_permissions["phone"] else None,
+                        item.avatar if field_permissions["avatar"] else None,
+                        item.nickname,
+                        item.status,
+                        item.dept_id,
+                    ]
+                    for item in result.scalars().all()
+                ],
+            )
+        if resource == "roles":
+            result = await mysql.execute(
+                select(RoleDo)
+                .where(cls._tenant_filter(RoleDo, request))
+                .order_by(RoleDo.id)
+            )
+            return (
+                "roles.xlsx",
+                ["name", "code", "description", "status", "data_scope"],
+                [
+                    [
+                        item.name,
+                        item.code,
+                        item.description,
+                        item.status,
+                        item.data_scope,
+                    ]
+                    for item in result.scalars().all()
+                ],
+            )
+        if resource == "dictionary":
+            type_result = await mysql.execute(
+                select(DictTypeDo)
+                .where(cls._tenant_filter(DictTypeDo, request))
+                .order_by(DictTypeDo.dict_id)
+            )
+            data_result = await mysql.execute(
+                select(DictDataDo)
+                .where(cls._tenant_filter(DictDataDo, request))
+                .order_by(DictDataDo.dict_code)
+            )
+            rows = [
+                [
+                    "type",
+                    item.dict_name,
+                    item.dict_type,
+                    item.status,
+                    item.remark,
+                    None,
+                    None,
+                    None,
+                    None,
+                ]
+                for item in type_result.scalars().all()
+            ]
+            rows.extend(
+                [
+                    "data",
+                    None,
+                    item.dict_type,
+                    item.status,
+                    item.remark,
+                    item.dict_sort,
+                    item.dict_label,
+                    item.dict_value,
+                    item.dict_code,
+                ]
+                for item in data_result.scalars().all()
+            )
+            return (
+                "dictionary.xlsx",
+                [
+                    "kind",
+                    "dict_name",
+                    "dict_type",
+                    "status",
+                    "remark",
+                    "dict_sort",
+                    "dict_label",
+                    "dict_value",
+                    "dict_code",
+                ],
+                rows,
+            )
+        raise ValueError("不支持的导出资源")
 
     @classmethod
     async def export_users(cls, request: Request):
-        result = await request.state.mysql.execute(
-            select(UserDo)
-            .where(cls._tenant_filter(UserDo, request))
-            .order_by(UserDo.id)
+        filename, headers, rows = await cls.build_export(
+            "users",
+            request.state.mysql,
+            require_tenant_id(request),
+            int(request.state.user_id),
         )
-        actor_user_id = getattr(request.state, "user_id", None)
-        field_permissions = {
-            field_name: False
-            if actor_user_id is None
-            else await PermissionDao.has_field_permission(
-                int(actor_user_id), "user", field_name, request
-            )
-            for field_name in ("email", "phone", "avatar")
-        }
-        return cls._download(
-            "users.xlsx",
-            ["username", "email", "phone", "avatar", "nickname", "status", "dept_id"],
-            [
-                [
-                    item.username,
-                    item.email if field_permissions["email"] else None,
-                    item.phone if field_permissions["phone"] else None,
-                    item.avatar if field_permissions["avatar"] else None,
-                    item.nickname,
-                    item.status,
-                    item.dept_id,
-                ]
-                for item in result.scalars().all()
-            ],
-        )
+        return cls._download(filename, headers, rows)
 
     @classmethod
     async def import_users(cls, upload: UploadFile, request: Request) -> dict:
@@ -132,7 +243,11 @@ class ExcelService:
                     email=str(row.get("email") or "") or None,
                     phone=str(row.get("phone") or "") or None,
                     nickname=str(row.get("nickname") or "") or None,
-                    dept_id=int(row["dept_id"]) if row.get("dept_id") not in (None, "") else None,
+                    dept_id=(
+                        int(row["dept_id"])
+                        if row.get("dept_id") not in (None, "")
+                        else None
+                    ),
                     sex=str(row.get("sex") or "") or None,
                     post_ids=[],
                 )
@@ -144,14 +259,13 @@ class ExcelService:
 
     @classmethod
     async def export_roles(cls, request: Request):
-        result = await request.state.mysql.execute(
-            select(RoleDo).where(cls._tenant_filter(RoleDo, request)).order_by(RoleDo.id)
+        filename, headers, rows = await cls.build_export(
+            "roles",
+            request.state.mysql,
+            require_tenant_id(request),
+            int(request.state.user_id),
         )
-        return cls._download(
-            "roles.xlsx",
-            ["name", "code", "description", "status", "data_scope"],
-            [[item.name, item.code, item.description, item.status, item.data_scope] for item in result.scalars().all()],
-        )
+        return cls._download(filename, headers, rows)
 
     @classmethod
     async def import_roles(cls, upload: UploadFile, request: Request) -> dict:
@@ -174,25 +288,13 @@ class ExcelService:
 
     @classmethod
     async def export_dictionary(cls, request: Request):
-        type_result = await request.state.mysql.execute(
-            select(DictTypeDo).where(cls._tenant_filter(DictTypeDo, request)).order_by(DictTypeDo.dict_id)
+        filename, headers, rows = await cls.build_export(
+            "dictionary",
+            request.state.mysql,
+            require_tenant_id(request),
+            int(request.state.user_id),
         )
-        data_result = await request.state.mysql.execute(
-            select(DictDataDo).where(cls._tenant_filter(DictDataDo, request)).order_by(DictDataDo.dict_code)
-        )
-        rows = [
-            ["type", item.dict_name, item.dict_type, item.status, item.remark, None, None, None, None]
-            for item in type_result.scalars().all()
-        ]
-        rows.extend(
-            ["data", None, item.dict_type, item.status, item.remark, item.dict_sort, item.dict_label, item.dict_value, item.dict_code]
-            for item in data_result.scalars().all()
-        )
-        return cls._download(
-            "dictionary.xlsx",
-            ["kind", "dict_name", "dict_type", "status", "remark", "dict_sort", "dict_label", "dict_value", "dict_code"],
-            rows,
-        )
+        return cls._download(filename, headers, rows)
 
     @classmethod
     async def import_dictionary(cls, upload: UploadFile, request: Request) -> dict:
@@ -210,7 +312,7 @@ class ExcelService:
                             dict_type=dict_type,
                             status=str(row.get("status") or "1"),
                             remark=str(row.get("remark") or "") or None,
-                            tenant_id=getattr(request.state, "tenant_id", None),
+                            tenant_id=require_tenant_id(request),
                         )
                     )
                 elif kind == "data":
@@ -230,7 +332,7 @@ class ExcelService:
                             dict_type=dict_type,
                             status=str(row.get("status") or "1"),
                             remark=str(row.get("remark") or "") or None,
-                            tenant_id=getattr(request.state, "tenant_id", None),
+                            tenant_id=require_tenant_id(request),
                         )
                     )
                 else:

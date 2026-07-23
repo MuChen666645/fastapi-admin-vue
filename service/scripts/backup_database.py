@@ -13,11 +13,19 @@ def main() -> None:
     subparsers.add_parser("backup")
     restore = subparsers.add_parser("restore")
     restore.add_argument("path")
+    verify = subparsers.add_parser("verify")
+    verify.add_argument("path")
+    rehearse = subparsers.add_parser("rehearse")
+    rehearse.add_argument("path")
     args = parser.parse_args()
     if args.command == "backup":
         print(asyncio.run(BackupService.create_backup()))
-    else:
+    elif args.command == "restore":
         asyncio.run(BackupService.restore_backup(args.path))
+    elif args.command == "verify":
+        print(asyncio.run(BackupService.verify_backup(args.path)))
+    else:
+        print(asyncio.run(BackupService.rehearse_restore(args.path)))
 
 
 if __name__ == "__main__":

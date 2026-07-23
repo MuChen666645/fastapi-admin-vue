@@ -5,12 +5,15 @@ from typing import Annotated, Union
 from fastapi import APIRouter, Body, Depends, FastAPI, Path, Query, Request
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.menu_dto import (CreateMenuByButtonDto,
-                                              CreateMenubyIframeDto,
-                                              CreateMenuByLinkDto,
-                                              CreateMenuByRouterDto,
-                                              GetMenuDto, MenuListDto,
-                                              UpdMenuDto)
+from module_admin.entity.dto.menu_dto import (
+    CreateMenuByButtonDto,
+    CreateMenubyIframeDto,
+    CreateMenuByLinkDto,
+    CreateMenuByRouterDto,
+    GetMenuDto,
+    MenuListDto,
+    UpdMenuDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.menu_service import MenuService
 

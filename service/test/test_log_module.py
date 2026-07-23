@@ -149,7 +149,9 @@ def test_post_list_publishes_page_response_model() -> None:
     response_schema = app.openapi()["paths"]["/post/list"]["get"]["responses"]["200"][
         "content"
     ]["application/json"]["schema"]
-    assert response_schema["$ref"] == "#/components/schemas/ApiResponseDto_Page_PostDto__"
+    assert (
+        response_schema["$ref"] == "#/components/schemas/ApiResponseDto_Page_PostDto__"
+    )
 
 
 def test_paged_list_endpoints_publish_page_response_models() -> None:
@@ -179,9 +181,10 @@ def test_log_batch_delete_request_body_has_chinese_description() -> None:
     assert request_body["content"]["application/json"]["schema"]["title"] == (
         "批量删除日志请求"
     )
-    assert "批量删除" in request_body["content"]["application/json"]["schema"][
-        "description"
-    ]
+    assert (
+        "批量删除"
+        in request_body["content"]["application/json"]["schema"]["description"]
+    )
 
 
 def test_online_users_are_filtered_and_paginated(monkeypatch) -> None:
@@ -200,9 +203,7 @@ def test_online_users_are_filtered_and_paginated(monkeypatch) -> None:
 
     async def run() -> None:
         monkeypatch.setattr(Auth, "list_online_tokens", fake_sessions)
-        query = OnlineQueryDto(
-            username="admin", ip_address="10.0.0.1"
-        )
+        query = OnlineQueryDto(username="admin", ip_address="10.0.0.1")
         result = await LogService.list_online_users(
             query, Params(page=2, size=2), SimpleNamespace()
         )
@@ -228,9 +229,7 @@ def test_log_and_online_schemas_have_chinese_field_descriptions() -> None:
         "ForceLogoutUserResultDto",
     )
     target_schemas = [
-        schema
-        for name, schema in schemas.items()
-        if name.startswith(target_prefixes)
+        schema for name, schema in schemas.items() if name.startswith(target_prefixes)
     ]
     assert target_schemas
     for schema in target_schemas:

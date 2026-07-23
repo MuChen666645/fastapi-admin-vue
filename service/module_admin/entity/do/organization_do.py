@@ -12,7 +12,7 @@ class DepartmentDo(SQLModel, table=True):
 
     __tablename__ = "departments"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     dept_id: int | None = Field(default=None, primary_key=True)
     parent_id: int | None = Field(
@@ -38,7 +38,7 @@ class PostDo(SQLModel, table=True):
 
     __tablename__ = "posts"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     post_id: int | None = Field(default=None, primary_key=True)
     post_code: str = Field(max_length=64, unique=True, index=True)

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import Header, HTTPException, Request
+from sqlmodel import select
 
 from config.env import settings
 from utils.time_utils import UTC8, now_utc8
@@ -107,6 +108,7 @@ return {1, raw}
         payload = {
             "user_id": data.get("user_id"),
             "username": data.get("username"),
+            "tenant_id": data.get("tenant_id"),
             "family_id": family_id or data.get("family_id") or uuid.uuid4().hex,
             "password_changed_at": data.get("password_changed_at"),
             "created_at": now,
@@ -152,13 +154,22 @@ return {1, raw}
         refresh_token: str, request: Request
     ) -> tuple[str, str, bool]:
         """校验并轮换 Refresh Token，同时检查账号和密码版本。"""
-        payload, next_refresh = await Auth._rotate_refresh_token(
-            request, refresh_token
-        )
+        payload, next_refresh = await Auth._rotate_refresh_token(request, refresh_token)
         from module_admin.entity.do.user_do import UserDo
 
         user = await request.state.mysql.get(UserDo, int(payload["user_id"]))
-        if user is None or str(user.status) != "1":
+        tenant_id = payload.get("tenant_id") or getattr(user, "tenant_id", None)
+        if (
+            user is None
+            or str(user.status) != "1"
+            or getattr(user, "deleted_at", None) is not None
+        ):
+            await Auth.revoke_refresh_family(request, payload["family_id"])
+            raise HTTPException(status_code=401, detail="Invalid Refresh Token")
+        if (
+            tenant_id is not None
+            and await Auth._get_tenant_member(request, user.id, int(tenant_id)) is None
+        ):
             await Auth.revoke_refresh_family(request, payload["family_id"])
             raise HTTPException(status_code=401, detail="Invalid Refresh Token")
         current_password_version = (
@@ -173,16 +184,17 @@ return {1, raw}
         data = {
             "user_id": user.id,
             "username": user.username,
-            "tenant_id": getattr(user, "tenant_id", None),
             "family_id": payload["family_id"],
             "password_changed_at": current_password_version,
-            "must_change_password": bool(
-                getattr(user, "must_change_password", False)
-            ),
+            "must_change_password": bool(getattr(user, "must_change_password", False)),
         }
+        if tenant_id is not None:
+            data["tenant_id"] = int(tenant_id)
         access_token = await Auth.create_login_token(data, request)
-        return access_token, next_refresh, bool(
-            getattr(user, "must_change_password", False)
+        return (
+            access_token,
+            next_refresh,
+            bool(getattr(user, "must_change_password", False)),
         )
 
     @staticmethod
@@ -205,7 +217,9 @@ return {1, raw}
         Authorization: str | None = Header(default=None, description="Token"),
     ) -> dict:
         """认证请求并将已启用用户写入请求状态。"""
-        return await Auth._authenticate(request, Authorization, allow_password_change=False)
+        return await Auth._authenticate(
+            request, Authorization, allow_password_change=False
+        )
 
     @staticmethod
     async def allow_password_change(
@@ -213,7 +227,9 @@ return {1, raw}
         Authorization: str | None = Header(default=None, description="Token"),
     ) -> dict:
         """允许被强制改密账号访问自助改密接口。"""
-        return await Auth._authenticate(request, Authorization, allow_password_change=True)
+        return await Auth._authenticate(
+            request, Authorization, allow_password_change=True
+        )
 
     @staticmethod
     async def _authenticate(
@@ -224,14 +240,21 @@ return {1, raw}
         """执行 Token、用户状态和强制改密状态校验。"""
         payload = await Auth.verify_token(request, Authorization)
         user_id = Auth._get_user_id(payload)
-        user = await Auth._get_enabled_user(request, user_id)
+        requested_tenant_id = payload.get("tenant_id")
+        user = await Auth._get_enabled_user(request, user_id, requested_tenant_id)
+        tenant_id = requested_tenant_id or getattr(user, "tenant_id", None)
+        if (
+            tenant_id is None
+            or await Auth._get_tenant_member(request, user.id, int(tenant_id)) is None
+        ):
+            raise HTTPException(status_code=403, detail="用户不属于当前租户")
 
         if getattr(user, "must_change_password", False) and not allow_password_change:
             raise HTTPException(status_code=403, detail="请先修改密码")
 
         request.state.auth_payload = payload
         request.state.user_id = user.id
-        request.state.tenant_id = getattr(user, "tenant_id", None)
+        request.state.tenant_id = int(tenant_id)
         return payload
 
     @staticmethod
@@ -247,8 +270,7 @@ return {1, raw}
         """判断角色列表是否包含配置的保留管理员角色。"""
         admin_role_code = settings.ADMIN_ROLE_CODE.strip().casefold()
         return any(
-            str(role.code).strip().casefold() == admin_role_code
-            for role in roles
+            str(role.code).strip().casefold() == admin_role_code for role in roles
         )
 
     @staticmethod
@@ -263,9 +285,7 @@ return {1, raw}
         return await UserDao.get_user_roles(actor_user_id, request)
 
     @staticmethod
-    async def revoke_login_token(
-        request: Request, Authorization: str | None
-    ) -> None:
+    async def revoke_login_token(request: Request, Authorization: str | None) -> None:
         """校验并撤销当前登录 Token。"""
         payload = await Auth.verify_token(request, Authorization)
         token = Auth._parse_authorization(Authorization)
@@ -383,7 +403,9 @@ return {1, raw}
                 raise HTTPException(status_code=401, detail="Invalid Refresh Token")
             payload = dict(cached["payload"])
             family_id = payload.get("family_id")
-            if not family_id or await Auth._is_refresh_family_revoked(request, family_id):
+            if not family_id or await Auth._is_refresh_family_revoked(
+                request, family_id
+            ):
                 raise HTTPException(status_code=401, detail="Invalid Refresh Token")
             if payload.get("used"):
                 await Auth.revoke_refresh_family(request, family_id)
@@ -603,7 +625,9 @@ return {1, raw}
                     ).isoformat(),
                 }
             )
-        return sorted(sessions, key=lambda item: item.get("login_time") or "", reverse=True)
+        return sorted(
+            sessions, key=lambda item: item.get("login_time") or "", reverse=True
+        )
 
     @staticmethod
     async def revoke_token_by_id(request: Request, token_id: str) -> bool:
@@ -618,8 +642,7 @@ return {1, raw}
             return False
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import \
-                DataScopeService
+            from module_admin.service.data_scope_service import DataScopeService
 
             if not await DataScopeService.can_access_user(
                 int(target["user_id"]), request
@@ -634,12 +657,13 @@ return {1, raw}
         sessions = await Auth.list_online_tokens(request)
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import \
-                DataScopeService
+            from module_admin.service.data_scope_service import DataScopeService
 
             if not await DataScopeService.can_access_user(user_id, request):
                 return 0
-        targets = [item for item in sessions if str(item.get("user_id")) == str(user_id)]
+        targets = [
+            item for item in sessions if str(item.get("user_id")) == str(user_id)
+        ]
         for session in targets:
             await Auth._delete_cache_key(
                 request, f"{Auth.TOKEN_REDIS_PREFIX}{session['token_id']}"
@@ -650,7 +674,9 @@ return {1, raw}
     async def revoke_all_user_tokens(request: Request, user_id: int) -> int:
         """在密码找回等系统流程中撤销用户全部 Access Token。"""
         sessions = await Auth.list_online_tokens(request)
-        targets = [item for item in sessions if str(item.get("user_id")) == str(user_id)]
+        targets = [
+            item for item in sessions if str(item.get("user_id")) == str(user_id)
+        ]
         for session in targets:
             await Auth._delete_cache_key(
                 request, f"{Auth.TOKEN_REDIS_PREFIX}{session['token_id']}"
@@ -709,14 +735,36 @@ return {1, raw}
             raise HTTPException(status_code=401, detail="Invalid Token")
 
     @staticmethod
-    async def _get_enabled_user(request: Request, user_id: int):
+    async def _get_enabled_user(
+        request: Request, user_id: int, tenant_id: int | None = None
+    ):
         """加载目标用户，并拒绝不存在或已停用的账号。"""
         from module_admin.entity.do.user_do import UserDo
 
         mysql = request.state.mysql
         user = await mysql.get(UserDo, user_id)
-        if user is None:
+        if user is None or getattr(user, "deleted_at", None) is not None:
             raise HTTPException(status_code=401, detail="User Not Found")
         if str(user.status) != "1":
             raise HTTPException(status_code=403, detail="User Disabled")
+        if (
+            tenant_id is not None
+            and await Auth._get_tenant_member(request, user_id, int(tenant_id)) is None
+        ):
+            raise HTTPException(status_code=403, detail="用户不属于当前租户")
         return user
+
+    @staticmethod
+    async def _get_tenant_member(request: Request, user_id: int, tenant_id: int):
+        """查询有效租户成员关系，所有受保护请求共用此校验。"""
+        from module_admin.entity.do.tenant_do import TenantMemberDo
+
+        result = await request.state.mysql.execute(
+            select(TenantMemberDo).where(
+                TenantMemberDo.user_id == user_id,
+                TenantMemberDo.tenant_id == tenant_id,
+                TenantMemberDo.status == "1",
+                TenantMemberDo.deleted_at.is_(None),
+            )
+        )
+        return result.scalars().first()

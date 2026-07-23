@@ -3,10 +3,12 @@
 from fastapi import APIRouter, Depends, File, Path, Request, UploadFile
 
 from module_admin.auth.authorization import Auth
-from module_admin.entity.dto.file_dto import (FileChunkCompleteDto,
-                                              FileChunkInitDto,
-                                              FilePresignedUrlDto,
-                                              FileUploadResultDto)
+from module_admin.entity.dto.file_dto import (
+    FileChunkCompleteDto,
+    FileChunkInitDto,
+    FilePresignedUrlDto,
+    FileUploadResultDto,
+)
 from module_admin.entity.dto.response_dto import ApiResponseDto
 from module_admin.service.file_service import FileService
 

@@ -17,8 +17,7 @@ def upgrade() -> None:
         return
     bind = op.get_bind()
     columns = {
-        column["name"]
-        for column in sa.inspect(bind).get_columns("scheduled_jobs")
+        column["name"] for column in sa.inspect(bind).get_columns("scheduled_jobs")
     }
     _add_columns(columns)
 
@@ -31,8 +30,7 @@ def downgrade() -> None:
         return
     bind = op.get_bind()
     columns = {
-        column["name"]
-        for column in sa.inspect(bind).get_columns("scheduled_jobs")
+        column["name"] for column in sa.inspect(bind).get_columns("scheduled_jobs")
     }
     if "max_retries" in columns:
         op.drop_column("scheduled_jobs", "max_retries")

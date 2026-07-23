@@ -2,15 +2,23 @@
 
 from fastapi import HTTPException, Request
 from fastapi_pagination import Page, Params
+from sqlalchemy.exc import IntegrityError
 
 from config.env import settings
 from module_admin.auth.authorization import Auth
-from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
-from module_admin.entity.dto.role_dto import (BatchUpdateRoleStatusDto,
-                                              CreateRoleDto, RoleListDto,
-                                              UpdataRoleDto)
-from module_admin.service.permission_audit_service import \
-    PermissionAuditService
+from module_admin.dao.role_dao import (
+    RoleCodeConflictError,
+    RoleDao,
+    RoleVersionConflictError,
+)
+from module_admin.entity.dto.role_dto import (
+    BatchUpdateRoleStatusDto,
+    CreateRoleDto,
+    RoleListDto,
+    UpdataRoleDto,
+)
+from module_admin.service.idempotency_service import IdempotencyService
+from module_admin.service.permission_audit_service import PermissionAuditService
 
 
 class RoleService:
@@ -90,7 +98,7 @@ class RoleService:
 
     @staticmethod
     async def create_role_services(roles: CreateRoleDto, request: Request) -> None:
-        """Create role.
+        """创建角色。
 
         Args:
             roles (CreateRoleDto): 角色模型.
@@ -118,13 +126,18 @@ class RoleService:
                 )
         except RoleCodeConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except RoleVersionConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except IntegrityError as exc:
+            await request.state.mysql.rollback()
+            raise HTTPException(status_code=409, detail="角色名称或编码已存在") from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return None
 
     @staticmethod
     async def get_role_by_id_services(role_id: int, request: Request) -> RoleDao:
-        """Get role by id.
+        """根据 ID 获取角色。
 
         Args:
             role_id (int): 角色ID.
@@ -140,7 +153,7 @@ class RoleService:
 
     @staticmethod
     async def get_role_by_name_services(role_name: str, request: Request) -> RoleDao:
-        """Get role by name.
+        """根据名称获取角色。
         Args:
             role_name (str): 角色名称.
             request (Request): 请求对象.
@@ -155,7 +168,7 @@ class RoleService:
 
     @staticmethod
     async def del_role_by_id_services(role_id: int, request: Request) -> None:
-        """Delete role by id.
+        """根据 ID 删除角色。
 
         Args:
             role_id (int): 角色ID.
@@ -183,7 +196,7 @@ class RoleService:
 
     @staticmethod
     async def del_role_by_name_services(role_name: str, request: Request) -> None:
-        """Delete role by name.
+        """根据名称删除角色。
 
         Args:
             role_name (str): 角色名称.
@@ -213,7 +226,7 @@ class RoleService:
     async def upd_role_by_id_services(
         roles: UpdataRoleDto, request: Request, role_id: int
     ) -> None:
-        """Update role by id.
+        """根据 ID 更新角色。
         Args:
             roles (UpdataRoleDto): 角色模型.
             request (Request): 请求对象.
@@ -258,6 +271,11 @@ class RoleService:
             )
         except RoleCodeConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except RoleVersionConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except IntegrityError as exc:
+            await request.state.mysql.rollback()
+            raise HTTPException(status_code=409, detail="角色名称或编码已存在") from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if role is not None:
@@ -315,4 +333,12 @@ class RoleService:
                 {"status": previous_status[role.id]},
                 {"status": roles.status},
             )
+        await IdempotencyService.record_batch(
+            request,
+            "role_status_update",
+            "role",
+            unique_role_ids,
+            {str(role_id): previous_status[role_id] for role_id in unique_role_ids},
+            {"status": roles.status},
+        )
         return None

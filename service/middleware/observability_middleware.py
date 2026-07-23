@@ -136,9 +136,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         request.state.traceparent = traceparent
 
         started_at = time.perf_counter()
-        metrics: ApplicationMetrics | None = getattr(
-            request.app.state, "metrics", None
-        )
+        metrics: ApplicationMetrics | None = getattr(request.app.state, "metrics", None)
         try:
             response = await call_next(request)
         except Exception as exc:

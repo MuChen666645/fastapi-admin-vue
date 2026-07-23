@@ -142,9 +142,7 @@ def test_menu_with_children_cannot_be_changed_to_button() -> None:
 
 
 def test_menu_update_accepts_valid_parent() -> None:
-    session = FakeMenuSession(
-        [make_menu(1, 0), make_menu(2, 1), make_menu(3, 2)]
-    )
+    session = FakeMenuSession([make_menu(1, 0), make_menu(2, 1), make_menu(3, 2)])
 
     result = run_update(session, 3, UpdMenuDto(parent_id=1))
 

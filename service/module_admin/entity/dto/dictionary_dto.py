@@ -35,7 +35,9 @@ class DictTypeUpdateDto(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     dict_name: str | None = Field(default=None, max_length=100, description="字典名称")
-    dict_type: str | None = Field(default=None, max_length=100, description="字典类型编码")
+    dict_type: str | None = Field(
+        default=None, max_length=100, description="字典类型编码"
+    )
     status: str | None = Field(default=None, description="状态：0停用，1正常")
     remark: str | None = Field(default=None, max_length=500, description="备注")
 
@@ -74,7 +76,9 @@ class DictDataUpdateDto(BaseModel):
     dict_sort: int | None = Field(default=None, description="字典排序")
     dict_label: str | None = Field(default=None, max_length=100, description="字典标签")
     dict_value: str | None = Field(default=None, max_length=100, description="字典键值")
-    dict_type: str | None = Field(default=None, max_length=100, description="字典类型编码")
+    dict_type: str | None = Field(
+        default=None, max_length=100, description="字典类型编码"
+    )
     status: str | None = Field(default=None, description="状态：0停用，1正常")
     remark: str | None = Field(default=None, max_length=500, description="备注")
 

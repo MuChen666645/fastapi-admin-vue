@@ -83,6 +83,7 @@ class UpdateUserRequestDto(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
+    version: int | None = Field(default=None, ge=1, description="乐观锁版本号")
     dept_id: int | None = Field(default=None, description="部门ID")
     post_ids: list[int] | None = Field(default=None, description="岗位ID列表")
 

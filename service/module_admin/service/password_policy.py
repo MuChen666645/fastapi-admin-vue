@@ -24,9 +24,7 @@ def validate_password(password: str, username: str | None = None) -> None:
         char.islower() for char in password
     ):
         raise PasswordPolicyError("密码必须包含小写字母")
-    if settings.PASSWORD_REQUIRE_DIGIT and not any(
-        char.isdigit() for char in password
-    ):
+    if settings.PASSWORD_REQUIRE_DIGIT and not any(char.isdigit() for char in password):
         raise PasswordPolicyError("密码必须包含数字")
     if settings.PASSWORD_REQUIRE_SPECIAL and not any(
         char in string.punctuation for char in password

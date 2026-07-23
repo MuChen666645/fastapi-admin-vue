@@ -4,8 +4,8 @@ from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlmodel import delete, select
 
-from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
-                                           OperationLogDo)
+from module_admin.dao.tenant_scope import tenant_clause
+from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.service.data_scope_service import DataScopeService
 
 
@@ -41,9 +41,8 @@ class LogDao:
             filters.append(time_column >= query.start_time)
         if query.end_time:
             filters.append(time_column <= query.end_time)
-        tenant_id = getattr(request.state, "tenant_id", None)
-        if tenant_id is not None and hasattr(model, "tenant_id"):
-            filters.append(model.tenant_id == tenant_id)
+        if hasattr(model, "tenant_id"):
+            filters.append(tenant_clause(request, model))
 
         mysql = request.state.mysql
         scope = await DataScopeService.resolve(request)
@@ -60,7 +59,7 @@ class LogDao:
             delete(model).where(
                 model.id.in_(set(ids)),
                 scope.user_id_clause(model.user_id),
-                model.tenant_id == getattr(request.state, "tenant_id", model.tenant_id),
+                tenant_clause(request, model),
             )
         )
 

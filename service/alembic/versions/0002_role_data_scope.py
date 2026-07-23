@@ -29,7 +29,9 @@ def upgrade() -> None:
         "role_dept",
         sa.Column("role_id", sa.Integer(), nullable=False),
         sa.Column("dept_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["dept_id"], ["departments.dept_id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["dept_id"], ["departments.dept_id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["role_id"], ["roles.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("role_id", "dept_id"),
     )

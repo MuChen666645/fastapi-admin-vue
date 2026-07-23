@@ -13,7 +13,7 @@ class ScheduledJobDo(SQLModel, table=True):
 
     __tablename__ = "scheduled_jobs"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(title="任务编号", default=None, primary_key=True)
     job_name: str = Field(title="任务名称", max_length=100, index=True)
@@ -44,7 +44,7 @@ class JobLogDo(SQLModel, table=True):
 
     __tablename__ = "job_logs"
 
-    tenant_id: int | None = Field(default=None, index=True, description="租户ID")
+    tenant_id: int | None = Field(default=1, index=True, description="租户ID")
 
     id: int | None = Field(title="日志编号", default=None, primary_key=True)
     job_id: int | None = Field(title="任务编号", default=None, index=True)

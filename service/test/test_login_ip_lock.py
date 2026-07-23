@@ -9,8 +9,10 @@ from fastapi import HTTPException
 
 from config.env import settings
 from module_admin.dao.user_dao import UserDao
-from module_admin.entity.dto.user_dto import (LoginUserRequestByPhoneDto,
-                                              LoginUserRequestByUsernameDto)
+from module_admin.entity.dto.user_dto import (
+    LoginUserRequestByPhoneDto,
+    LoginUserRequestByUsernameDto,
+)
 from module_admin.service.login_security_service import LoginSecurityService
 from module_admin.service.user_service import UserService
 from utils.fastapi_admin import FastApiAdmin

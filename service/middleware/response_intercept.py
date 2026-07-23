@@ -6,6 +6,8 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
+from module_admin.error_codes import default_error_code
+
 # 调用方可以用此请求头要求保留原始响应，处理后会移除该请求头。
 SKIP_RESPONSE_WRAPPER_HEADER = "X-Skip-Response-Wrapper"
 # Swagger 资源返回原始 HTML/JSON，不能套用业务响应包装。
@@ -54,10 +56,23 @@ class ResponseInterceptor(BaseHTTPMiddleware):
             )
         else:
             error_message = cleaned_data.get("detail")
+            error_code = default_error_code(code)
+            error_data = None
+            if isinstance(error_message, dict):
+                error_code = error_message.get("error_code", error_code)
+                error_data = error_message.get("data")
+                error_message = error_message.get("message", error_message)
+            elif isinstance(error_message, list):
+                error_data = {"errors": error_message}
             retry_after = response.headers.get("retry-after")
             data = JSONResponse(
                 status_code=code,
-                content={"code": code, "message": error_message, "data": None},
+                content={
+                    "code": code,
+                    "error_code": error_code,
+                    "message": error_message,
+                    "data": error_data,
+                },
                 headers={"Retry-After": retry_after} if retry_after else None,
             )
         return data
