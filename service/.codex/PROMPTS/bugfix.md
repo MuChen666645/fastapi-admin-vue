@@ -1,0 +1,71 @@
+# Bugfix Prompt
+
+你正在当前仓库根目录中定位并修复一个缺陷。
+
+## 缺陷信息
+
+- 缺陷标题：`<填写标题>`
+- 复现路径/接口：`<填写 HTTP 方法和 /api/v1/... 路径，或命令>`
+- 现象/错误信息：`<填写完整错误、状态码或日志>`
+- 预期行为：`<填写预期>`
+- 实际行为：`<填写实际>`
+- 已知影响范围：`<填写用户、租户、数据和环境影响>`
+
+## 项目约束
+
+- 先读取 `.codex/PROJECT.md`、`.codex/ARCHITECTURE.md`、`.codex/WORKFLOW.md` 和 `.codex/BOUNDARY.md`。
+- 先检查工作区和目标路径，不覆盖用户已有改动。
+- 当前管理 API 只保留 `/api/v1`，不要用恢复旧路由的方式绕过失败。
+- 不通过放宽权限、跳过租户/数据范围、吞掉异常、自动提交或修改测试断言来掩盖根因。
+- 不执行未授权的提交、推送、生产操作、远程写入或破坏性清理；需要时先确认目标和影响。
+- 使用现有的认证、响应包装、事务、Redis、分页和配置模式；修复应尽量局部且可回归验证。
+
+## 调查步骤
+
+1. 用用户提供的具体路径、请求体、Header、环境和 traceback 复现问题。
+2. 跟踪 Controller → Service → DAO → 数据库/Redis 的完整调用链。
+3. 检查请求级 `request.state.mysql`、独立 `mysql_session_factory`、Redis key/TTL、事务提交/回滚和异常转换。
+4. 对权限问题枚举所有相邻写路径；对租户问题确认资源查询、关联表和 `tenant_clause`；对数据范围问题确认完整部门祖先匹配。
+5. 找到根因后，先添加或调整一个能证明问题的回归测试。
+6. 实施最小修复，保持 API 字段、错误结构和成功行为兼容；如必须改变合同，明确记录影响。
+
+## 常见根因检查表
+
+- 路由：是否漏了 `/api/v1`、动态路径是否遮蔽静态路径、是否误注册了第二套路由。
+- 配置：`APP_ENV`/`APP_ENV_FILE` 是否混用、环境变量是否覆盖文件、生产安全校验是否触发。
+- 数据库：是否错误复用请求会话、异常后是否 rollback、SQL 是否缺租户或数据范围条件、索引/唯一约束是否匹配。
+- Redis：是否使用共享 `app.state.redis`、key 是否泄露原始 Token、TTL 是否合理、降级缓存是否有界。
+- 认证：JWT 签名/过期/缓存/用户状态/密码版本/Refresh family 是否全部校验，是否只保护了一个写入口。
+- 响应：是否被 `ResponseInterceptor` 包装，文件/流/HTML 是否正确跳过包装，错误是否保留 `error_code` 和 `data`。
+- 后台任务：是否有超时、锁、重试、幂等、独立会话和关闭清理。
+
+## 验证要求
+
+先运行针对性测试，再运行完整单元测试：
+
+```powershell
+$env:APP_ENV = "development"
+$env:DEBUG = "true"
+poetry run python -m pytest -q <focused-test>
+poetry run python -m pytest -q
+```
+
+涉及真实基础设施时单独运行：
+
+```bash
+poetry run python -m scripts.migrate_database
+RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
+```
+
+未运行的 Docker、MySQL、Redis、OSS 或外部身份服务验证必须明确标注。不要把测试收集或静态检查通过写成运行时验证通过。
+
+## 交付格式
+
+- 根因：`<说明为什么发生>`
+- 修复：`<说明最小改动>`
+- 副作用/合同影响：`<说明>`
+- 回归测试：`<列出测试>`
+- 验证结果：`<命令和结果>`
+- 剩余风险：`<说明未覆盖部分>`
+
+完成前自检：根因有证据，回归测试能覆盖具体缺陷，修复没有扩大权限或数据暴露，最终 diff 没有覆盖用户修改，未验证的外部系统已经明确列出。
