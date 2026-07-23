@@ -10,7 +10,11 @@ from sqlalchemy import or_, update
 from sqlmodel import delete, select
 
 from config.env import settings
-from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
+from module_admin.dao.tenant_scope import (
+    require_tenant_id,
+    tenant_clause,
+    tenant_member_clause,
+)
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.permission_do import PermissionDo
@@ -158,9 +162,7 @@ class UserDao:
         identifier: str, request: Request, tenant_id: int | None = None
     ) -> Union[UserDo, None]:
         """按用户名、邮箱或手机号查找用户。"""
-        tenant_filter = (
-            UserDo.tenant_id == tenant_id if tenant_id is not None else False
-        )
+        tenant_filter = tenant_member_clause(UserDo, tenant_id)
         result = await request.state.mysql.execute(
             select(UserDo).where(
                 or_(
@@ -182,9 +184,7 @@ class UserDao:
         tenant_id: int | None = None,
     ) -> UserDo | None:
         """按外部身份提供商和主体标识查找用户。"""
-        tenant_filter = (
-            UserDo.tenant_id == tenant_id if tenant_id is not None else False
-        )
+        tenant_filter = tenant_member_clause(UserDo, tenant_id)
         result = await request.state.mysql.execute(
             select(UserDo).where(
                 UserDo.auth_provider == provider,
@@ -209,12 +209,13 @@ class UserDao:
 
     @staticmethod
     async def get_password_reset_token(
-        token_hash: str, request: Request
+        token_hash: str, tenant_id: int, request: Request
     ) -> PasswordResetTokenDo | None:
-        """按哈希查询未消费的密码找回令牌。"""
+        """按哈希和租户查询未消费的密码找回令牌。"""
         result = await request.state.mysql.execute(
             select(PasswordResetTokenDo).where(
                 PasswordResetTokenDo.token_hash == token_hash,
+                PasswordResetTokenDo.tenant_id == tenant_id,
                 PasswordResetTokenDo.consumed_at.is_(None),
             )
         )
@@ -495,7 +496,11 @@ class UserDao:
             filters.append(UserDo.version == expected_version)
         result = await mysql.execute(update(UserDo).where(*filters).values(**user_data))
         if result.rowcount != 1:
-            return "USER_VERSION_CONFLICT" if expected_version is not None else "USER_NOT_FOUND"
+            return (
+                "USER_VERSION_CONFLICT"
+                if expected_version is not None
+                else "USER_NOT_FOUND"
+            )
         if post_ids is not None:
             await mysql.execute(delete(UserPostDo).where(UserPostDo.user_id == user_id))
             mysql.add_all(

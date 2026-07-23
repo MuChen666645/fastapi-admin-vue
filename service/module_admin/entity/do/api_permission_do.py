@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from utils.time_utils import now_utc8_naive
@@ -11,6 +12,14 @@ class ApiPermissionCatalogDo(SQLModel, table=True):
     """从应用路由自动同步的 API 权限目录。"""
 
     __tablename__ = "api_permission_catalog"
+    __table_args__ = (
+        UniqueConstraint(
+            "api_path",
+            "api_method",
+            "permission_code",
+            name="uq_api_permission_catalog_path_method_code",
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     permission_code: str = Field(max_length=100, nullable=False, index=True)

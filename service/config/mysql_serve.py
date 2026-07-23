@@ -23,8 +23,21 @@ async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
             await session.commit()
         except BaseException:
             await session.rollback()
+            pending = getattr(request.state, "pending_storage_objects", [])
+            if pending:
+                from module_admin.service.file_service import FileService
+
+                for metadata, app_settings in reversed(pending):
+                    try:
+                        await FileService.delete_stored_file(metadata, app_settings)
+                    except Exception:
+                        logger.exception(
+                            "数据库回滚后的文件补偿清理失败",
+                            storage_key=metadata.storage_key,
+                        )
             raise
         finally:
+            request.state.pending_storage_objects = []
             request.state.mysql = None
 
 

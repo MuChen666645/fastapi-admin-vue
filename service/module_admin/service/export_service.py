@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from fastapi import HTTPException, Request
+from loguru import logger
 from sqlmodel import select
 
 from config.env import Settings, settings
@@ -149,6 +150,7 @@ class ExportService:
             task = await session.get(ExportTaskDo, task_ref.task_id)
             if task is None or task.status != "running":
                 return
+            metadata = None
             try:
                 filename, headers, rows = await ExcelService.build_export(
                     task.resource,
@@ -171,7 +173,18 @@ class ExportService:
                 task.error_message = None
                 await session.commit()
             except Exception as exc:
-                await session.rollback()
+                try:
+                    await session.rollback()
+                except Exception:
+                    logger.exception("异步导出失败后的数据库回滚失败")
+                if metadata is not None:
+                    try:
+                        await FileService.delete_stored_file(metadata, app_settings)
+                    except Exception:
+                        logger.exception(
+                            "异步导出数据库回滚后的文件补偿清理失败",
+                            storage_key=metadata.storage_key,
+                        )
                 failed = await session.get(ExportTaskDo, task_ref.task_id)
                 if failed is not None:
                     failed.status = "failed"

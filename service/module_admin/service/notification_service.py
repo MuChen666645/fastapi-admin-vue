@@ -11,8 +11,10 @@ from loguru import logger
 from sqlmodel import select
 
 from config.env import Settings, settings
+from module_admin.dao.tenant_scope import tenant_member_clause
 from module_admin.entity.do.notice_do import NoticeDo
 from module_admin.entity.do.notification_do import NotificationDeliveryDo
+from module_admin.entity.do.tenant_do import TenantMemberDo
 from module_admin.entity.do.user_do import UserDo
 from utils.time_utils import now_utc8_naive
 
@@ -32,7 +34,7 @@ class NotificationService:
         if not recipient_ids:
             result = await request.state.mysql.execute(
                 select(UserDo.id).where(
-                    UserDo.tenant_id == notice.tenant_id,
+                    tenant_member_clause(UserDo, notice.tenant_id),
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )
@@ -43,7 +45,7 @@ class NotificationService:
             user_result = await request.state.mysql.execute(
                 select(UserDo).where(
                     UserDo.id == user_id,
-                    UserDo.tenant_id == notice.tenant_id,
+                    tenant_member_clause(UserDo, notice.tenant_id),
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )
@@ -92,11 +94,17 @@ class NotificationService:
                     NotificationDeliveryDo.notice_id == NoticeDo.id,
                 )
                 .join(UserDo, NotificationDeliveryDo.user_id == UserDo.id)
+                .join(
+                    TenantMemberDo,
+                    (TenantMemberDo.user_id == UserDo.id)
+                    & (TenantMemberDo.tenant_id == NotificationDeliveryDo.tenant_id),
+                )
                 .where(
                     NotificationDeliveryDo.status == "pending",
                     NotificationDeliveryDo.next_attempt_at <= now,
                     NotificationDeliveryDo.tenant_id == NoticeDo.tenant_id,
-                    NotificationDeliveryDo.tenant_id == UserDo.tenant_id,
+                    TenantMemberDo.status == "1",
+                    TenantMemberDo.deleted_at.is_(None),
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )

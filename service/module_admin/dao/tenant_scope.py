@@ -23,6 +23,11 @@ def current_tenant_id(request: Request) -> int | None:
 def tenant_clause(request: Request, model):
     """为租户模型生成集中式过滤条件，用户通过有效成员关系归属租户。"""
     tenant_id = current_tenant_id(request)
+    return tenant_member_clause(model, tenant_id)
+
+
+def tenant_member_clause(model, tenant_id: int | None):
+    """按显式租户生成用户成员关系过滤条件。"""
     if tenant_id is None:
         return false()
     if getattr(model, "__tablename__", None) == "users":

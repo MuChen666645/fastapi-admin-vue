@@ -99,6 +99,12 @@ class PasswordResetTokenDo(SQLModel, table=True):
     __tablename__ = "password_reset_tokens"
 
     id: int | None = Field(default=None, primary_key=True)
+    tenant_id: int = Field(
+        foreign_key="tenants.id",
+        nullable=False,
+        index=True,
+        description="租户ID",
+    )
     user_id: int = Field(
         foreign_key="users.id",
         ondelete="CASCADE",

@@ -19,8 +19,8 @@ from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationL
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
-from module_admin.entity.do.tenant_do import TenantMemberDo
-from module_admin.entity.do.user_do import UserDo, UserRoleDo
+from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
+from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo, UserRoleDo
 from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from utils.fastapi_admin import FastApiAdmin
 
@@ -159,6 +159,14 @@ async def _seed_reset_password_case(session_factory) -> ResetPasswordCase:
         )
 
 
+async def _phone_for_user(session_factory, user_id: int) -> str:
+    """从真实数据库读取测试用户手机号，避免硬编码业务数据。"""
+    async with session_factory() as session:
+        user = await session.get(UserDo, user_id)
+        assert user is not None and user.phone
+        return user.phone
+
+
 async def _cleanup_reset_password_case(
     session_factory, case: ResetPasswordCase
 ) -> None:
@@ -251,6 +259,113 @@ def test_reset_password_through_real_services() -> None:
             finally:
                 await Auth.revoke_user_tokens(admin_request, case.admin_user_id)
                 await Auth.revoke_user_tokens(target_request, case.target_user_id)
+                await _cleanup_reset_password_case(
+                    app.state.mysql_session_factory, case
+                )
+
+    anyio.run(run)
+
+
+def test_password_reset_api_uses_explicit_secondary_tenant() -> None:
+    """真实 ASGI 请求可以为主租户之外的有效成员创建并消费找回令牌。"""
+
+    async def run() -> None:
+        async with app.router.lifespan_context(app):
+            app.dependency_overrides.clear()
+            assert isinstance(app.state.redis, Redis)
+            assert app.state.mysql_engine is not None
+            case = await _seed_reset_password_case(app.state.mysql_session_factory)
+            suffix = uuid.uuid4().hex[:12]
+            tenant = TenantDo(
+                code=f"integration-reset-{suffix}",
+                name=f"integration-reset-{suffix}",
+            )
+            async with app.state.mysql_session_factory() as session:
+                session.add(tenant)
+                await session.flush()
+                session.add(
+                    TenantMemberDo(
+                        user_id=case.target_user_id,
+                        tenant_id=tenant.id,
+                        is_default=False,
+                    )
+                )
+                await session.commit()
+
+            class CaptureNotifier:
+                token: str | None = None
+
+                async def send(self, _channel: str, _destination: str, token: str):
+                    self.token = token
+
+            notifier = CaptureNotifier()
+            original_notifier = getattr(app.state, "password_reset_notifier", None)
+            app.state.password_reset_notifier = notifier
+            try:
+                transport = ASGITransport(app=app, client=("127.0.0.1", 23456))
+                async with AsyncClient(
+                    transport=transport, base_url="http://127.0.0.1"
+                ) as client:
+                    missing_tenant = await client.post(
+                        "/api/v1/user/password/forgot",
+                        json={
+                            "identifier": "unused",
+                            "channel": "sms",
+                        },
+                    )
+                    assert missing_tenant.status_code == 422
+
+                    response = await client.post(
+                        "/api/v1/user/password/forgot",
+                        json={
+                            "tenant_id": tenant.id,
+                            "identifier": await _phone_for_user(
+                                app.state.mysql_session_factory, case.target_user_id
+                            ),
+                            "channel": "sms",
+                        },
+                    )
+                    assert response.status_code == 200, response.text
+                    assert notifier.token
+
+                    async with app.state.mysql_session_factory() as session:
+                        token_result = await session.execute(
+                            select(PasswordResetTokenDo).where(
+                                PasswordResetTokenDo.user_id == case.target_user_id,
+                                PasswordResetTokenDo.tenant_id == tenant.id,
+                            )
+                        )
+                        token_record = token_result.scalars().first()
+                        assert token_record is not None
+
+                    response = await client.post(
+                        "/api/v1/user/password/reset",
+                        json={
+                            "tenant_id": tenant.id,
+                            "token": notifier.token,
+                            "password": "New-Reset1!x",
+                        },
+                    )
+                    assert response.status_code == 200, response.text
+            finally:
+                app.state.password_reset_notifier = original_notifier
+                async with app.state.mysql_session_factory() as session:
+                    await session.execute(
+                        delete(PasswordResetTokenDo).where(
+                            PasswordResetTokenDo.user_id == case.target_user_id,
+                            PasswordResetTokenDo.tenant_id == tenant.id,
+                        )
+                    )
+                    await session.execute(
+                        delete(TenantMemberDo).where(
+                            TenantMemberDo.user_id == case.target_user_id,
+                            TenantMemberDo.tenant_id == tenant.id,
+                        )
+                    )
+                    await session.execute(
+                        delete(TenantDo).where(TenantDo.id == tenant.id)
+                    )
+                    await session.commit()
                 await _cleanup_reset_password_case(
                     app.state.mysql_session_factory, case
                 )

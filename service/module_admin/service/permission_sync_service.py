@@ -29,24 +29,25 @@ class PermissionSyncService:
         """同步所有带权限依赖的 API 路由，返回目录记录数。"""
         if not callable(session_factory):
             return 0
-        discovered: dict[tuple[str, str], str] = {}
+        discovered: set[tuple[str, str, str]] = set()
         for route in app.routes:
             if not isinstance(route, APIRoute):
                 continue
             codes = cls._permission_codes(route)
             for method in route.methods or set():
                 for code in codes:
-                    discovered[(method.upper(), route.path)] = code
+                    discovered.add((method.upper(), route.path, code))
 
         if not discovered:
             return 0
         now = now_utc8_naive()
         async with session_factory() as session:
-            for (method, path), code in discovered.items():
+            for method, path, code in discovered:
                 result = await session.execute(
                     select(ApiPermissionCatalogDo).where(
                         ApiPermissionCatalogDo.api_method == method,
                         ApiPermissionCatalogDo.api_path == path,
+                        ApiPermissionCatalogDo.permission_code == code,
                     )
                 )
                 item = result.scalars().first()
@@ -62,7 +63,6 @@ class PermissionSyncService:
                         )
                     )
                 else:
-                    item.permission_code = code
                     item.status = "1"
                     item.last_seen_at = now
             await session.commit()

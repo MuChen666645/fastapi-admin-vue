@@ -14,6 +14,7 @@ from fastapi import HTTPException, Request
 from config.env import settings
 from module_admin.dao.tenant_scope import login_tenant_id
 from module_admin.dao.user_dao import UserDao
+from module_admin.entity.do.tenant_do import TenantMemberDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.service.mfa_service import MfaService
 from module_admin.service.user_service import UserService
@@ -196,6 +197,7 @@ class ExternalIdentityService:
         if not subject:
             raise HTTPException(status_code=401, detail="外部身份缺少主体标识")
         tenant_id = login_tenant_id(request)
+        request.state.tenant_id = tenant_id
         user = await UserDao.get_user_by_external_subject(
             provider,
             subject,
@@ -222,6 +224,13 @@ class ExternalIdentityService:
             )
             request.state.mysql.add(user)
             await request.state.mysql.flush()
+            request.state.mysql.add(
+                TenantMemberDo(
+                    user_id=user.id,
+                    tenant_id=tenant_id,
+                    is_default=True,
+                )
+            )
         elif user.auth_subject != subject or user.auth_provider != provider:
             user.auth_provider = provider
             user.auth_subject = subject

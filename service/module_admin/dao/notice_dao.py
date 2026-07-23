@@ -6,7 +6,11 @@ from fastapi_pagination.ext.sqlmodel import paginate
 from sqlalchemy import and_, exists, func, or_
 from sqlmodel import select
 
-from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
+from module_admin.dao.tenant_scope import (
+    require_tenant_id,
+    tenant_clause,
+    tenant_member_clause,
+)
 from module_admin.entity.do.notice_do import NoticeDo, NoticeRecipientDo
 from module_admin.entity.do.user_do import UserDo
 from utils.time_utils import now_utc8_naive
@@ -59,7 +63,7 @@ class NoticeDao:
             user_result = await request.state.mysql.execute(
                 select(UserDo.id).where(
                     UserDo.id.in_(recipient_ids),
-                    UserDo.tenant_id == tenant_id,
+                    tenant_member_clause(UserDo, tenant_id),
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )

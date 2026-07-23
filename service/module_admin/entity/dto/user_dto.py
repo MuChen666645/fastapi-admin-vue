@@ -198,6 +198,7 @@ class RefreshTokenRequestDto(BaseModel):
 class ForgotPasswordRequestDto(BaseModel):
     """密码找回申请模型。"""
 
+    tenant_id: int = Field(gt=0, description="租户ID")
     identifier: str = Field(
         min_length=1,
         max_length=255,
@@ -213,6 +214,7 @@ class ForgotPasswordRequestDto(BaseModel):
 class ConfirmPasswordResetRequestDto(BaseModel):
     """密码找回确认模型。"""
 
+    tenant_id: int = Field(gt=0, description="租户ID")
     token: str = Field(min_length=32, description="密码找回令牌")
     password: str = Field(description="新密码")
 

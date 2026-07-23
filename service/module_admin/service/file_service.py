@@ -29,6 +29,15 @@ class FileService:
     _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
     _CHUNK_SIZE = 1024 * 1024
 
+    @staticmethod
+    def _register_pending_storage(request: Request, metadata: FileMetadataDo) -> None:
+        """登记请求事务中的对象，数据库回滚时由会话依赖补偿删除。"""
+        pending = getattr(request.state, "pending_storage_objects", None)
+        if pending is None:
+            pending = []
+            request.state.pending_storage_objects = pending
+        pending.append((metadata, FileService._settings(request)))
+
     @classmethod
     async def cleanup_expired_chunks(
         cls, session_factory, app_settings: Settings
@@ -257,6 +266,7 @@ class FileService:
             created_by=item.created_by,
         )
         session.add(metadata)
+        cls._register_pending_storage(request, metadata)
         await session.delete(item)
         shutil.rmtree(chunk_dir, ignore_errors=True)
         return metadata
@@ -340,6 +350,15 @@ class FileService:
         except Exception:
             if local_path is not None:
                 local_path.unlink(missing_ok=True)
+            elif app_settings.FILE_STORAGE_BACKEND != "local":
+                try:
+                    await cls._delete_storage_key(
+                        storage_key, app_settings.FILE_STORAGE_BACKEND, app_settings
+                    )
+                except Exception:
+                    logger.exception(
+                        "文件上传失败后的对象清理失败", storage_key=storage_key
+                    )
             raise
 
         metadata = FileMetadataDo(
@@ -354,6 +373,7 @@ class FileService:
             created_by=getattr(request.state, "user_id", None),
         )
         request.state.mysql.add(metadata)
+        cls._register_pending_storage(request, metadata)
         return metadata
 
     @classmethod
@@ -375,26 +395,32 @@ class FileService:
         await FileSecurityService.scan_bytes(content, app_settings)
         file_id = str(uuid.uuid4())
         storage_key = cls._storage_key(file_id, original_name, app_settings)
-        if app_settings.FILE_STORAGE_BACKEND == "local":
-            target = cls._local_path(storage_key, app_settings)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            await asyncio.to_thread(target.write_bytes, content)
-        else:
-            bucket = cls._oss_bucket(app_settings)
-            await asyncio.to_thread(bucket.put_object, storage_key, content)
-        metadata = FileMetadataDo(
-            file_id=file_id,
-            tenant_id=tenant_id,
-            original_name=original_name,
-            storage_key=storage_key,
-            storage_backend=app_settings.FILE_STORAGE_BACKEND,
-            content_type=content_type,
-            file_size=len(content),
-            checksum=hashlib.sha256(content).hexdigest(),
-            created_by=created_by,
-        )
-        session.add(metadata)
-        return metadata
+        try:
+            if app_settings.FILE_STORAGE_BACKEND == "local":
+                target = cls._local_path(storage_key, app_settings)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                await asyncio.to_thread(target.write_bytes, content)
+            else:
+                bucket = cls._oss_bucket(app_settings)
+                await asyncio.to_thread(bucket.put_object, storage_key, content)
+            metadata = FileMetadataDo(
+                file_id=file_id,
+                tenant_id=tenant_id,
+                original_name=original_name,
+                storage_key=storage_key,
+                storage_backend=app_settings.FILE_STORAGE_BACKEND,
+                content_type=content_type,
+                file_size=len(content),
+                checksum=hashlib.sha256(content).hexdigest(),
+                created_by=created_by,
+            )
+            session.add(metadata)
+            return metadata
+        except Exception:
+            await cls._delete_storage_key(
+                storage_key, app_settings.FILE_STORAGE_BACKEND, app_settings
+            )
+            raise
 
     @classmethod
     async def get_metadata(cls, file_id: str, request: Request) -> FileMetadataDo:
@@ -494,8 +520,17 @@ class FileService:
         cls, metadata: FileMetadataDo, app_settings: Settings
     ) -> None:
         """删除存储后端中的文件内容，不触碰数据库元数据。"""
-        if metadata.storage_backend == "local":
-            cls._local_path(metadata.storage_key, app_settings).unlink(missing_ok=True)
+        await cls._delete_storage_key(
+            metadata.storage_key, metadata.storage_backend, app_settings
+        )
+
+    @classmethod
+    async def _delete_storage_key(
+        cls, storage_key: str, storage_backend: str, app_settings: Settings
+    ) -> None:
+        """删除指定存储对象；补偿清理要求本地和 OSS 行为一致。"""
+        if storage_backend == "local":
+            cls._local_path(storage_key, app_settings).unlink(missing_ok=True)
         else:
             bucket = cls._oss_bucket(app_settings)
-            await asyncio.to_thread(bucket.delete_object, metadata.storage_key)
+            await asyncio.to_thread(bucket.delete_object, storage_key)

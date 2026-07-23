@@ -163,9 +163,10 @@ class JobScheduler:
                     ex=self._lock_ttl,
                     nx=True,
                 )
-            except TypeError:
-                acquired = True
-            if not acquired and not hasattr(self._redis, "_data"):
+            except Exception as exc:
+                logger.exception("定时任务锁服务不可用", job_id=job_id)
+                return "failed", f"任务锁不可用: {exc}"
+            if not acquired:
                 return "skipped", "任务正在其他实例执行"
             lock_acquired = True
             heartbeat_task = asyncio.create_task(self._renew_lock(lock_key, lock_value))

@@ -24,12 +24,22 @@ class InMemoryRedis:
         self._purge_expired(key)
         return self._data.get(key)
 
-    async def set(self, key: str, value: str, ex: int | None = None) -> None:
+    async def set(
+        self,
+        key: str,
+        value: str,
+        ex: int | None = None,
+        nx: bool = False,
+    ) -> bool | None:
+        self._purge_expired(key)
+        if nx and key in self._data:
+            return None
         self._data[key] = str(value)
         if ex is None:
             self._expires_at.pop(key, None)
         else:
             self._expires_at[key] = time.monotonic() + ex
+        return True
 
     async def delete(self, key: str) -> None:
         self._data.pop(key, None)

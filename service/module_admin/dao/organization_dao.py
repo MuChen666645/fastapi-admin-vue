@@ -5,7 +5,11 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
-from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
+from module_admin.dao.tenant_scope import (
+    require_tenant_id,
+    tenant_clause,
+    tenant_member_clause,
+)
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.service.data_scope_service import DataScopeService
@@ -162,7 +166,7 @@ class OrganizationDao:
             select(UserDo.id)
             .where(
                 UserDo.dept_id == dept_id,
-                UserDo.tenant_id == require_tenant_id(request),
+                tenant_member_clause(UserDo, require_tenant_id(request)),
             )
             .limit(1)
         )

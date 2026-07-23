@@ -11,10 +11,11 @@ from email.message import EmailMessage
 import httpx
 from fastapi import HTTPException, Request
 from loguru import logger
-from sqlmodel import delete
+from sqlmodel import delete, select
 
 from config.env import settings
 from module_admin.auth.authorization import Auth
+from module_admin.dao.tenant_scope import tenant_member_clause
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo
 from module_admin.entity.dto.user_dto import (
@@ -99,7 +100,9 @@ class PasswordResetService:
         request: Request,
     ) -> dict[str, str]:
         """申请密码找回，统一返回结果避免账号枚举。"""
-        user = await UserDao.get_user_by_identifier(data.identifier, request)
+        user = await UserDao.get_user_by_identifier(
+            data.identifier, request, tenant_id=data.tenant_id
+        )
         if user is None:
             return {"message": "如果账号存在，密码找回通知将发送到已绑定渠道"}
         destination = user.email if data.channel == "email" else user.phone
@@ -113,11 +116,13 @@ class PasswordResetService:
         await mysql.execute(
             delete(PasswordResetTokenDo).where(
                 PasswordResetTokenDo.user_id == user.id,
+                PasswordResetTokenDo.tenant_id == data.tenant_id,
                 PasswordResetTokenDo.consumed_at.is_(None),
             )
         )
         mysql.add(
             PasswordResetTokenDo(
+                tenant_id=data.tenant_id,
                 user_id=user.id,
                 channel=data.channel,
                 token_hash=cls._token_hash(token),
@@ -141,12 +146,19 @@ class PasswordResetService:
     ) -> dict[str, str]:
         """验证令牌后更新密码并撤销全部登录会话。"""
         reset = await UserDao.get_password_reset_token(
-            cls._token_hash(data.token), request
+            cls._token_hash(data.token), data.tenant_id, request
         )
         now = now_utc8_naive()
         if reset is None or reset.expires_at <= now:
             raise HTTPException(status_code=400, detail="密码找回令牌无效或已过期")
-        user = await request.state.mysql.get(UserDo, reset.user_id)
+        user_result = await request.state.mysql.execute(
+            select(UserDo).where(
+                UserDo.id == reset.user_id,
+                tenant_member_clause(UserDo, data.tenant_id),
+                UserDo.deleted_at.is_(None),
+            )
+        )
+        user = user_result.scalars().first()
         if user is None:
             raise HTTPException(status_code=400, detail="密码找回令牌无效或已过期")
         await UserService._validate_new_password(data.password, user, request)

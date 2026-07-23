@@ -20,6 +20,7 @@ from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.notice_do import NoticeDo
+from module_admin.entity.do.notification_do import NotificationDeliveryDo
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.permission_audit_do import PermissionChangeVersionDo
 from module_admin.entity.do.permission_do import PermissionDo
@@ -607,6 +608,18 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 notice_title,
             )
             case.notice_ids.append(notice_id)
+            async with app.state.mysql_session_factory() as session:
+                delivery_result = await session.execute(
+                    select(NotificationDeliveryDo).where(
+                        NotificationDeliveryDo.notice_id == notice_id,
+                        NotificationDeliveryDo.tenant_id
+                        == settings.DEFAULT_TENANT_ID,
+                        NotificationDeliveryDo.user_id == case.admin_user_id,
+                    )
+                )
+                deliveries = list(delivery_result.scalars().all())
+                assert len(deliveries) == 1
+                assert deliveries[0].status == "delivered"
             _assert_success(
                 await client.put(
                     f"/api/v1/notice/{notice_id}",
