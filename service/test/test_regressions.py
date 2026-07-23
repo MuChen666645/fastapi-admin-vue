@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from config.env import settings
 from config.mysql_serve import bind_request_mysql_session
 from module_admin.auth.authorization import Auth
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.export_do import ExportTaskDo
 from module_admin.entity.do.file_do import FileMetadataDo
@@ -115,10 +116,10 @@ def test_password_reset_invalid_token_is_rejected_for_requested_tenant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def run() -> None:
-        async def missing(*_args, **_kwargs):
-            return None
+        async def consume(*_args, **_kwargs):
+            return False
 
-        monkeypatch.setattr(UserDao, "get_password_reset_token", missing)
+        monkeypatch.setattr(UserDao, "consume_password_reset_token", consume)
         request = SimpleNamespace(state=SimpleNamespace(mysql=object()))
         data = ConfirmPasswordResetRequestDto(
             tenant_id=9, token="x" * 48, password="New-Password1!"
@@ -211,15 +212,14 @@ def test_password_reset_confirm_updates_password_and_consumes_token(
         class Mysql:
             def __init__(self):
                 self.added = []
+                self.calls = 0
 
             async def execute(self, _statement):
-                return Result([user])
+                self.calls += 1
+                return Result([reset] if self.calls == 1 else [user])
 
             def add(self, item):
                 self.added.append(item)
-
-        async def get_token(*_args, **_kwargs):
-            return reset
 
         async def validate(*_args, **_kwargs):
             return None
@@ -233,7 +233,10 @@ def test_password_reset_confirm_updates_password_and_consumes_token(
         async def revoke(*_args, **_kwargs):
             return None
 
-        monkeypatch.setattr(UserDao, "get_password_reset_token", get_token)
+        async def consume(*_args, **_kwargs):
+            return True
+
+        monkeypatch.setattr(UserDao, "consume_password_reset_token", consume)
         monkeypatch.setattr(UserService, "_validate_new_password", validate)
         monkeypatch.setattr(UserDao, "update_password_without_scope", update)
         monkeypatch.setattr(UserService, "_record_login", record)
@@ -365,14 +368,9 @@ def test_notification_delivery_ignores_removed_tenant_members(
             notice_id=5,
             user_id=3,
             channel="webhook",
+            status="sending",
+            lease_token="lease",
         )
-        notice = NoticeDo(
-            id=5,
-            tenant_id=9,
-            notice_title="Tenant notice",
-            notice_content="Content",
-        )
-        user = UserDo(id=3, username="member", password="password", tenant_id=1)
 
         class Session:
             async def __aenter__(self):
@@ -382,22 +380,23 @@ def test_notification_delivery_ignores_removed_tenant_members(
                 return False
 
             async def execute(self, _statement):
-                return Result([item])
+                return Result([])
 
-            async def get(self, model, _item_id):
-                return notice if model is NoticeDo else user
+            async def get(self, _model, _item_id):
+                return item
 
             async def commit(self):
                 return None
 
-        async def deliver(*_args):
-            return None
+        delivered = await NotificationService._deliver_claim(
+            1,
+            "lease",
+            lambda: Session(),
+            settings,
+        )
 
-        monkeypatch.setattr(NotificationService, "_deliver", deliver)
-        delivered = await NotificationService.deliver_pending(lambda: Session())
-
-        assert delivered == 1
-        assert item.status == "delivered"
+        assert delivered == 0
+        assert item.status == "cancelled"
 
     anyio.run(run)
 
@@ -575,12 +574,16 @@ def test_external_login_adds_tenant_membership_for_new_user(
         async def token_response(user, _request):
             return {"user_id": user.id}
 
+        async def active_tenant(*_args, **_kwargs):
+            return object()
+
         mysql = Mysql()
         request = SimpleNamespace(
             state=SimpleNamespace(mysql=mysql, tenant_id=9),
             app=SimpleNamespace(state=SimpleNamespace()),
         )
         monkeypatch.setattr(UserDao, "get_user_by_external_subject", no_user)
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
         monkeypatch.setattr(MfaService, "verify_login", verify)
         monkeypatch.setattr(
             "module_admin.service.external_identity_service.UserService._create_token_response",

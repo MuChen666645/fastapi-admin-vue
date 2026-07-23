@@ -1,6 +1,6 @@
 """外部身份认证接口。"""
 
-from fastapi import APIRouter, Form, Query, Request
+from fastapi import APIRouter, Form, Query, Request, Response
 
 from config.env import settings
 from config.rate_limit import limiter
@@ -20,9 +20,9 @@ class ExternalAuthController:
         responses={200: {"model": ApiResponseDto[ExternalAuthStartDto]}},
     )
     @limiter.limit(settings.RATE_LIMIT_EXTERNAL_AUTH)
-    async def oidc_start(request: Request):
+    async def oidc_start(request: Request, response: Response):
         """生成 OIDC 授权地址。"""
-        return await ExternalIdentityService.start_oidc(request)
+        return await ExternalIdentityService.start_oidc(request, response)
 
     @auth.get(
         "/oidc/callback",
@@ -32,13 +32,14 @@ class ExternalAuthController:
     @limiter.limit(settings.RATE_LIMIT_EXTERNAL_AUTH)
     async def oidc_callback(
         request: Request,
+        response: Response,
         code: str = Query(description="授权码"),
         state: str = Query(description="一次性状态参数"),
         mfa_code: str | None = Query(default=None, description="MFA 验证码或恢复码"),
     ):
         """验证 OIDC 回调并签发本地令牌。"""
         return await ExternalIdentityService.callback_oidc(
-            code, state, request, mfa_code
+            code, state, request, mfa_code, response
         )
 
     @auth.post(

@@ -215,6 +215,7 @@ NOTIFICATION_WEBHOOK_URL=
 NOTIFICATION_SMS_WEBHOOK=
 NOTIFICATION_RETRY_MAX_ATTEMPTS=5
 NOTIFICATION_RETRY_BASE_SECONDS=30
+NOTIFICATION_DELIVERY_LEASE_SECONDS=300
 BACKUP_DIR=backups
 BACKUP_ENCRYPTION_KEY=
 BACKUP_RETENTION_DAYS=30
@@ -631,7 +632,7 @@ Authorization: Bearer <access_token>
 - 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
 - 用户、角色和字典支持异步导出：调用对应的 `/export/async` 创建任务，再轮询 `/export/tasks/{task_id}`，完成后通过 `/export/tasks/{task_id}/download` 下载。
 - 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /api/v1/notice/inbox/list`、`POST /api/v1/notice/{notice_id}/read`。
-- 通知支持收件箱、Webhook、邮件和短信渠道，外部投递失败按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
+- 通知支持收件箱、Webhook、邮件和短信渠道，使用 `NOTIFICATION_DELIVERY_LEASE_SECONDS` 防止多实例重复认领，并按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
 - 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/api/v1/ops/backup/create` 执行；`verify` 命令和 `/api/v1/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/api/v1/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。备份使用 Fernet 加密并按保留天数清理。
 
 ### 定时任务与可观测性
@@ -1276,7 +1277,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
 - Users, roles, and dictionaries also support persistent asynchronous exports: call `/export/async`, poll `/export/tasks/{task_id}`, and download from `/export/tasks/{task_id}/download` after completion.
 - Notices support recipients, inbox queries, unread filtering, and read state through `GET /api/v1/notice/inbox/list` and `POST /api/v1/notice/{notice_id}/read`.
-- Notices support inbox, webhook, email, and SMS delivery. External delivery failures retry with bounded exponential backoff using `NOTIFICATION_RETRY_MAX_ATTEMPTS` and `NOTIFICATION_RETRY_BASE_SECONDS`.
+- Notices support inbox, webhook, email, and SMS delivery. External delivery failures use a database-backed lease plus bounded exponential backoff using `NOTIFICATION_DELIVERY_LEASE_SECONDS`, `NOTIFICATION_RETRY_MAX_ATTEMPTS`, and `NOTIFICATION_RETRY_BASE_SECONDS`.
 - Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/api/v1/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/api/v1/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/api/v1/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Backups are Fernet-encrypted and cleaned up according to the retention policy.
 
 ### Jobs and observability

@@ -94,12 +94,11 @@ class MenuDao:
             "code": menu.perms,
             "module": menu.perms.split(":")[0],
             "permission_type": "button",
-            "status": menu.status,
             "remark": menu.remark,
             "update_time": now_utc8_naive(),
         }
         if permission is None:
-            mysql.add(PermissionDo(**permission_data))
+            mysql.add(PermissionDo(status="1", **permission_data))
             return
 
         permission.sqlmodel_update(permission_data)

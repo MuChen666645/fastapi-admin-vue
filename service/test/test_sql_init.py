@@ -20,7 +20,8 @@ def test_organization_and_dictionary_seed_data_exists() -> None:
 
     assert "INSERT IGNORE INTO departments" in sql
     assert "INSERT IGNORE INTO posts" in sql
-    assert "INSERT IGNORE INTO user_post" in sql
+    assert "INSERT IGNORE INTO user_role (tenant_id, user_id, role_id)" in sql
+    assert "INSERT IGNORE INTO user_post (tenant_id, user_id, post_id)" in sql
     assert "'sys_user_sex'" in sql
     assert "'sys_normal_disable'" in sql
     assert "'sys_yes_no'" in sql

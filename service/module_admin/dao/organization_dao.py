@@ -6,6 +6,7 @@ from fastapi_pagination.ext.sqlmodel import paginate
 from sqlmodel import select
 
 from module_admin.dao.tenant_scope import (
+    current_tenant_id,
     require_tenant_id,
     tenant_clause,
     tenant_member_clause,
@@ -234,7 +235,12 @@ class OrganizationDao:
         if post is None:
             return "岗位不存在"
         user_result = await mysql.execute(
-            select(UserPostDo.user_id).where(UserPostDo.post_id == post_id).limit(1)
+            select(UserPostDo.user_id)
+            .where(
+                UserPostDo.post_id == post_id,
+                UserPostDo.tenant_id == current_tenant_id(request),
+            )
+            .limit(1)
         )
         if user_result.scalars().first() is not None:
             return "岗位已分配用户，不能删除"

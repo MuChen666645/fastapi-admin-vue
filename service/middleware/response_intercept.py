@@ -75,4 +75,6 @@ class ResponseInterceptor(BaseHTTPMiddleware):
                 },
                 headers={"Retry-After": retry_after} if retry_after else None,
             )
+        for header_value in response.headers.getlist("set-cookie"):
+            data.headers.append("set-cookie", header_value)
         return data

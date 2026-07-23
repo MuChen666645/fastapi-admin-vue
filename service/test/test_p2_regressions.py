@@ -12,6 +12,7 @@ from interceptors.http_intercept import ApiExceptionInterception
 from middleware.response_intercept import ResponseInterceptor
 from module_admin.auth.authorization import Auth
 from module_admin.dao.role_dao import RoleCodeConflictError, RoleDao
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.dto.role_dto import CreateRoleDto
@@ -43,6 +44,7 @@ def test_disabled_users_cannot_get_tokens_from_either_login_path(
                 username="disabled-user",
                 password="hashed-password",
                 status="0",
+                tenant_id=1,
             )
 
         async def get_user_by_phone(*args, **kwargs):
@@ -51,6 +53,7 @@ def test_disabled_users_cannot_get_tokens_from_either_login_path(
                 username="disabled-user",
                 password="hashed-password",
                 status="0",
+                tenant_id=1,
             )
 
         async def no_op(*args, **kwargs):
@@ -67,6 +70,15 @@ def test_disabled_users_cannot_get_tokens_from_either_login_path(
         monkeypatch.setattr(UserService, "_ensure_login_ip_allowed", no_op)
         monkeypatch.setattr(UserService, "_record_login", no_op)
         monkeypatch.setattr(Auth, "create_login_token", unexpected_token)
+
+        async def active_tenant(*args, **kwargs):
+            return SimpleNamespace(id=1)
+
+        async def active_member(*args, **kwargs):
+            return SimpleNamespace(user_id=1, tenant_id=1)
+
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
+        monkeypatch.setattr(TenantDao, "get_member", active_member)
 
         username_login = LoginUserRequestByUsernameDto(
             username="disabled-user",

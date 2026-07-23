@@ -3,15 +3,18 @@
 import asyncio
 import base64
 import hashlib
+import hmac
 import json
 import secrets
 from urllib.parse import urlencode
 
 import httpx
 import jwt
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
+from ldap3.utils.conv import escape_filter_chars
 
 from config.env import settings
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.tenant_scope import login_tenant_id
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.tenant_do import TenantMemberDo
@@ -25,10 +28,13 @@ class ExternalIdentityService:
     """统一处理 OIDC/OAuth、LDAP 和企业 SSO 登录。"""
 
     STATE_PREFIX = "auth:oidc:state:"
+    STATE_COOKIE_NAME = "oidc_state_binding"
     STATE_TTL_SECONDS = 600
 
     @classmethod
-    async def start_oidc(cls, request: Request) -> dict[str, str]:
+    async def start_oidc(
+        cls, request: Request, response: Response | None = None
+    ) -> dict[str, str]:
         """生成一次性 OAuth/OIDC 授权地址和 state。"""
         cls._ensure_oidc_configured()
         state = secrets.token_urlsafe(32)
@@ -41,12 +47,29 @@ class ExternalIdentityService:
             .rstrip(b"=")
             .decode("ascii")
         )
-        payload = json.dumps({"nonce": nonce, "code_verifier": code_verifier})
+        browser_binding = secrets.token_urlsafe(32)
+        payload = json.dumps(
+            {
+                "nonce": nonce,
+                "code_verifier": code_verifier,
+                "browser_binding": browser_binding,
+            }
+        )
         await request.app.state.redis.set(
             f"{cls.STATE_PREFIX}{state}",
             payload,
             ex=cls.STATE_TTL_SECONDS,
         )
+        if response is not None:
+            response.set_cookie(
+                cls.STATE_COOKIE_NAME,
+                browser_binding,
+                max_age=cls.STATE_TTL_SECONDS,
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite="lax",
+                path=f"{settings.API_V1_PREFIX}/auth/oidc",
+            )
         query = urlencode(
             {
                 "response_type": "code",
@@ -66,14 +89,19 @@ class ExternalIdentityService:
 
     @classmethod
     async def callback_oidc(
-        cls, code: str, state: str, request: Request, mfa_code: str | None = None
+        cls,
+        code: str,
+        state: str,
+        request: Request,
+        mfa_code: str | None = None,
+        response: Response | None = None,
     ):
         """验证 state、交换 code 并登录或创建本地映射用户。"""
         cls._ensure_oidc_configured()
         state_key = f"{cls.STATE_PREFIX}{state}"
-        raw_state = await request.app.state.redis.get(state_key)
-        await request.app.state.redis.delete(state_key)
+        raw_state = await cls._consume_state(request.app.state.redis, state_key)
         if raw_state is None:
+            cls._clear_state_cookie(response)
             raise HTTPException(status_code=400, detail="外部登录 state 无效或已过期")
         try:
             state_payload = json.loads(
@@ -81,8 +109,17 @@ class ExternalIdentityService:
             )
             nonce = str(state_payload["nonce"])
             code_verifier = str(state_payload["code_verifier"])
+            browser_binding = str(state_payload["browser_binding"])
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            cls._clear_state_cookie(response)
             raise HTTPException(status_code=400, detail="外部登录 state 无效") from exc
+        cookie_binding = request.cookies.get(cls.STATE_COOKIE_NAME)
+        if not cookie_binding or not hmac.compare_digest(
+            cookie_binding, browser_binding
+        ):
+            cls._clear_state_cookie(response)
+            raise HTTPException(status_code=400, detail="外部登录 state 与浏览器会话不匹配")
+        cls._clear_state_cookie(response)
         async with httpx.AsyncClient(timeout=10) as client:
             token_response = await client.post(
                 settings.OIDC_TOKEN_URL,
@@ -144,31 +181,68 @@ class ExternalIdentityService:
             except ImportError as exc:
                 raise RuntimeError("LDAP 依赖未安装") from exc
             server = Server(settings.LDAP_SERVER_URL, get_info=ALL)
-            bind_dn = settings.LDAP_BIND_DN or username
+            if not password:
+                raise ValueError("LDAP 密码不能为空")
+            if settings.LDAP_BIND_DN:
+                service_connection = Connection(
+                    server,
+                    user=settings.LDAP_BIND_DN,
+                    password=settings.LDAP_BIND_PASSWORD,
+                    auto_bind=True,
+                )
+                try:
+                    search_filter = settings.LDAP_USER_FILTER.format(
+                        username=escape_filter_chars(username)
+                    )
+                    service_connection.search(
+                        settings.LDAP_BASE_DN,
+                        search_filter,
+                        attributes=["uid", "mail", "displayName"],
+                    )
+                    if len(service_connection.entries) != 1:
+                        raise ValueError("LDAP 用户不存在或不唯一")
+                    entry = service_connection.entries[0]
+                    user_dn = entry.entry_dn
+                    claims = {
+                        "sub": str(entry.uid.value),
+                        "email": getattr(entry.mail, "value", None),
+                        "name": getattr(entry.displayName, "value", username),
+                    }
+                finally:
+                    service_connection.unbind()
+                user_connection = Connection(
+                    server,
+                    user=user_dn,
+                    password=password,
+                    auto_bind=True,
+                )
+                user_connection.unbind()
+                return claims
+
             connection = Connection(
                 server,
-                user=bind_dn,
-                password=(
-                    password
-                    if not settings.LDAP_BIND_DN
-                    else settings.LDAP_BIND_PASSWORD
-                ),
+                user=username,
+                password=password,
                 auto_bind=True,
             )
-            connection.search(
-                settings.LDAP_BASE_DN,
-                settings.LDAP_USER_FILTER.format(username=username),
-                attributes=["uid", "mail", "displayName"],
-            )
-            entry = connection.entries[0] if connection.entries else None
-            connection.unbind()
-            if entry is None:
-                raise ValueError("LDAP 用户不存在")
-            return {
-                "sub": str(entry.uid.value),
-                "email": getattr(entry.mail, "value", None),
-                "name": getattr(entry.displayName, "value", username),
-            }
+            try:
+                connection.search(
+                    settings.LDAP_BASE_DN,
+                    settings.LDAP_USER_FILTER.format(
+                        username=escape_filter_chars(username)
+                    ),
+                    attributes=["uid", "mail", "displayName"],
+                )
+                entry = connection.entries[0] if connection.entries else None
+                if entry is None:
+                    return {"sub": username, "email": None, "name": username}
+                return {
+                    "sub": str(entry.uid.value),
+                    "email": getattr(entry.mail, "value", None),
+                    "name": getattr(entry.displayName, "value", username),
+                }
+            finally:
+                connection.unbind()
 
         try:
             claims = await asyncio.to_thread(authenticate)
@@ -197,6 +271,8 @@ class ExternalIdentityService:
         if not subject:
             raise HTTPException(status_code=401, detail="外部身份缺少主体标识")
         tenant_id = login_tenant_id(request)
+        if await TenantDao.get(tenant_id, request) is None:
+            raise HTTPException(status_code=403, detail="当前租户不可用")
         request.state.tenant_id = tenant_id
         user = await UserDao.get_user_by_external_subject(
             provider,
@@ -236,7 +312,7 @@ class ExternalIdentityService:
             user.auth_subject = subject
         if str(user.status) != "1":
             raise HTTPException(status_code=403, detail="用户已停用")
-        await MfaService.verify_login(user, mfa_code)
+        await MfaService.verify_login(user, mfa_code, request)
         return await UserService._create_token_response(user, request)
 
     @staticmethod
@@ -300,3 +376,25 @@ class ExternalIdentityService:
             )
         ):
             raise HTTPException(status_code=503, detail="OIDC 未完整配置")
+
+    @classmethod
+    async def _consume_state(cls, redis, state_key: str):
+        """原子读取并删除 OIDC state，防止并发回调重复消费。"""
+        getdel = getattr(redis, "getdel", None)
+        if getdel is not None:
+            return await getdel(state_key)
+        result = await redis.eval(
+            "local value = redis.call('get', KEYS[1]); "
+            "if value then redis.call('del', KEYS[1]); end; return value",
+            1,
+            state_key,
+        )
+        return result
+
+    @classmethod
+    def _clear_state_cookie(cls, response: Response | None) -> None:
+        if response is not None:
+            response.delete_cookie(
+                cls.STATE_COOKIE_NAME,
+                path=f"{settings.API_V1_PREFIX}/auth/oidc",
+            )

@@ -38,6 +38,17 @@ class FileService:
             request.state.pending_storage_objects = pending
         pending.append((metadata, FileService._settings(request)))
 
+    @staticmethod
+    def _register_pending_chunk(
+        request: Request, upload_id: str, app_settings: Settings
+    ) -> None:
+        """登记分片目录，数据库回滚时立即清理未提交的临时目录。"""
+        pending = getattr(request.state, "pending_chunk_dirs", None)
+        if pending is None:
+            pending = []
+            request.state.pending_chunk_dirs = pending
+        pending.append((upload_id, app_settings))
+
     @classmethod
     async def cleanup_expired_chunks(
         cls, session_factory, app_settings: Settings
@@ -66,10 +77,42 @@ class FileService:
                 if (
                     candidate.is_dir()
                     and not candidate.is_symlink()
+                    and candidate.name != ".pending"
                     and datetime.fromtimestamp(candidate.stat().st_mtime) < cutoff
                 ):
                     shutil.rmtree(candidate, ignore_errors=True)
                     removed += 1
+        pending_root = chunk_root / ".pending"
+        if pending_root.is_dir():
+            async with session_factory() as session:
+                for manifest_path in pending_root.glob("*.json"):
+                    try:
+                        payload = json.loads(
+                            manifest_path.read_text(encoding="utf-8")
+                        )
+                        storage_key = str(payload["storage_key"])
+                        storage_backend = str(payload["storage_backend"])
+                    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                        if datetime.fromtimestamp(manifest_path.stat().st_mtime) < cutoff:
+                            manifest_path.unlink(missing_ok=True)
+                            removed += 1
+                        continue
+                    metadata_result = await session.execute(
+                        select(FileMetadataDo.file_id).where(
+                            FileMetadataDo.storage_key == storage_key
+                        )
+                    )
+                    metadata_exists = metadata_result.scalars().first() is not None
+                    expired = (
+                        datetime.fromtimestamp(manifest_path.stat().st_mtime) < cutoff
+                    )
+                    if metadata_exists or expired:
+                        if not metadata_exists:
+                            await cls._delete_storage_key(
+                                storage_key, storage_backend, app_settings
+                            )
+                        manifest_path.unlink(missing_ok=True)
+                        removed += 1
         return removed
 
     @staticmethod
@@ -131,6 +174,36 @@ class FileService:
         return target
 
     @classmethod
+    def _pending_manifest_path(cls, upload_id: str, app_settings: Settings) -> Path:
+        """返回合并阶段存储对象的崩溃恢复 manifest 路径。"""
+        chunk_dir = cls._chunk_dir(upload_id, app_settings)
+        return chunk_dir.parent / ".pending" / f"{upload_id}.json"
+
+    @classmethod
+    def _write_pending_manifest(
+        cls,
+        upload_id: str,
+        storage_key: str,
+        storage_backend: str,
+        app_settings: Settings,
+    ) -> None:
+        """在写入最终对象前持久化存储键，覆盖进程崩溃窗口。"""
+        manifest_path = cls._pending_manifest_path(upload_id, app_settings)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = manifest_path.with_suffix(".tmp")
+        temporary_path.write_text(
+            json.dumps(
+                {
+                    "storage_key": storage_key,
+                    "storage_backend": storage_backend,
+                },
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
+        temporary_path.replace(manifest_path)
+
+    @classmethod
     async def init_chunk_upload(cls, data, request: Request) -> dict:
         """创建分片上传会话。"""
         app_settings = cls._settings(request)
@@ -143,17 +216,22 @@ class FileService:
         upload_id = str(uuid.uuid4())
         chunk_dir = cls._chunk_dir(upload_id, app_settings)
         chunk_dir.mkdir(parents=True, exist_ok=False)
-        request.state.mysql.add(
-            FileChunkUploadDo(
-                upload_id=upload_id,
-                tenant_id=require_tenant_id(request),
-                created_by=getattr(request.state, "user_id", None),
-                original_name=original_name[:255],
-                content_type=data.content_type,
-                total_size=data.total_size,
-                total_chunks=data.total_chunks,
+        try:
+            request.state.mysql.add(
+                FileChunkUploadDo(
+                    upload_id=upload_id,
+                    tenant_id=require_tenant_id(request),
+                    created_by=getattr(request.state, "user_id", None),
+                    original_name=original_name[:255],
+                    content_type=data.content_type,
+                    total_size=data.total_size,
+                    total_chunks=data.total_chunks,
+                )
             )
-        )
+            cls._register_pending_chunk(request, upload_id, app_settings)
+        except Exception:
+            shutil.rmtree(chunk_dir, ignore_errors=True)
+            raise
         return {"upload_id": upload_id, "total_chunks": data.total_chunks}
 
     @classmethod
@@ -244,6 +322,12 @@ class FileService:
         if app_settings.FILE_STORAGE_BACKEND == "local":
             file_id = str(uuid.uuid4())
             storage_key = cls._storage_key(file_id, item.original_name, app_settings)
+            cls._write_pending_manifest(
+                upload_id,
+                storage_key,
+                app_settings.FILE_STORAGE_BACKEND,
+                app_settings,
+            )
             target = cls._local_path(storage_key, app_settings)
             target.parent.mkdir(parents=True, exist_ok=True)
             await FileSecurityService.scan_path(assembled_path, app_settings)
@@ -252,6 +336,12 @@ class FileService:
             await FileSecurityService.scan_bytes(bytes(content), app_settings)
             file_id = str(uuid.uuid4())
             storage_key = cls._storage_key(file_id, item.original_name, app_settings)
+            cls._write_pending_manifest(
+                upload_id,
+                storage_key,
+                app_settings.FILE_STORAGE_BACKEND,
+                app_settings,
+            )
             bucket = cls._oss_bucket(app_settings)
             await asyncio.to_thread(bucket.put_object, storage_key, bytes(content))
         metadata = FileMetadataDo(
@@ -265,8 +355,8 @@ class FileService:
             checksum=checksum.hexdigest(),
             created_by=item.created_by,
         )
-        session.add(metadata)
         cls._register_pending_storage(request, metadata)
+        session.add(metadata)
         await session.delete(item)
         shutil.rmtree(chunk_dir, ignore_errors=True)
         return metadata
@@ -372,8 +462,8 @@ class FileService:
             checksum=checksum.hexdigest(),
             created_by=getattr(request.state, "user_id", None),
         )
-        request.state.mysql.add(metadata)
         cls._register_pending_storage(request, metadata)
+        request.state.mysql.add(metadata)
         return metadata
 
     @classmethod

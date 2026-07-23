@@ -145,11 +145,20 @@ class PasswordResetService:
         request: Request,
     ) -> dict[str, str]:
         """验证令牌后更新密码并撤销全部登录会话。"""
-        reset = await UserDao.get_password_reset_token(
-            cls._token_hash(data.token), data.tenant_id, request
-        )
         now = now_utc8_naive()
-        if reset is None or reset.expires_at <= now:
+        token_hash = cls._token_hash(data.token)
+        if not await UserDao.consume_password_reset_token(
+            token_hash, data.tenant_id, now, request
+        ):
+            raise HTTPException(status_code=400, detail="密码找回令牌无效或已过期")
+        reset_result = await request.state.mysql.execute(
+            select(PasswordResetTokenDo).where(
+                PasswordResetTokenDo.token_hash == token_hash,
+                PasswordResetTokenDo.tenant_id == data.tenant_id,
+            )
+        )
+        reset = reset_result.scalars().first()
+        if reset is None:
             raise HTTPException(status_code=400, detail="密码找回令牌无效或已过期")
         user_result = await request.state.mysql.execute(
             select(UserDo).where(

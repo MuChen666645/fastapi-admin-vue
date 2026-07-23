@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from module_admin.dao.menu_dao import MenuDao
 from module_admin.dao.role_dao import RoleDao
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.dto.menu_dto import CreateMenuByButtonDto, UpdMenuDto
 from module_admin.entity.dto.role_dto import (
@@ -79,6 +80,7 @@ def test_phone_login_rejects_wrong_password_before_captcha(
                 username="operator",
                 phone="13800138000",
                 password="hashed-password",
+                tenant_id=1,
             )
 
         async def verify_captcha(*args, **kwargs):
@@ -88,10 +90,18 @@ def test_phone_login_rejects_wrong_password_before_captcha(
         async def record_login(*args, **kwargs):
             return None
 
+        async def active_tenant(*args, **kwargs):
+            return SimpleNamespace(id=1)
+
+        async def active_member(*args, **kwargs):
+            return SimpleNamespace(user_id=2, tenant_id=1)
+
         monkeypatch.setattr(UserDao, "get_user_by_phone", get_user)
         monkeypatch.setattr(FastApiAdmin, "verify_password", lambda *args: False)
         monkeypatch.setattr(CodeService, "verify_captcha_services", verify_captcha)
         monkeypatch.setattr(UserService, "_record_login", record_login)
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
+        monkeypatch.setattr(TenantDao, "get_member", active_member)
 
         users = LoginUserRequestByPhoneDto(
             phone="13800138000",

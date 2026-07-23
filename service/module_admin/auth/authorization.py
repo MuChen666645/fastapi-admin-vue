@@ -757,14 +757,18 @@ return {1, raw}
     @staticmethod
     async def _get_tenant_member(request: Request, user_id: int, tenant_id: int):
         """查询有效租户成员关系，所有受保护请求共用此校验。"""
-        from module_admin.entity.do.tenant_do import TenantMemberDo
+        from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
 
         result = await request.state.mysql.execute(
-            select(TenantMemberDo).where(
+            select(TenantMemberDo)
+            .join(TenantDo, TenantDo.id == TenantMemberDo.tenant_id)
+            .where(
                 TenantMemberDo.user_id == user_id,
                 TenantMemberDo.tenant_id == tenant_id,
                 TenantMemberDo.status == "1",
                 TenantMemberDo.deleted_at.is_(None),
+                TenantDo.status == "1",
+                TenantDo.deleted_at.is_(None),
             )
         )
         return result.scalars().first()

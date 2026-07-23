@@ -1,5 +1,6 @@
 """MySQL 连接和请求会话配置。"""
 
+import shutil
 from collections.abc import AsyncIterator
 from typing import Union
 
@@ -23,6 +24,20 @@ async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
             await session.commit()
         except BaseException:
             await session.rollback()
+            pending_chunk_dirs = getattr(request.state, "pending_chunk_dirs", [])
+            for upload_id, app_settings in reversed(pending_chunk_dirs):
+                try:
+                    from module_admin.service.file_service import FileService
+
+                    shutil.rmtree(
+                        FileService._chunk_dir(upload_id, app_settings),
+                        ignore_errors=True,
+                    )
+                except Exception:
+                    logger.exception(
+                        "数据库回滚后的分片目录补偿清理失败",
+                        upload_id=upload_id,
+                    )
             pending = getattr(request.state, "pending_storage_objects", [])
             if pending:
                 from module_admin.service.file_service import FileService
@@ -37,6 +52,7 @@ async def bind_request_mysql_session(request: Request) -> AsyncIterator[None]:
                         )
             raise
         finally:
+            request.state.pending_chunk_dirs = []
             request.state.pending_storage_objects = []
             request.state.mysql = None
 

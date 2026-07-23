@@ -1,7 +1,7 @@
 """权限数据访问层。"""
 
 from fastapi import Request
-from sqlalchemy import or_
+from sqlalchemy import false, or_
 from sqlmodel import select
 
 from config.env import settings
@@ -16,13 +16,14 @@ class PermissionDao:
     """权限查询方法。"""
 
     @staticmethod
-    def _role_assignment_filter(user_id: int):
+    def _role_assignment_filter(user_id: int, tenant_id: int | None):
         """按现代用户角色关联和历史角色字段匹配用户角色。"""
         legacy_role_id = (
             select(UserDo.role_id).where(UserDo.id == user_id).scalar_subquery()
         )
         assigned_role_ids = select(UserRoleDo.role_id).where(
-            UserRoleDo.user_id == user_id
+            UserRoleDo.user_id == user_id,
+            UserRoleDo.tenant_id == tenant_id if tenant_id is not None else false(),
         )
         return or_(
             RoleDo.id == legacy_role_id,
@@ -55,7 +56,7 @@ class PermissionDao:
         """先检查超级管理员通配权限，再检查精确菜单权限。"""
         mysql = request.state.mysql
         tenant_id = current_tenant_id(request)
-        role_assignment = PermissionDao._role_assignment_filter(user_id)
+        role_assignment = PermissionDao._role_assignment_filter(user_id, tenant_id)
         user_tenant = PermissionDao._user_tenant_filter(user_id, tenant_id, request)
         role_tenant = PermissionDao._role_tenant_filter(tenant_id)
         wildcard_stmt = (
@@ -109,7 +110,7 @@ class PermissionDao:
         mysql = request.state.mysql
         permission_code = f"field:{resource}:{field_name}"
         tenant_id = current_tenant_id(request)
-        role_assignment = PermissionDao._role_assignment_filter(user_id)
+        role_assignment = PermissionDao._role_assignment_filter(user_id, tenant_id)
         user_tenant = PermissionDao._user_tenant_filter(user_id, tenant_id, request)
         role_tenant = PermissionDao._role_tenant_filter(tenant_id)
         wildcard_query = (

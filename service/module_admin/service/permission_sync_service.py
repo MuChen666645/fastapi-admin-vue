@@ -38,19 +38,15 @@ class PermissionSyncService:
                 for code in codes:
                     discovered.add((method.upper(), route.path, code))
 
-        if not discovered:
-            return 0
         now = now_utc8_naive()
         async with session_factory() as session:
+            existing_result = await session.execute(select(ApiPermissionCatalogDo))
+            existing = {
+                (item.api_method, item.api_path, item.permission_code): item
+                for item in existing_result.scalars().all()
+            }
             for method, path, code in discovered:
-                result = await session.execute(
-                    select(ApiPermissionCatalogDo).where(
-                        ApiPermissionCatalogDo.api_method == method,
-                        ApiPermissionCatalogDo.api_path == path,
-                        ApiPermissionCatalogDo.permission_code == code,
-                    )
-                )
-                item = result.scalars().first()
+                item = existing.get((method, path, code))
                 if item is None:
                     session.add(
                         ApiPermissionCatalogDo(
@@ -65,5 +61,8 @@ class PermissionSyncService:
                 else:
                     item.status = "1"
                     item.last_seen_at = now
+            for key, item in existing.items():
+                if key not in discovered:
+                    item.status = "0"
             await session.commit()
         return len(discovered)

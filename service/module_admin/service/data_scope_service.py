@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request
 from sqlalchemy import false, func, or_, select, true
 
 from config.env import settings
-from module_admin.dao.tenant_scope import tenant_clause
+from module_admin.dao.tenant_scope import current_tenant_id, tenant_clause
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo
 from module_admin.entity.do.user_do import UserDo, UserRoleDo
@@ -19,6 +19,7 @@ class DataScope:
     actor_user_id: int
     all_data: bool
     department_ids: frozenset[int]
+    tenant_id: int | None = None
 
     def user_id_clause(self, column):
         """为用户 ID 字段构造包含操作者本人的过滤条件。"""
@@ -46,9 +47,12 @@ class DataScope:
         if self.all_data:
             return true()
         visible_users = select(UserDo.id).where(self.user_id_clause(UserDo.id))
-        return column.in_(
-            select(UserPostDo.post_id).where(UserPostDo.user_id.in_(visible_users))
+        post_query = select(UserPostDo.post_id).where(
+            UserPostDo.user_id.in_(visible_users)
         )
+        if self.tenant_id is not None:
+            post_query = post_query.where(UserPostDo.tenant_id == self.tenant_id)
+        return column.in_(post_query)
 
 
 class DataScopeService:
@@ -83,11 +87,13 @@ class DataScopeService:
             raise HTTPException(status_code=401, detail="Not Log In")
 
         mysql = request.state.mysql
+        tenant_id = current_tenant_id(request)
         legacy_role_id = (
             select(UserDo.role_id).where(UserDo.id == actor_user_id).scalar_subquery()
         )
         assigned_role_ids = select(UserRoleDo.role_id).where(
-            UserRoleDo.user_id == actor_user_id
+            UserRoleDo.user_id == actor_user_id,
+            UserRoleDo.tenant_id == tenant_id if tenant_id is not None else False,
         )
         role_result = await mysql.execute(
             select(RoleDo).where(
@@ -102,7 +108,12 @@ class DataScopeService:
             == settings.ADMIN_ROLE_CODE.strip().casefold()
             for role in roles
         ):
-            scope = DataScope(actor_user_id, all_data=True, department_ids=frozenset())
+            scope = DataScope(
+                actor_user_id,
+                all_data=True,
+                department_ids=frozenset(),
+                tenant_id=tenant_id,
+            )
             request.state.data_scope = scope
             return scope
 
@@ -152,6 +163,7 @@ class DataScopeService:
             actor_user_id,
             all_data=False,
             department_ids=frozenset(department_ids),
+            tenant_id=tenant_id,
         )
         request.state.data_scope = scope
         return scope
@@ -212,6 +224,7 @@ class DataScopeService:
             .join(PostDo, PostDo.post_id == UserPostDo.post_id)
             .where(
                 UserPostDo.post_id == post_id,
+                UserPostDo.tenant_id == current_tenant_id(request),
                 DataScopeService._tenant_filter(PostDo, request),
             )
         )

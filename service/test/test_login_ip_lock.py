@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException
 
 from config.env import settings
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.dto.user_dto import (
     LoginUserRequestByPhoneDto,
@@ -73,6 +74,7 @@ def test_ip_lock_is_shared_by_username_and_phone_login(
             username="operator",
             phone="13800138000",
             password="hashed-password",
+            tenant_id=1,
         )
         phone_query_count = 0
 
@@ -87,10 +89,18 @@ def test_ip_lock_is_shared_by_username_and_phone_login(
         async def record_login(*args, **kwargs):
             return None
 
+        async def active_tenant(*args, **kwargs):
+            return SimpleNamespace(id=1)
+
+        async def active_member(*args, **kwargs):
+            return SimpleNamespace(user_id=2, tenant_id=1)
+
         monkeypatch.setattr(UserDao, "get_user_by_username", get_user_by_username)
         monkeypatch.setattr(UserDao, "get_user_by_phone", get_user_by_phone)
         monkeypatch.setattr(FastApiAdmin, "verify_password", lambda *args: False)
         monkeypatch.setattr(UserService, "_record_login", record_login)
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
+        monkeypatch.setattr(TenantDao, "get_member", active_member)
 
         username_login = LoginUserRequestByUsernameDto(
             username="operator",

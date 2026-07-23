@@ -17,6 +17,7 @@ from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.permission_dao import PermissionDao
 from module_admin.dao.system_config_dao import SystemConfigDao
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.file_do import FileChunkUploadDo
 from module_admin.entity.do.job_do import ScheduledJobDo
@@ -524,14 +525,18 @@ def test_external_login_verifies_mfa_before_token_creation(
         async def find_identifier(*_args, **_kwargs):
             return user
 
-        async def verify_mfa(actual_user, code):
+        async def verify_mfa(actual_user, code, *_args):
             calls.append((actual_user, code))
 
         async def token_response(actual_user, _request):
             return {"user_id": actual_user.id}
 
+        async def active_tenant(*_args, **_kwargs):
+            return user
+
         monkeypatch.setattr(UserDao, "get_user_by_external_subject", find_subject)
         monkeypatch.setattr(UserDao, "get_user_by_identifier", find_identifier)
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
         monkeypatch.setattr(MfaService, "verify_login", verify_mfa)
         monkeypatch.setattr(
             "module_admin.service.external_identity_service.UserService._create_token_response",
@@ -670,9 +675,13 @@ def test_external_disabled_user_is_rejected_before_token() -> None:
         async def find_subject(*_args, **_kwargs):
             return user
 
+        async def active_tenant(*_args, **_kwargs):
+            return user
+
         request = _request(tenant_id=1)
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(UserDao, "get_user_by_external_subject", find_subject)
+        monkeypatch.setattr(TenantDao, "get", active_tenant)
         try:
             with pytest.raises(HTTPException) as exception:
                 await ExternalIdentityService._login_external_user(

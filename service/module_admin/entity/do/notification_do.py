@@ -23,5 +23,7 @@ class NotificationDeliveryDo(SQLModel, table=True):
     next_attempt_at: datetime = Field(default_factory=now_utc8_naive, index=True)
     last_error: str | None = Field(default=None, max_length=1000)
     delivered_at: datetime | None = Field(default=None)
+    lease_token: str | None = Field(default=None, max_length=64, index=True)
+    lease_until: datetime | None = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=now_utc8_naive, index=True)
     updated_at: datetime = Field(default_factory=now_utc8_naive)

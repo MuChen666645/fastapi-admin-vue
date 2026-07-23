@@ -1,11 +1,11 @@
 """集中式租户上下文和 SQL 过滤条件。"""
 
 from fastapi import HTTPException, Request
-from sqlalchemy import false
+from sqlalchemy import and_, false
 from sqlmodel import select
 
 from config.env import settings
-from module_admin.entity.do.tenant_do import TenantMemberDo
+from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
 
 
 def current_tenant_id(request: Request) -> int | None:
@@ -30,6 +30,11 @@ def tenant_member_clause(model, tenant_id: int | None):
     """按显式租户生成用户成员关系过滤条件。"""
     if tenant_id is None:
         return false()
+    active_tenant = select(TenantDo.id).where(
+        TenantDo.id == tenant_id,
+        TenantDo.status == "1",
+        TenantDo.deleted_at.is_(None),
+    ).exists()
     if getattr(model, "__tablename__", None) == "users":
         return (
             select(TenantMemberDo.user_id)
@@ -38,10 +43,11 @@ def tenant_member_clause(model, tenant_id: int | None):
                 TenantMemberDo.tenant_id == tenant_id,
                 TenantMemberDo.status == "1",
                 TenantMemberDo.deleted_at.is_(None),
+                active_tenant,
             )
             .exists()
         )
-    return model.tenant_id == tenant_id
+    return and_(model.tenant_id == tenant_id, active_tenant)
 
 
 def require_tenant_id(request: Request) -> int:

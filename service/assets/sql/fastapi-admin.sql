@@ -48,13 +48,13 @@ INSERT IGNORE INTO users (
     (1, CURRENT_TIMESTAMP, 'admin', '$5$rounds=535000$ZOQUh73DBElH3Hff$BpUOeegYosS8Y0VbHqFM.fNAxdyBUN1yHUcUKWJUSx6', 'fastapi-admin@136.com', '13688888888', 1, 100, 'fastapi-admin', '1', '', CURRENT_TIMESTAMP, '1'),
     (2, CURRENT_TIMESTAMP, 'test', '$5$rounds=535000$ZOQUh73DBElH3Hff$BpUOeegYosS8Y0VbHqFM.fNAxdyBUN1yHUcUKWJUSx6', 'fastapi-test@136.com', '13588888888', 2, 101, 'fastapi-user', '1', '', CURRENT_TIMESTAMP, '1');
 
-INSERT IGNORE INTO user_role (user_id, role_id) VALUES
-    (1, 1),
-    (2, 2);
+INSERT IGNORE INTO user_role (tenant_id, user_id, role_id) VALUES
+    (1, 1, 1),
+    (1, 2, 2);
 
-INSERT IGNORE INTO user_post (user_id, post_id) VALUES
-    (1, 100),
-    (2, 101);
+INSERT IGNORE INTO user_post (tenant_id, user_id, post_id) VALUES
+    (1, 1, 100),
+    (1, 2, 101);
 
 -- ---------------------------------------------------------------------------
 -- 3. Menus and button permissions

@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     ADMIN_ROLE_CODE: str = Field(min_length=1)
     DEFAULT_TENANT_ID: int = Field(default=1, gt=0)
     # 该值必须跟随迁移头，不能由部署配置覆盖。
-    DATABASE_SCHEMA_VERSION: str = "0024_password_reset_tenant_permissions"
+    DATABASE_SCHEMA_VERSION: str = "0025_security_consistency"
 
     # 限流、验证码和登录失败锁定策略。
     RATE_LIMIT_DEFAULT: str = Field(min_length=1)
@@ -217,6 +217,7 @@ class Settings(BaseSettings):
     NOTIFICATION_SMS_WEBHOOK: str = ""
     NOTIFICATION_RETRY_MAX_ATTEMPTS: int = Field(default=5, ge=1, le=20)
     NOTIFICATION_RETRY_BASE_SECONDS: int = Field(default=30, gt=0)
+    NOTIFICATION_DELIVERY_LEASE_SECONDS: int = Field(default=300, gt=0)
     BACKUP_DIR: str = "backups"
     BACKUP_ENCRYPTION_KEY: str = ""
     BACKUP_REHEARSAL_DATABASE: str = ""

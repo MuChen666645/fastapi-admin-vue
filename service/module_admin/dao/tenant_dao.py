@@ -18,6 +18,7 @@ class TenantDao:
         result = await request.state.mysql.execute(
             select(TenantDo).where(
                 TenantDo.id == tenant_id,
+                TenantDo.status == "1",
                 TenantDo.deleted_at.is_(None),
             )
         )

@@ -54,20 +54,23 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """恢复旧权限目录约束并删除令牌租户字段。"""
+    duplicate = op.get_bind().execute(
+        sa.text(
+            "SELECT api_path, api_method "
+            "FROM api_permission_catalog "
+            "GROUP BY api_path, api_method "
+            "HAVING COUNT(*) > 1 "
+            "LIMIT 1"
+        )
+    ).first()
+    if duplicate is not None:
+        raise RuntimeError(
+            "无法安全降级 0024：权限目录存在同一路由的多个权限，请先人工处理冲突"
+        )
     op.drop_constraint(
         "uq_api_permission_catalog_path_method_code",
         "api_permission_catalog",
         type_="unique",
-    )
-    # 旧版本只能保留同一路由的一条目录记录，先删除新增权限行避免回滚失败。
-    op.execute(
-        sa.text(
-            "DELETE duplicate FROM api_permission_catalog AS duplicate "
-            "JOIN api_permission_catalog AS retained "
-            "ON retained.api_path = duplicate.api_path "
-            "AND retained.api_method = duplicate.api_method "
-            "AND retained.id < duplicate.id"
-        )
     )
     op.create_unique_constraint(
         "uq_api_permission_catalog_path_method",

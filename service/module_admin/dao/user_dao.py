@@ -11,6 +11,7 @@ from sqlmodel import delete, select
 
 from config.env import settings
 from module_admin.dao.tenant_scope import (
+    current_tenant_id,
     require_tenant_id,
     tenant_clause,
     tenant_member_clause,
@@ -107,7 +108,14 @@ class UserDao:
             )
         )
         mysql.add_all(
-            [UserPostDo(user_id=user.id, post_id=post_id) for post_id in post_ids]
+            [
+                UserPostDo(
+                    tenant_id=user_data["tenant_id"],
+                    user_id=user.id,
+                    post_id=post_id,
+                )
+                for post_id in post_ids
+            ]
         )
         return user
 
@@ -222,6 +230,23 @@ class UserDao:
         return result.scalars().first()
 
     @staticmethod
+    async def consume_password_reset_token(
+        token_hash: str, tenant_id: int, consumed_at: datetime, request: Request
+    ) -> bool:
+        """以条件更新原子消费密码找回令牌，防止并发重放。"""
+        result = await request.state.mysql.execute(
+            update(PasswordResetTokenDo)
+            .where(
+                PasswordResetTokenDo.token_hash == token_hash,
+                PasswordResetTokenDo.tenant_id == tenant_id,
+                PasswordResetTokenDo.expires_at > consumed_at,
+                PasswordResetTokenDo.consumed_at.is_(None),
+            )
+            .values(consumed_at=consumed_at)
+        )
+        return result.rowcount == 1
+
+    @staticmethod
     async def get_user_by_id(user_id: int, request: Request) -> Union[UserDo, None]:
         """根据用户ID获取用户.
         Args:
@@ -252,7 +277,8 @@ class UserDao:
             select(UserDo.role_id).where(UserDo.id == user_id).scalar_subquery()
         )
         assigned_role_ids = select(UserRoleDo.role_id).where(
-            UserRoleDo.user_id == user_id
+            UserRoleDo.user_id == user_id,
+            UserRoleDo.tenant_id == current_tenant_id(request),
         )
         role_query = select(RoleDo).where(
             or_(RoleDo.id == legacy_role_id, RoleDo.id.in_(assigned_role_ids))
@@ -289,6 +315,7 @@ class UserDao:
             .join(RoleDo, RoleDo.id == UserRoleDo.role_id)
             .where(
                 UserRoleDo.user_id.in_(unique_user_ids),
+                UserRoleDo.tenant_id == current_tenant_id(request),
                 RoleDo.code == settings.ADMIN_ROLE_CODE,
                 UserDao._tenant_filter(request, RoleDo),
             )
@@ -322,6 +349,7 @@ class UserDao:
             .join(UserPostDo, UserPostDo.post_id == PostDo.post_id)
             .where(
                 UserPostDo.user_id == user_id,
+                UserPostDo.tenant_id == current_tenant_id(request),
                 tenant_clause(request, PostDo),
             )
             .order_by(PostDo.post_sort, PostDo.post_id)
@@ -502,9 +530,21 @@ class UserDao:
                 else "USER_NOT_FOUND"
             )
         if post_ids is not None:
-            await mysql.execute(delete(UserPostDo).where(UserPostDo.user_id == user_id))
+            await mysql.execute(
+                delete(UserPostDo).where(
+                    UserPostDo.user_id == user_id,
+                    UserPostDo.tenant_id == require_tenant_id(request),
+                )
+            )
             mysql.add_all(
-                [UserPostDo(user_id=user_id, post_id=post_id) for post_id in post_ids]
+                [
+                    UserPostDo(
+                        tenant_id=require_tenant_id(request),
+                        user_id=user_id,
+                        post_id=post_id,
+                    )
+                    for post_id in post_ids
+                ]
             )
         return None
 
@@ -580,10 +620,16 @@ class UserDao:
             if missing_role_ids:
                 return f"角色不存在: {missing_role_ids}"
 
-        await mysql.execute(delete(UserRoleDo).where(UserRoleDo.user_id == user_id))
+        tenant_id = require_tenant_id(request)
+        await mysql.execute(
+            delete(UserRoleDo).where(
+                UserRoleDo.user_id == user_id,
+                UserRoleDo.tenant_id == tenant_id,
+            )
+        )
         mysql.add_all(
             [
-                UserRoleDo(user_id=user_id, role_id=role_id)
+                UserRoleDo(tenant_id=tenant_id, user_id=user_id, role_id=role_id)
                 for role_id in unique_role_ids
             ]
         )

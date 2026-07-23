@@ -122,6 +122,15 @@ class UserRoleDo(SQLModel, table=True):
     """用户与角色关联模型。"""
 
     __tablename__ = "user_role"
+    tenant_id: int = Field(
+        default=1,
+        foreign_key="tenants.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+        description="租户ID",
+        primary_key=True,
+    )
     user_id: int = Field(
         foreign_key="users.id",
         ondelete="CASCADE",

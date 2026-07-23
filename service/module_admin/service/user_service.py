@@ -10,6 +10,7 @@ from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.log_dao import LogDao
 from module_admin.dao.permission_dao import PermissionDao
+from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.log_do import LoginLogDo
 from module_admin.entity.dto.user_dto import (
@@ -235,6 +236,25 @@ class UserService:
             raise HTTPException(status_code=403, detail="用户已停用")
 
     @staticmethod
+    async def _set_login_tenant(request: Request, user) -> None:
+        """建立本地登录的租户上下文并拒绝不可用租户。"""
+        tenant_id = getattr(user, "tenant_id", None)
+        request.state.tenant_id = tenant_id
+        if (
+            tenant_id is None
+            or await TenantDao.get(tenant_id, request) is None
+            or await TenantDao.get_member(user.id, tenant_id, request) is None
+        ):
+            await UserService._record_login(
+                request,
+                user.username,
+                "0",
+                "租户不可用",
+                user.id,
+            )
+            raise HTTPException(status_code=403, detail="当前租户不可用")
+
+    @staticmethod
     async def _create_token_response(user, request: Request) -> TokenDto:
         """为用户创建访问令牌和刷新令牌。"""
         password_changed_at_value = getattr(user, "password_changed_at", None)
@@ -304,6 +324,7 @@ class UserService:
                 request, users.username, "0", "用户名不存在"
             )
             raise HTTPException(status_code=404, detail="用户名不存在")
+        await UserService._set_login_tenant(request, user)
         await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):
             await UserService._reject_invalid_password(
@@ -320,7 +341,7 @@ class UserService:
         )
         await UserService._ensure_login_ip_allowed(request, users.username)
         await UserService._ensure_user_enabled(request, user, users.username)
-        await MfaService.verify_login(user, users.mfa_code)
+        await MfaService.verify_login(user, users.mfa_code, request)
         await UserService._record_login(
             request, user.username, "1", "登录成功", user.id
         )
@@ -343,6 +364,7 @@ class UserService:
         if user is None:
             await UserService._record_login(request, users.phone, "0", "用户不存在")
             raise HTTPException(status_code=404, detail="用户不存在")
+        await UserService._set_login_tenant(request, user)
         await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):
             await UserService._reject_invalid_password(
@@ -359,7 +381,7 @@ class UserService:
         )
         await UserService._ensure_login_ip_allowed(request, users.phone)
         await UserService._ensure_user_enabled(request, user, users.phone)
-        await MfaService.verify_login(user, users.mfa_code)
+        await MfaService.verify_login(user, users.mfa_code, request)
         await UserService._record_login(
             request, user.username, "1", "登录成功", user.id
         )

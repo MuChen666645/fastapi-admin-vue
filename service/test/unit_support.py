@@ -24,6 +24,11 @@ class InMemoryRedis:
         self._purge_expired(key)
         return self._data.get(key)
 
+    async def getdel(self, key: str) -> str | None:
+        value = await self.get(key)
+        await self.delete(key)
+        return value
+
     async def set(
         self,
         key: str,

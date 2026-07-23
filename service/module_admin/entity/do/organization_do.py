@@ -55,6 +55,15 @@ class UserPostDo(SQLModel, table=True):
 
     __tablename__ = "user_post"
 
+    tenant_id: int = Field(
+        default=1,
+        foreign_key="tenants.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+        description="租户ID",
+        primary_key=True,
+    )
     user_id: int = Field(
         foreign_key="users.id",
         ondelete="CASCADE",

@@ -10,9 +10,11 @@ from urllib.parse import quote
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException, Request
+from sqlalchemy import update
 
 from config.env import settings
 from module_admin.entity.dto.mfa_dto import MfaSetupDto
+from utils.time_utils import now_utc8_naive
 
 
 class MfaService:
@@ -111,7 +113,9 @@ class MfaService:
         user.mfa_recovery_codes_encrypted = None
 
     @classmethod
-    async def verify_login(cls, user, code: str | None) -> None:
+    async def verify_login(
+        cls, user, code: str | None, request: Request | None = None
+    ) -> None:
         """在登录签发令牌前校验已启用账号的 MFA。"""
         if not getattr(user, "mfa_enabled", False):
             return
@@ -131,7 +135,32 @@ class MfaService:
         if code_hash not in recovery_codes:
             raise HTTPException(status_code=401, detail="MFA 验证码无效")
         recovery_codes.remove(code_hash)
-        user.mfa_recovery_codes_encrypted = cls._encrypt(json.dumps(recovery_codes))
+        new_value = cls._encrypt(json.dumps(recovery_codes))
+        if request is None:
+            user.mfa_recovery_codes_encrypted = new_value
+            return
+
+        from module_admin.entity.do.user_do import UserDo
+
+        expected_version = getattr(user, "version", 1)
+        result = await request.state.mysql.execute(
+            update(UserDo)
+            .where(
+                UserDo.id == user.id,
+                UserDo.version == expected_version,
+                UserDo.mfa_recovery_codes_encrypted
+                == user.mfa_recovery_codes_encrypted,
+            )
+            .values(
+                mfa_recovery_codes_encrypted=new_value,
+                version=UserDo.version + 1,
+                update_time=now_utc8_naive(),
+            )
+        )
+        if result.rowcount != 1:
+            raise HTTPException(status_code=401, detail="MFA 恢复码已使用")
+        user.mfa_recovery_codes_encrypted = new_value
+        user.version = expected_version + 1
 
     @classmethod
     async def _verify_user_code(cls, user, code: str) -> None:
