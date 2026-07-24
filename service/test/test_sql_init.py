@@ -137,6 +137,11 @@ def test_seed_is_idempotent_and_repairs_only_builtin_users() -> None:
     assert "u.tenant_id IS NULL" in seed_sql
     assert "AND r.tenant_id = @seed_tenant_id" in seed_sql
     assert "AND p.tenant_id = @seed_tenant_id" in seed_sql
+    assert "UPDATE tenant_members AS tm" in seed_sql
+    assert "tm.deleted_at = NULL" in seed_sql
+    assert seed_sql.index("INSERT IGNORE INTO tenant_members") < seed_sql.index(
+        "UPDATE tenant_members AS tm"
+    )
     assert seed_sql.index("UPDATE users AS u") < seed_sql.index(
         "INSERT IGNORE INTO tenant_members"
     )

@@ -76,6 +76,8 @@ class MfaService:
     async def setup(cls, request: Request) -> MfaSetupDto:
         """生成新的 MFA 密钥和一次性恢复码。"""
         user = await cls._current_user(request)
+        if getattr(user, "mfa_enabled", False):
+            raise HTTPException(status_code=409, detail="MFA 已启用，请先关闭后重新初始化")
         secret = base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
         recovery_codes = [secrets.token_urlsafe(8).upper() for _ in range(10)]
         user.mfa_secret_encrypted = cls._encrypt(secret)

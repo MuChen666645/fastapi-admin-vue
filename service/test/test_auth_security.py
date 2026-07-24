@@ -123,3 +123,29 @@ def test_totp_mfa_and_recovery_code_are_one_time() -> None:
             await MfaService.verify_login(recovery_user, setup.recovery_codes[0])
 
     anyio.run(run)
+
+
+def test_mfa_setup_does_not_rotate_an_enabled_factor() -> None:
+    async def run() -> None:
+        user = SimpleNamespace(
+            id=7,
+            username="operator",
+            mfa_enabled=True,
+            mfa_secret_encrypted="existing-secret",
+            mfa_recovery_codes_encrypted="existing-recovery-codes",
+        )
+        request = SimpleNamespace(
+            state=SimpleNamespace(
+                user_id=user.id,
+                mysql=FakeUserSession(user),
+            )
+        )
+
+        with pytest.raises(HTTPException) as exception:
+            await MfaService.setup(request)
+
+        assert exception.value.status_code == 409
+        assert user.mfa_secret_encrypted == "existing-secret"
+        assert user.mfa_recovery_codes_encrypted == "existing-recovery-codes"
+
+    anyio.run(run)

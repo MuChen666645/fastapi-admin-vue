@@ -112,6 +112,23 @@ FROM users AS u
 WHERE u.username IN ('admin', 'test')
   AND u.tenant_id = @seed_tenant_id;
 
+-- 内置账号必须保持默认租户成员关系有效，否则登录会在密码和 MFA 校验前失败。
+UPDATE tenant_members AS tm
+JOIN users AS u ON u.id = tm.user_id
+SET tm.status = u.status,
+    tm.is_default = TRUE,
+    tm.deleted_at = NULL,
+    tm.version = tm.version + 1,
+    tm.updated_at = CURRENT_TIMESTAMP
+WHERE u.username IN ('admin', 'test')
+  AND u.tenant_id = @seed_tenant_id
+  AND tm.tenant_id = @seed_tenant_id
+  AND (
+      tm.status <> u.status
+      OR tm.is_default = FALSE
+      OR tm.deleted_at IS NOT NULL
+  );
+
 INSERT IGNORE INTO user_role (tenant_id, user_id, role_id)
 SELECT @seed_tenant_id, u.id, r.id
 FROM users AS u
