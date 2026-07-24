@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$SKIP_GIT_HOOKS" = "1" ]; then
+    echo "[INFO] Git hooks skipped because SKIP_GIT_HOOKS is set."
+    exit 0
+fi
+
+cd frontend && pnpm exec commitlint --edit "$1"

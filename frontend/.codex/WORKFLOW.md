@@ -41,6 +41,15 @@
 7. 涉及文件时，明确 JSON 与二进制模式，释放对象 URL，处理文件名和失败响应。
 8. 只在完成行为和测试后进行局部格式化，不格式化无关目录。
 
+## 代码质量和提交门禁
+
+- `pnpm run lint` 执行 ESLint，`pnpm run lint:style` 执行 Stylelint，`pnpm run format:check` 检查 Prettier 格式。
+- `pnpm run check` 顺序执行类型检查、ESLint、Stylelint 和 Prettier 检查，是前端交付前的最低质量门槛。
+- `pnpm run format` 只格式化前端源文件；不要用全仓库格式化覆盖后端或无关文档。
+- `pnpm run commitlint` 校验最近提交消息；提交格式使用 `feat:`、`fix:`、`refactor:`、`perf:`、`docs:`、`test:`、`build:`、`ci:`、`chore:` 或 `revert:`。
+- 前端提交前会先对暂存文件执行 ESLint、Stylelint 和 Prettier 修复，再执行完整 ESLint 和 Stylelint。根仓库只有在暂存区包含 `frontend/` 文件时启用该门禁，前端独立仓库则每次提交启用。
+- `commit-msg` 钩子在根仓库和前端独立仓库都会执行 Commitlint。钩子初始化由 `scripts/prepare-hooks.mjs` 负责，依赖安装没有 Git 或没有 hooks 权限时只警告，不阻断依赖安装。
+
 ## 缺陷修复要求
 
 - 必须说明现象、复现路径、根因和最小修复范围。
@@ -62,12 +71,15 @@
 
 ~~~sh
 pnpm type-check
+pnpm lint
+pnpm lint:style
+pnpm format:check
+pnpm check
 pnpm test:unit -- --run
 pnpm build
-pnpm format
 ~~~
 
-格式化命令只对明确涉及的源文件执行，避免产生无关差异。交付前还要执行：
+需要主动修复格式时执行 `pnpm format`；格式化命令只对前端源文件执行，避免产生无关差异。交付前还要执行：
 
 ~~~sh
 git diff --check

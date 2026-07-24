@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if [ "$SKIP_GIT_HOOKS" = "1" ]; then
+    echo "[INFO] Git hooks skipped because SKIP_GIT_HOOKS is set."
+    exit 0
+fi
+
+frontend_changed=false
+for file in $(git diff --cached --name-only --diff-filter=ACMR); do
+  case "$file" in
+    frontend/*) frontend_changed=true; break ;;
+  esac
+done
+if [ "$frontend_changed" = "true" ]; then
+  cd frontend && pnpm exec lint-staged --relative && pnpm run lint && pnpm run lint:style
+fi
