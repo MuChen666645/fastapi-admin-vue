@@ -61,10 +61,16 @@ class IdempotencyService:
                     IdempotencyKeyDo.idempotency_key == key,
                     IdempotencyKeyDo.method == request.method,
                     IdempotencyKeyDo.path == request.url.path,
-                    IdempotencyKeyDo.expires_at > now,
                 )
             )
             existing = result.scalars().first()
+            if existing is not None and (
+                existing.expires_at <= now
+                or not 200 <= existing.status_code < 300
+            ):
+                await session.delete(existing)
+                await session.flush()
+                existing = None
             if existing is not None:
                 if existing.request_hash != request_hash:
                     raise HTTPException(status_code=409, detail="幂等键已用于其他请求")
@@ -101,6 +107,9 @@ class IdempotencyService:
         content_type: str | None,
     ) -> None:
         """写入幂等请求最终响应。"""
+        if not 200 <= status_code < 300:
+            await cls.release(request, key, request_hash)
+            return
         factory = getattr(request.app.state, "mysql_session_factory", None)
         if factory is None:
             return

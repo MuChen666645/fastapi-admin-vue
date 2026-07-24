@@ -19,17 +19,20 @@ from module_admin.entity.do.notice_do import NoticeDo
 from module_admin.entity.do.notification_do import NotificationDeliveryDo
 from module_admin.entity.do.tenant_do import TenantMemberDo
 from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo
-from module_admin.entity.dto.user_dto import (ConfirmPasswordResetRequestDto,
-                                              ForgotPasswordRequestDto)
+from module_admin.entity.dto.user_dto import (
+    ConfirmPasswordResetRequestDto,
+    ForgotPasswordRequestDto,
+)
 from module_admin.service.excel_service import ExcelService
 from module_admin.service.export_service import ExportService, ExportTaskRef
-from module_admin.service.external_identity_service import \
-    ExternalIdentityService
+from module_admin.service.external_identity_service import ExternalIdentityService
 from module_admin.service.job_scheduler import JobScheduler
 from module_admin.service.mfa_service import MfaService
 from module_admin.service.notification_service import NotificationService
-from module_admin.service.password_reset_service import (PasswordResetNotifier,
-                                                         PasswordResetService)
+from module_admin.service.password_reset_service import (
+    PasswordResetNotifier,
+    PasswordResetService,
+)
 from module_admin.service.permission_sync_service import PermissionSyncService
 from module_admin.service.user_service import UserService
 

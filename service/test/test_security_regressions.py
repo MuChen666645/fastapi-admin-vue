@@ -113,7 +113,7 @@ def test_phone_login_rejects_wrong_password_before_captcha(
             await UserService.get_user_by_phone_services(users, make_request())
 
         assert exception.value.status_code == 401
-        assert exception.value.detail == "密码错误"
+        assert exception.value.detail == UserService.INVALID_LOGIN_MESSAGE
         assert captcha_verified is False
 
     anyio.run(run)

@@ -218,8 +218,15 @@ NOTIFICATION_RETRY_BASE_SECONDS=30
 NOTIFICATION_DELIVERY_LEASE_SECONDS=300
 BACKUP_DIR=backups
 BACKUP_ENCRYPTION_KEY=
+BACKUP_ONLINE_RESTORE_ENABLED=false
+BACKUP_RESTORE_MAINTENANCE_MODE=false
+BACKUP_RESTORE_OPERATIONS_TOKEN=
 BACKUP_RETENTION_DAYS=30
 BACKUP_TIMEOUT_SECONDS=900
+IDEMPOTENCY_RETENTION_DAYS=2
+BATCH_AUDIT_RETENTION_DAYS=90
+NOTIFICATION_RETENTION_DAYS=30
+RETENTION_CLEANUP_INTERVAL_SECONDS=3600
 SECRET_MANAGER_ACTIVE_VERSION=v1
 SECRET_MANAGER_KEYS=
 OIDC_ENABLED=false
@@ -633,7 +640,7 @@ Authorization: Bearer <access_token>
 - 用户、角色和字典支持异步导出：调用对应的 `/export/async` 创建任务，再轮询 `/export/tasks/{task_id}`，完成后通过 `/export/tasks/{task_id}/download` 下载。
 - 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /api/v1/notice/inbox/list`、`POST /api/v1/notice/{notice_id}/read`。
 - 通知支持收件箱、Webhook、邮件和短信渠道，使用 `NOTIFICATION_DELIVERY_LEASE_SECONDS` 防止多实例重复认领，并按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
-- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受权限保护的 `/api/v1/ops/backup/create` 执行；`verify` 命令和 `/api/v1/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/api/v1/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。备份使用 Fernet 加密并按保留天数清理。
+- 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受平台超级管理员保护的 `/api/v1/ops/backup/create` 执行；`verify` 命令和 `/api/v1/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/api/v1/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。在线恢复接口默认禁用，仅在受控维护窗口、运维令牌和 MFA 二次验证全部满足时启用。备份使用 Fernet 加密并按保留天数清理。
 
 ### 定时任务与可观测性
 
@@ -645,7 +652,7 @@ Authorization: Bearer <access_token>
 
 ### 数据库迁移与 Docker 排障
 
-当前数据库迁移头为 `0023_async_exports`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；部署后请检查 `/api/v1/health/ready` 的 `schema` 状态为 `ok`。
+当前数据库迁移头为 `0025_security_consistency`。迁移入口会自动创建或扩展 `alembic_version.version_num` 到 `VARCHAR(64)`，兼容旧数据库默认的 `VARCHAR(32)`；部署后请检查 `/api/v1/health/ready` 的 `schema` 状态为 `ok`。
 
 ```bash
 docker compose --env-file .env.development up -d --build
@@ -856,8 +863,15 @@ ALERT_WEBHOOK_URL=
 BACKUP_DIR=backups
 BACKUP_ENCRYPTION_KEY=
 BACKUP_REHEARSAL_DATABASE=fastapi_admin_restore_rehearsal
+BACKUP_ONLINE_RESTORE_ENABLED=false
+BACKUP_RESTORE_MAINTENANCE_MODE=false
+BACKUP_RESTORE_OPERATIONS_TOKEN=
 BACKUP_RETENTION_DAYS=30
 BACKUP_TIMEOUT_SECONDS=900
+IDEMPOTENCY_RETENTION_DAYS=2
+BATCH_AUDIT_RETENTION_DAYS=90
+NOTIFICATION_RETENTION_DAYS=30
+RETENTION_CLEANUP_INTERVAL_SECONDS=3600
 OIDC_ENABLED=false
 OIDC_AUTHORIZATION_URL=
 OIDC_TOKEN_URL=
@@ -1278,7 +1292,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - Users, roles, and dictionaries also support persistent asynchronous exports: call `/export/async`, poll `/export/tasks/{task_id}`, and download from `/export/tasks/{task_id}/download` after completion.
 - Notices support recipients, inbox queries, unread filtering, and read state through `GET /api/v1/notice/inbox/list` and `POST /api/v1/notice/{notice_id}/read`.
 - Notices support inbox, webhook, email, and SMS delivery. External delivery failures use a database-backed lease plus bounded exponential backoff using `NOTIFICATION_DELIVERY_LEASE_SECONDS`, `NOTIFICATION_RETRY_MAX_ATTEMPTS`, and `NOTIFICATION_RETRY_BASE_SECONDS`.
-- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the protected `/api/v1/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/api/v1/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/api/v1/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Backups are Fernet-encrypted and cleaned up according to the retention policy.
+- Database backups can be created with `poetry run python -m scripts.backup_database backup` or the platform-super-admin-protected `/api/v1/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/api/v1/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/api/v1/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Online restore is disabled by default and requires an explicit maintenance window, operations token, and MFA reauthentication. Backups are Fernet-encrypted and cleaned up according to the retention policy.
 
 ### Jobs and observability
 
@@ -1290,7 +1304,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 
 ### Migrations and Docker troubleshooting
 
-The current migration head is `0023_async_exports`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. Check that `/api/v1/health/ready` reports `schema=ok` after deployment.
+The current migration head is `0025_security_consistency`. The migration entrypoint creates or expands `alembic_version.version_num` to `VARCHAR(64)`, which handles older databases created with Alembic's default `VARCHAR(32)`. Check that `/api/v1/health/ready` reports `schema=ok` after deployment.
 
 ```bash
 docker compose --env-file .env.development up -d --build

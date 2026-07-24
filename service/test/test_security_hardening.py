@@ -26,8 +26,7 @@ from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
-from module_admin.service.external_identity_service import \
-    ExternalIdentityService
+from module_admin.service.external_identity_service import ExternalIdentityService
 from module_admin.service.file_service import FileService
 from module_admin.service.mfa_service import MfaService
 from module_admin.service.notification_service import NotificationService

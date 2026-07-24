@@ -5,8 +5,9 @@ import hashlib
 import json
 import re
 import shutil
+import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -20,6 +21,7 @@ from config.env import PROJECT_ROOT, Settings, settings
 from module_admin.dao.tenant_scope import require_tenant_id
 from module_admin.entity.do.file_do import FileChunkUploadDo, FileMetadataDo
 from module_admin.service.file_security_service import FileSecurityService
+from utils.time_utils import now_utc8_naive
 
 
 class FileService:
@@ -59,7 +61,10 @@ class FileService:
             root = PROJECT_ROOT / root
         root = root.resolve()
         chunk_root = root / ".chunks"
-        cutoff = datetime.now() - timedelta(seconds=app_settings.FILE_CHUNK_TTL_SECONDS)
+        cutoff = now_utc8_naive() - timedelta(
+            seconds=app_settings.FILE_CHUNK_TTL_SECONDS
+        )
+        cutoff_epoch = time.time() - app_settings.FILE_CHUNK_TTL_SECONDS
         removed = 0
         async with session_factory() as session:
             result = await session.execute(
@@ -78,7 +83,7 @@ class FileService:
                     candidate.is_dir()
                     and not candidate.is_symlink()
                     and candidate.name != ".pending"
-                    and datetime.fromtimestamp(candidate.stat().st_mtime) < cutoff
+                    and candidate.stat().st_mtime < cutoff_epoch
                 ):
                     shutil.rmtree(candidate, ignore_errors=True)
                     removed += 1
@@ -93,7 +98,7 @@ class FileService:
                         storage_key = str(payload["storage_key"])
                         storage_backend = str(payload["storage_backend"])
                     except (OSError, TypeError, ValueError, json.JSONDecodeError):
-                        if datetime.fromtimestamp(manifest_path.stat().st_mtime) < cutoff:
+                        if manifest_path.stat().st_mtime < cutoff_epoch:
                             manifest_path.unlink(missing_ok=True)
                             removed += 1
                         continue
@@ -104,7 +109,7 @@ class FileService:
                     )
                     metadata_exists = metadata_result.scalars().first() is not None
                     expired = (
-                        datetime.fromtimestamp(manifest_path.stat().st_mtime) < cutoff
+                        manifest_path.stat().st_mtime < cutoff_epoch
                     )
                     if metadata_exists or expired:
                         if not metadata_exists:
@@ -135,7 +140,7 @@ class FileService:
         """按日期生成稳定且不包含用户输入路径的存储键。"""
         extension = Path(original_name).suffix.lower()
         prefix = app_settings.OSS_PREFIX.strip("/") or "uploads"
-        date_prefix = datetime.now().strftime("%Y/%m/%d")
+        date_prefix = now_utc8_naive().strftime("%Y/%m/%d")
         return f"{prefix}/{date_prefix}/{file_id}{extension}"
 
     @classmethod
@@ -268,7 +273,7 @@ class FileService:
         received = set(json.loads(item.received_chunks_json or "[]"))
         received.add(chunk_index)
         item.received_chunks_json = json.dumps(sorted(received))
-        item.updated_at = datetime.now()
+        item.updated_at = now_utc8_naive()
         return {
             "upload_id": upload_id,
             "chunk_index": chunk_index,

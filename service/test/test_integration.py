@@ -17,14 +17,12 @@ from module_admin.auth.authorization import Auth
 from module_admin.dao.organization_dao import OrganizationDao
 from module_admin.dao.tenant_dao import TenantDao
 from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
-from module_admin.entity.do.log_do import (ExceptionLogDo, LoginLogDo,
-                                           OperationLogDo)
+from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.entity.do.organization_do import DepartmentDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
-from module_admin.entity.do.user_do import (PasswordResetTokenDo, UserDo,
-                                            UserRoleDo)
+from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo, UserRoleDo
 from module_admin.entity.dto.organization_dto import DepartmentUpdateDto
 from module_admin.service.job_scheduler import JobScheduler
 from utils.fastapi_admin import FastApiAdmin

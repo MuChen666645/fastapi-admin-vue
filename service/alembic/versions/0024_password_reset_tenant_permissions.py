@@ -2,12 +2,38 @@
 
 import sqlalchemy as sa
 
-from alembic import op
+from alembic import context, op
 
 revision = "0024_password_reset_tenant_permissions"
 down_revision = "0023_async_exports"
 branch_labels = None
 depends_on = None
+
+
+def _is_offline_mode() -> bool:
+    try:
+        return context.is_offline_mode()
+    except NameError:
+        return False
+
+
+def _has_duplicate_permission_path() -> bool:
+    if _is_offline_mode():
+        return False
+    return (
+        op.get_bind()
+        .execute(
+            sa.text(
+                "SELECT api_path, api_method "
+                "FROM api_permission_catalog "
+                "GROUP BY api_path, api_method "
+                "HAVING COUNT(*) > 1 "
+                "LIMIT 1"
+            )
+        )
+        .first()
+        is not None
+    )
 
 
 def upgrade() -> None:
@@ -54,16 +80,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """恢复旧权限目录约束并删除令牌租户字段。"""
-    duplicate = op.get_bind().execute(
-        sa.text(
-            "SELECT api_path, api_method "
-            "FROM api_permission_catalog "
-            "GROUP BY api_path, api_method "
-            "HAVING COUNT(*) > 1 "
-            "LIMIT 1"
-        )
-    ).first()
-    if duplicate is not None:
+    if _has_duplicate_permission_path():
         raise RuntimeError(
             "无法安全降级 0024：权限目录存在同一路由的多个权限，请先人工处理冲突"
         )

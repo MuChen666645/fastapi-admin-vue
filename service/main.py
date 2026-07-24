@@ -38,6 +38,7 @@ from module_admin.service.file_service import FileService
 from module_admin.service.job_scheduler import JobScheduler, TaskHandler
 from module_admin.service.notification_service import NotificationService
 from module_admin.service.permission_sync_service import PermissionSyncService
+from module_admin.service.retention_service import RetentionService
 from module_admin.v1 import AdminAPI
 from utils.fastapi_admin import FastApiAdmin
 
@@ -71,6 +72,19 @@ async def _notification_delivery_loop(session_factory, app_settings: Settings) -
         await asyncio.sleep(interval)
 
 
+async def _retention_cleanup_loop(session_factory, app_settings: Settings) -> None:
+    """定期清理幂等键、审计、日志和已完成通知投递记录。"""
+    interval = max(app_settings.RETENTION_CLEANUP_INTERVAL_SECONDS, 60)
+    while True:
+        try:
+            await RetentionService.cleanup(session_factory, app_settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("数据库保留期清理失败")
+        await asyncio.sleep(interval)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """初始化运行时依赖，并按相反顺序释放调度器、MySQL 和 Redis。"""
@@ -80,6 +94,7 @@ async def lifespan(app: FastAPI):
     scheduler = None
     chunk_cleanup_task = None
     notification_delivery_task = None
+    retention_cleanup_task = None
     export_worker_task = None
     redis_factory = getattr(app.state, "redis_factory", None)
     mysql_factory = getattr(app.state, "mysql_factory", None)
@@ -109,6 +124,9 @@ async def lifespan(app: FastAPI):
         )
         notification_delivery_task = asyncio.create_task(
             _notification_delivery_loop(session_factory, app_settings)
+        )
+        retention_cleanup_task = asyncio.create_task(
+            _retention_cleanup_loop(session_factory, app_settings)
         )
         export_worker_task = asyncio.create_task(
             ExportService.worker_loop(session_factory, app_settings)
@@ -144,6 +162,10 @@ async def lifespan(app: FastAPI):
             notification_delivery_task.cancel()
             with suppress(asyncio.CancelledError):
                 await notification_delivery_task
+        if retention_cleanup_task is not None:
+            retention_cleanup_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await retention_cleanup_task
         if export_worker_task is not None:
             export_worker_task.cancel()
             with suppress(asyncio.CancelledError):

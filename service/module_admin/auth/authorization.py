@@ -656,8 +656,7 @@ return {1, raw}
             return False
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import \
-                DataScopeService
+            from module_admin.service.data_scope_service import DataScopeService
 
             if not await DataScopeService.can_access_user(
                 int(target["user_id"]), request
@@ -672,8 +671,7 @@ return {1, raw}
         sessions = await Auth.list_online_tokens(request)
         state = getattr(request, "state", None)
         if state is not None and getattr(state, "mysql", None) is not None:
-            from module_admin.service.data_scope_service import \
-                DataScopeService
+            from module_admin.service.data_scope_service import DataScopeService
 
             if not await DataScopeService.can_access_user(user_id, request):
                 return 0

@@ -12,9 +12,16 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 from fastapi_pagination import Params
+from starlette.requests import Request
+from starlette.responses import JSONResponse, StreamingResponse
 
 from config.env import settings
+from middleware.idempotency_middleware import IdempotencyMiddleware
 from module_admin.auth.authorization import Auth
+from module_admin.controller.backup_controller import (
+    BackupController,
+    BackupRestoreRequestDto,
+)
 from module_admin.dao.permission_dao import PermissionDao
 from module_admin.dao.system_config_dao import SystemConfigDao
 from module_admin.dao.tenant_dao import TenantDao
@@ -30,6 +37,7 @@ from module_admin.service.data_scope_service import DataScope, DataScopeService
 from module_admin.service.excel_service import ExcelService
 from module_admin.service.external_identity_service import ExternalIdentityService
 from module_admin.service.file_service import FileService
+from module_admin.service.idempotency_service import IdempotencyService
 from module_admin.service.job_scheduler import JobScheduler
 from module_admin.service.mfa_service import MfaService
 from module_admin.service.system_config_service import SystemConfigService
@@ -690,5 +698,200 @@ def test_external_disabled_user_is_rejected_before_token() -> None:
             assert exception.value.status_code == 403
         finally:
             monkeypatch.undo()
+
+    anyio.run(run)
+
+
+def test_idempotency_authenticates_before_claim_and_skips_auth_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        order = []
+
+        class SessionContext:
+            async def __aenter__(self):
+                return object()
+
+            async def __aexit__(self, *_args):
+                return False
+
+        class SessionFactory:
+            def __call__(self):
+                return SessionContext()
+
+        async def authenticate(request, _authorization):
+            order.append("auth")
+            request.state.user_id = 1
+            request.state.tenant_id = 1
+
+        async def claim(_request, _key, _request_hash):
+            order.append("claim")
+            return None
+
+        async def complete(*_args):
+            order.append("complete")
+
+        async def release(*_args):
+            order.append("release")
+
+        monkeypatch.setattr(Auth, "router_auth", authenticate)
+        monkeypatch.setattr(IdempotencyService, "claim", claim)
+        monkeypatch.setattr(IdempotencyService, "complete", complete)
+        monkeypatch.setattr(IdempotencyService, "release", release)
+
+        app = SimpleNamespace(state=SimpleNamespace(mysql_session_factory=SessionFactory()))
+
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/api/v1/user/add",
+                "query_string": b"",
+                "headers": [(b"authorization", b"Bearer active"), (b"idempotency-key", b"k")],
+                "app": app,
+            },
+            receive,
+        )
+
+        async def call_next(_request):
+            order.append("route")
+
+            async def body():
+                yield b'{"ok":true}'
+
+            return StreamingResponse(body(), media_type="application/json")
+
+        response = await IdempotencyMiddleware.dispatch(
+            object.__new__(IdempotencyMiddleware), request, call_next
+        )
+        assert response.status_code == 200
+        assert order == ["auth", "claim", "route", "complete"]
+
+        auth_route_request = Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/api/v1/user/logout",
+                "query_string": b"",
+                "headers": [(b"authorization", b"Bearer active"), (b"idempotency-key", b"k")],
+                "app": app,
+            },
+            receive,
+        )
+        order.clear()
+        await IdempotencyMiddleware.dispatch(
+            object.__new__(IdempotencyMiddleware), auth_route_request, call_next
+        )
+        assert order == ["route"]
+
+    anyio.run(run)
+
+
+def test_idempotency_does_not_cache_forbidden_responses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        released = False
+
+        class SessionContext:
+            async def __aenter__(self):
+                return object()
+
+            async def __aexit__(self, *_args):
+                return False
+
+        app = SimpleNamespace(
+            state=SimpleNamespace(
+                mysql_session_factory=lambda: SessionContext(),
+            )
+        )
+
+        async def authenticate(request, _authorization):
+            request.state.user_id = 1
+            request.state.tenant_id = 1
+
+        async def claim(_request, _key, _request_hash):
+            return None
+
+        async def complete(*_args):
+            raise AssertionError("non-success responses must not be cached")
+
+        async def release(*_args):
+            nonlocal released
+            released = True
+
+        monkeypatch.setattr(Auth, "router_auth", authenticate)
+        monkeypatch.setattr(IdempotencyService, "claim", claim)
+        monkeypatch.setattr(IdempotencyService, "complete", complete)
+        monkeypatch.setattr(IdempotencyService, "release", release)
+
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/api/v1/user/add",
+                "query_string": b"",
+                "headers": [(b"authorization", b"Bearer active"), (b"idempotency-key", b"k")],
+                "app": app,
+            },
+            receive,
+        )
+
+        async def call_next(_request):
+            return JSONResponse({"detail": "forbidden"}, status_code=403)
+
+        response = await IdempotencyMiddleware.dispatch(
+            object.__new__(IdempotencyMiddleware), request, call_next
+        )
+        assert response.status_code == 403
+        assert released
+
+    anyio.run(run)
+
+
+def test_online_backup_restore_requires_controlled_window_and_mfa() -> None:
+    async def run() -> None:
+        data = BackupRestoreRequestDto(filename="backup.sql.enc", mfa_code="123456")
+        app_settings = SimpleNamespace(
+            BACKUP_ONLINE_RESTORE_ENABLED=False,
+            BACKUP_RESTORE_MAINTENANCE_MODE=False,
+            BACKUP_RESTORE_OPERATIONS_TOKEN="operations-token",
+        )
+
+        class Session:
+            async def get(self, _model, _user_id):
+                return SimpleNamespace(mfa_enabled=False)
+
+        request = SimpleNamespace(
+            app=SimpleNamespace(state=SimpleNamespace(settings=app_settings)),
+            state=SimpleNamespace(mysql=Session(), user_id=1),
+        )
+        with pytest.raises(HTTPException) as disabled:
+            await BackupController._controlled_restore_access(
+                request, data, "operations-token"
+            )
+        assert disabled.value.status_code == 503
+
+        app_settings.BACKUP_ONLINE_RESTORE_ENABLED = True
+        app_settings.BACKUP_RESTORE_MAINTENANCE_MODE = True
+        with pytest.raises(HTTPException) as no_mfa:
+            await BackupController._controlled_restore_access(
+                request, data, "operations-token"
+            )
+        assert no_mfa.value.status_code == 403
+
+        restore_route = next(
+            route for route in BackupController.backup.routes if route.path.endswith("/restore")
+        )
+        assert any(
+            dependency.call is Auth.platform_admin_status
+            for dependency in restore_route.dependant.dependencies
+        )
 
     anyio.run(run)

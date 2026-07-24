@@ -6,17 +6,23 @@ from fastapi import Request
 from sqlalchemy import delete
 from sqlmodel import select
 
-from module_admin.dao.tenant_scope import (current_tenant_id,
-                                           require_tenant_id, tenant_clause)
+from module_admin.dao.tenant_scope import (
+    current_tenant_id,
+    require_tenant_id,
+    tenant_clause,
+)
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleMenuDo
-from module_admin.entity.dto.menu_dto import (CreateMenuByButtonDto,
-                                              CreateMenubyIframeDto,
-                                              CreateMenuByLinkDto,
-                                              CreateMenuByRouterDto,
-                                              GetMenuDto, MenuListDto,
-                                              UpdMenuDto)
+from module_admin.entity.dto.menu_dto import (
+    CreateMenuByButtonDto,
+    CreateMenubyIframeDto,
+    CreateMenuByLinkDto,
+    CreateMenuByRouterDto,
+    GetMenuDto,
+    MenuListDto,
+    UpdMenuDto,
+)
 from utils.time_utils import now_utc8_naive
 
 

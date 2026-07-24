@@ -10,7 +10,16 @@ branch_labels = None
 depends_on = None
 
 
+def _is_offline_mode() -> bool:
+    try:
+        return context.is_offline_mode()
+    except NameError:
+        return False
+
+
 def _assert_no_cross_tenant_duplicates(table: str, value_column: str) -> None:
+    if _is_offline_mode():
+        return
     duplicate = op.get_bind().execute(
         sa.text(
             f"SELECT user_id, {value_column} "
@@ -26,7 +35,7 @@ def _assert_no_cross_tenant_duplicates(table: str, value_column: str) -> None:
 
 
 def _column_exists(table: str, column: str) -> bool:
-    if context.is_offline_mode():
+    if _is_offline_mode():
         return False
     return bool(
         op.get_bind()
@@ -58,7 +67,7 @@ RELATION_FOREIGN_KEYS = {
 
 def _drop_relation_foreign_keys(table: str) -> None:
     """主键切换前移除依赖旧主键的外键，兼容历史约束名称。"""
-    if context.is_offline_mode():
+    if _is_offline_mode():
         names = [
             f"{table}_ibfk_{index}"
             for index in range(1, len(RELATION_FOREIGN_KEYS[table]) + 1)

@@ -4,12 +4,15 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 
 from module_admin.auth.authorization import Auth
 from module_admin.entity.dto.response_dto import ApiResponseDto
-from module_admin.entity.dto.tenant_dto import (TenantCreateDto, TenantDto,
-                                                TenantMemberAddDto,
-                                                TenantMemberDto,
-                                                TenantMemberUpdateDto,
-                                                TenantSwitchDto,
-                                                TenantUpdateDto)
+from module_admin.entity.dto.tenant_dto import (
+    TenantCreateDto,
+    TenantDto,
+    TenantMemberAddDto,
+    TenantMemberDto,
+    TenantMemberUpdateDto,
+    TenantSwitchDto,
+    TenantUpdateDto,
+)
 from module_admin.service.tenant_service import TenantService
 
 

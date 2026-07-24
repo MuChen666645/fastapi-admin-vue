@@ -44,6 +44,7 @@ class UserService:
 
     # 非超级管理员触发保护时统一返回该提示，避免不同入口行为不一致。
     ADMIN_USER_PROTECTION_MESSAGE = "禁止非超级管理员操作超级管理员用户"
+    INVALID_LOGIN_MESSAGE = "用户名或密码错误"
 
     @staticmethod
     def _has_admin_role(roles: list) -> bool:
@@ -199,10 +200,10 @@ class UserService:
             request,
             identifier,
             "0",
-            "密码错误",
+            UserService.INVALID_LOGIN_MESSAGE,
             user_id,
         )
-        raise HTTPException(status_code=401, detail="密码错误")
+        raise HTTPException(status_code=401, detail=UserService.INVALID_LOGIN_MESSAGE)
 
     @staticmethod
     async def _validate_new_password(password: str, user, request: Request) -> None:
@@ -321,9 +322,11 @@ class UserService:
         user = await UserDao.get_user_by_username(users, request)
         if user is None:
             await UserService._record_login(
-                request, users.username, "0", "用户名不存在"
+                request, users.username, "0", UserService.INVALID_LOGIN_MESSAGE
             )
-            raise HTTPException(status_code=404, detail="用户名不存在")
+            raise HTTPException(
+                status_code=401, detail=UserService.INVALID_LOGIN_MESSAGE
+            )
         await UserService._set_login_tenant(request, user)
         await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):
@@ -362,8 +365,12 @@ class UserService:
         await UserService._ensure_login_ip_allowed(request, users.phone)
         user = await UserDao.get_user_by_phone(users, request)
         if user is None:
-            await UserService._record_login(request, users.phone, "0", "用户不存在")
-            raise HTTPException(status_code=404, detail="用户不存在")
+            await UserService._record_login(
+                request, users.phone, "0", UserService.INVALID_LOGIN_MESSAGE
+            )
+            raise HTTPException(
+                status_code=401, detail=UserService.INVALID_LOGIN_MESSAGE
+            )
         await UserService._set_login_tenant(request, user)
         await UserService._ensure_login_account_allowed(request, user.id)
         if not FastApiAdmin.verify_password(users.password, user.password):

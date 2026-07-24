@@ -223,6 +223,13 @@ class Settings(BaseSettings):
     BACKUP_REHEARSAL_DATABASE: str = ""
     BACKUP_RETENTION_DAYS: int = Field(default=30, gt=0)
     BACKUP_TIMEOUT_SECONDS: int = Field(default=900, gt=0)
+    BACKUP_ONLINE_RESTORE_ENABLED: bool = False
+    BACKUP_RESTORE_MAINTENANCE_MODE: bool = False
+    BACKUP_RESTORE_OPERATIONS_TOKEN: str = ""
+    IDEMPOTENCY_RETENTION_DAYS: int = Field(default=2, gt=0)
+    BATCH_AUDIT_RETENTION_DAYS: int = Field(default=90, gt=0)
+    NOTIFICATION_RETENTION_DAYS: int = Field(default=30, gt=0)
+    RETENTION_CLEANUP_INTERVAL_SECONDS: int = Field(default=3600, gt=0)
     EXPORT_WORKER_ENABLED: bool = True
     EXPORT_POLL_SECONDS: int = Field(default=2, gt=0)
     EXPORT_TASK_TTL_SECONDS: int = Field(default=86400, gt=0)
