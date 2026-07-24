@@ -127,7 +127,10 @@ jobs:
           MEDOTHS: '["GET", "POST", "PUT", "DELETE", "OPTIONS"]'
           HEADERS: '["*"]'
           CREDENTIALS: "false"
-        run: poetry run alembic upgrade head --sql > migration.sql
+        run: |
+          set -euo pipefail
+          poetry run alembic upgrade head --sql > migration.sql
+          poetry run alembic downgrade head:base --sql > migration-downgrade.sql
 
       - name: Run unit tests
         run: >-
@@ -188,6 +191,8 @@ jobs:
       REDIS_USERNAME: ""
       REDIS_PASSWORD: ""
       REDIS_DB: 0
+      BACKUP_DIR: ci-backups
+      BACKUP_REHEARSAL_DATABASE: fastapi_admin_restore_rehearsal_ci
       SECRET_KEY: integration-only-secret-key-that-is-long-enough
       ACCESS_KEY_ID: integration
       ACCESSKEY_SECRET: integration
@@ -216,6 +221,26 @@ jobs:
 
       - name: Apply schema migrations
         run: poetry run python -m scripts.migrate_database
+
+      - name: Exercise online migration downgrade and re-upgrade
+        run: |
+          set -euo pipefail
+          poetry run alembic downgrade base
+          poetry run python -m scripts.migrate_database
+
+      - name: Install MySQL client for backup rehearsal
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes mysql-client
+
+      - name: Exercise encrypted backup and restore rehearsal
+        run: |
+          set -euo pipefail
+          poetry run python -m scripts.backup_database backup
+          backup_path="$(find ci-backups -maxdepth 1 -type f -name '*.sql.enc' -printf '%f\n' | sort | tail -n 1)"
+          test -n "$backup_path"
+          poetry run python -m scripts.backup_database verify "$backup_path"
+          poetry run python -m scripts.backup_database rehearse "$backup_path"
 
       - name: Run integration tests
         run: poetry run python -m pytest -q -m integration

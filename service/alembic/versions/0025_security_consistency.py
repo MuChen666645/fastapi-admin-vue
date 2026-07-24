@@ -65,13 +65,16 @@ RELATION_FOREIGN_KEYS = {
 }
 
 
-def _drop_relation_foreign_keys(table: str) -> None:
+def _drop_relation_foreign_keys(table: str, *, legacy_names: bool = False) -> None:
     """主键切换前移除依赖旧主键的外键，兼容历史约束名称。"""
     if _is_offline_mode():
-        names = [
-            f"{table}_ibfk_{index}"
-            for index in range(1, len(RELATION_FOREIGN_KEYS[table]) + 1)
-        ]
+        if legacy_names:
+            names = [
+                f"{table}_ibfk_{index}"
+                for index in range(1, len(RELATION_FOREIGN_KEYS[table]) + 1)
+            ]
+        else:
+            names = [item[0] for item in RELATION_FOREIGN_KEYS[table]]
     else:
         names = list(
             op.get_bind()
@@ -81,7 +84,8 @@ def _drop_relation_foreign_keys(table: str) -> None:
                     "FROM information_schema.KEY_COLUMN_USAGE "
                     "WHERE CONSTRAINT_SCHEMA = DATABASE() "
                     "AND TABLE_NAME = :table_name "
-                    "AND REFERENCED_TABLE_NAME IS NOT NULL"
+                    "AND REFERENCED_TABLE_NAME IS NOT NULL "
+                    "AND COLUMN_NAME <> 'tenant_id'"
                 ),
                 {"table_name": table},
             )
@@ -130,7 +134,7 @@ def upgrade() -> None:
             existing_type=sa.Integer(),
             nullable=False,
         )
-        _drop_relation_foreign_keys(table)
+        _drop_relation_foreign_keys(table, legacy_names=True)
         op.drop_constraint("PRIMARY", table_name=table, type_="primary")
         if table == "user_role":
             primary_columns = ["tenant_id", "user_id", "role_id"]

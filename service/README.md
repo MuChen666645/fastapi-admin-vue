@@ -510,6 +510,15 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 # 运行不使用服务 mock 的真实后台 API 集成测试
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q test/test_admin_api_async.py
 
+# 在临时数据库中验证在线迁移降级和重新升级
+poetry run alembic downgrade base
+poetry run python -m scripts.migrate_database
+
+# 验证加密备份、备份结构和独立数据库恢复演练
+poetry run python -m scripts.backup_database backup
+poetry run python -m scripts.backup_database verify <filename>
+poetry run python -m scripts.backup_database rehearse <filename>
+
 # 在测试或多实例部署中创建独立应用
 from main import create_app
 application = create_app()
@@ -1167,6 +1176,15 @@ RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q -m integration
 
 # Run the real admin API tests without mocked services
 RUN_INTEGRATION_TESTS=1 poetry run python -m pytest -q test/test_admin_api_async.py
+
+# Verify an online migration downgrade followed by a fresh upgrade
+poetry run alembic downgrade base
+poetry run python -m scripts.migrate_database
+
+# Verify encrypted backup, backup structure, and isolated restore rehearsal
+poetry run python -m scripts.backup_database backup
+poetry run python -m scripts.backup_database verify <filename>
+poetry run python -m scripts.backup_database rehearse <filename>
 
 # Create an isolated application for tests or multiple instances
 from main import create_app
