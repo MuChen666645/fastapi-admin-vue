@@ -1,6 +1,6 @@
 # 功能开发提示词
 
-你正在维护 `E:/fastapi-admin-vue/frontend`。请遵循 `.codex/AGENTS.md`、`.codex/project-context.md` 和 `.codex/security-boundary.md`。
+你正在维护 E:/fastapi-admin-vue/frontend。请先阅读仓库根目录 AGENTS.md、frontend/AGENTS.md、.codex/AGENTS.md、.codex/PROJECT.md、.codex/ARCHITECTURE.md、.codex/BOUNDARY.md 和 .codex/WORKFLOW.md。
 
 ## 功能需求
 
@@ -24,7 +24,7 @@
 7. 动态路由组件只能从本地白名单解析，外链和 iframe 只能访问经过校验的来源。
 8. 文件上传、下载和导出必须区分 JSON 与原始二进制响应；客户端限制只是体验提示，后端校验才是最终依据。
 9. 为 API 适配器、权限逻辑、路由转换、会话状态和安全敏感逻辑添加专项测试。
-10. 完成功能后执行 `.codex/checklist.md`，只提交与本功能相关的前端改动。
+10. 完成功能后执行 .codex/WORKFLOW.md 和项目交付清单，只提交与本功能相关的前端改动。
 
 ## 依赖和范围限制
 

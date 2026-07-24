@@ -1,6 +1,6 @@
 # 缺陷修复提示词
 
-你正在维护 `E:/fastapi-admin-vue/frontend`。请遵循 `.codex/AGENTS.md`、`.codex/project-context.md` 和 `.codex/security-boundary.md`。
+你正在维护 E:/fastapi-admin-vue/frontend。请先阅读仓库根目录 AGENTS.md、frontend/AGENTS.md、.codex/AGENTS.md、.codex/PROJECT.md、.codex/ARCHITECTURE.md、.codex/BOUNDARY.md 和 .codex/WORKFLOW.md。
 
 ## 修复目标
 
@@ -24,7 +24,7 @@
 5. 保持现有功能和接口字段不变，不通过 `any`、类型忽略、假数据或静默兜底掩盖错误。
 6. 为回归路径补充或更新专项测试，至少覆盖成功路径以及与本缺陷相关的错误、空值、未授权或竞态状态。
 7. 检查是否引入 XSS、令牌泄露、越权误导、无限重试、请求重复或对象 URL 泄漏。
-8. 运行 `.codex/checklist.md` 中适用的验证命令，并报告不能运行的命令及真实原因。
+8. 运行 .codex/WORKFLOW.md 中适用的验证命令，并报告不能运行的命令及真实原因。
 
 ## 安全边界
 
