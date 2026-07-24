@@ -17,6 +17,9 @@ class FakeScalarResult:
     def first(self) -> int | None:
         return self.values[0] if self.values else None
 
+    def all(self):
+        return self.values
+
 
 class FakeResult:
     def __init__(self, values: list[int]) -> None:
@@ -44,6 +47,21 @@ class FakeMenuSession:
 
     async def flush(self) -> None:
         self.flush_count += 1
+
+
+class FakeDeleteMenuSession:
+    def __init__(self, menus: list[MenuDo]) -> None:
+        self.menus = {menu.menu_id: menu for menu in menus}
+        self.statements = []
+
+    async def get(self, model, menu_id: int) -> MenuDo | None:
+        return self.menus.get(menu_id)
+
+    async def execute(self, statement):
+        self.statements.append(statement)
+        if len(self.statements) == 1:
+            return FakeResult(list(self.menus.values()))
+        return FakeResult([])
 
 
 def make_menu(
@@ -159,6 +177,27 @@ def test_menu_update_normalizes_root_parent_to_null() -> None:
     assert result is None
     assert session.menus[2].parent_id is None
     assert session.flush_count == 1
+
+
+def test_menu_delete_removes_entire_subtree() -> None:
+    async def run() -> None:
+        session = FakeDeleteMenuSession(
+            [make_menu(1, 0), make_menu(2, 1), make_menu(3, 2)]
+        )
+        request = SimpleNamespace(
+            state=SimpleNamespace(mysql=session, tenant_id=1)
+        )
+
+        result = await MenuDao.del_menu_by_id(1, request)
+
+        assert result is None
+        menu_deletes = [
+            statement
+            for statement in session.statements
+            if "DELETE FROM menu" in str(statement)
+        ]
+        assert len(menu_deletes) == 1
+        assert "menu.menu_id IN" in str(menu_deletes[0])
 
 
 @pytest.mark.parametrize(
