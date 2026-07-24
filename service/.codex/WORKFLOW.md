@@ -1,4 +1,4 @@
-# Codex 工作流
+# 后端 Codex 工作流
 
 ## 工作目标
 
@@ -11,6 +11,8 @@
 - 实现请求只修改用户明确放入范围的仓库和文件；不因为“顺手整理”扩大到依赖升级、重命名、全量格式化或前端实现。
 - 需要提交、推送、创建 PR、访问生产数据、调用真实第三方服务或执行破坏性命令时，先确认具体目标和授权。
 - 评审任务如果没有明确 comparison target，先确认分支或比较基线，再读取 diff。
+
+后端任务默认不修改 `frontend/`。如果任务改变 API 契约，先在变更记录中写出前端影响；只有用户明确要求联动时，才修改前端并同时执行前端类型检查或构建验证。
 
 ## 1. 任务开始
 
@@ -30,13 +32,15 @@ rg --files module_admin test config scripts
 - 相关权限码是否已有 SQL seed
 - 既有测试是单元测试还是需要真实 MySQL/Redis 的 integration 测试
 
+若任务涉及前端调用，还要读取 `E:\fastapi-admin-vue\frontend\.codex\PROJECT.md`，并搜索 `frontend/src` 中实际存在的调用方、类型和页面，确认调用方没有依赖旧字段或旧响应结构。当前前端为基础模板，未找到调用方时不得臆造联调实现。
+
 不要回滚或覆盖不属于本次任务的工作区修改。若目标文件已有用户改动，先逐段理解后再整合。
 
 ## 2. 先确定变更类型
 
-### API 或功能变更
+### 接口或功能变更
 
-先写清楚请求、响应、权限、租户、数据范围、事务和失败行为。新增管理 API 必须放在 `module_admin/controller` 并通过 `AdminAPI` 注册到 `/api/v1`，不要直接在 `main.py` 添加业务路由。
+先写清楚请求、响应、错误、权限、租户、数据范围、事务、幂等和失败行为。新增管理 API 必须放在 `module_admin/controller` 并通过 `AdminAPI` 注册到 `/api/v1`，不要直接在 `main.py` 添加业务路由。若供前端使用，额外记录字段、枚举、分页和文件响应的影响。
 
 ### 数据库变更
 
@@ -63,6 +67,8 @@ rg --files module_admin test config scripts
 
 Controller 应保持薄：读取参数、注入依赖、调用 Service、返回 DTO。复杂 SQL 放 DAO，跨表业务和安全判断放 Service；不要为了一个简单映射建立多余抽象。
 
+接口联动时按以下顺序核对：后端路由和 DTO → 响应拦截器/错误处理 → 前端 API 类型和请求封装 → 页面或 composable 调用 → 两端回归验证。后端字段改名不能只依赖前端兼容映射。
+
 ## 4. 测试和验证
 
 ### 本地快速验证
@@ -81,10 +87,10 @@ poetry run python -m pytest -q
 # 语法和导入
 poetry run python -m compileall -q main.py module_admin config middleware interceptors scripts alembic test
 
-# 单元/API 测试，不连接真实基础设施
+# 单元和接口测试，不连接真实基础设施
 poetry run python -m pytest -q -m "not integration"
 
-# 覆盖率门槛由 pyproject.toml 配置
+# 覆盖率门槛由项目配置文件决定
 poetry run python -m pytest -q -m "not integration" --cov --cov-report=term-missing
 
 # 格式和静态检查
@@ -113,6 +119,8 @@ poetry run python -m scripts.migrate_database
 docker compose --env-file .env.development config
 ```
 
+迁移 SQL 只用于审阅或发布前检查；真正写入数据库必须由受控迁移流程执行。变更索引、唯一约束、权限 seed 或初始化数据时，要核对重复执行、旧版本升级和失败回滚影响。
+
 启动顺序必须是 MySQL/Redis 健康 → `fastapi-migrate` 成功 → `fastapi-app` 启动。检查 `/api/v1/health/live` 和 `/api/v1/health/ready`，ready 必须同时反映 Redis、MySQL 和 schema 状态。
 
 生产配置还要确认真实密钥、受限 Host/CORS、Redis 密码、文档 Token、指标 Token、文件后端和 OSS/SMTP 等开关没有使用示例值。不要把 `docker compose down -v` 作为默认排障步骤；它会删除持久化数据。
@@ -130,10 +138,10 @@ docker compose --env-file .env.development config
 
 ## 6. 文档和交付
 
-实现后更新与行为直接相关的 `.codex` 文档、README、配置示例、权限 seed 或迁移说明。新代码注释和 docstring 使用中文，并解释边界或原因，不写重复代码表面含义的注释。
+实现后更新与行为直接相关的 `.codex` 文档、README、配置示例、权限 seed 或迁移说明。新代码注释和 docstring 使用中文，并解释边界或原因，不写重复代码表面含义的注释。修改接口时同步记录前端影响和未完成的联调项。
 
 最终汇报应包含：修改文件和行为、测试命令及结果、未执行的外部依赖验证、可能的迁移或前端合同影响。不要声称未运行的 Docker、OSS、SMTP 或生产验证已经通过。
 
-## 7. Git 约定
+## 7. 版本控制约定
 
 提交保持小而原子，使用现有约定前缀：`feat:`、`fix:`、`refactor:`、`docs:`、`test:`、`perf:`、`chore:`。除非用户明确要求，不自动提交、推送、创建 PR 或修改无关文件。

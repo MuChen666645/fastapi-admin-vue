@@ -1,4 +1,4 @@
-# Feature Prompt
+# 后端功能开发提示词
 
 你正在当前仓库根目录中实现一个新功能。
 
@@ -13,13 +13,14 @@
 
 ## 项目约束
 
-- 先读取 `.codex/PROJECT.md`、`.codex/ARCHITECTURE.md`、`.codex/WORKFLOW.md` 和 `.codex/BOUNDARY.md`。
+- 先读取仓库根目录 `AGENTS.md`、`service/AGENTS.md`，再读取 `.codex/PROJECT.md`、`.codex/ARCHITECTURE.md`、`.codex/WORKFLOW.md` 和 `.codex/BOUNDARY.md`。
 - 先检查 `git status --short --branch`，保留用户已有修改。
 - 当前管理 API 只使用 `/api/v1`，Controller 不得重复写全局前缀，也不得添加旧无前缀兼容路由。
 - 遵守 `Controller -> Service -> DAO -> Database`，复用现有认证、租户、数据范围、响应包装、分页和配置机制。
 - 新字段/参数使用现有 Pydantic/SQLModel 风格；API 元数据使用中文 `title`、`description` 和 `summary`。
 - 所有密钥和外部服务参数使用占位符，不写入真实值。
 - 不执行未授权的提交、推送、生产操作、远程写入或破坏性清理；需要时先确认目标和影响。
+- 如果功能供前端使用，先核对 `frontend/.codex/PROJECT.md` 和 `frontend/src` 中实际存在的类型、调用方和页面；当前前端为基础模板，明确前端是否在本次范围内，不能凭空设计前端字段或交互。
 
 ## 执行要求
 
@@ -30,6 +31,7 @@
 5. 对所有会修改目标资源的单条、批量、导入、关联和后台任务入口做权限检查。
 6. 新增单元/API 测试；跨 MySQL/Redis 的行为增加 integration 测试，并使用随机临时数据和清理逻辑。
 7. 更新与功能直接相关的 README、环境示例或 `.codex` 文档。
+8. 若改变接口、权限、状态、分页、时间或文件响应，列出前端影响；明确联动任务未完成时，不得宣称功能已端到端完成。
 
 ## 验证要求
 
@@ -61,4 +63,4 @@ poetry run alembic upgrade head --sql > migration.sql
 - 测试结果：`<命令和结果>`
 - 未验证项和后续风险：`<说明>`
 
-完成前自检：行为、权限、租户/数据范围、事务、幂等、迁移/seed、测试、文档和最终 diff 均已核对；未验证的外部系统必须明确列出。
+完成前自检：行为、权限、租户/数据范围、事务、幂等、迁移/seed、测试、文档、前端影响和最终 diff 均已核对；未验证的外部系统必须明确列出。
