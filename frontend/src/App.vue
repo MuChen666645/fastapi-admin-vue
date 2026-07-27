@@ -2,7 +2,7 @@
 import { NLoadingBarProvider } from 'naive-ui'
 import { RouterView } from 'vue-router'
 
-import RouterLoadingBar from './components/RouterLoadingBar.vue'
+import RouterLoadingBar from './components/RouterLoadingBar/index.vue'
 </script>
 
 <template>

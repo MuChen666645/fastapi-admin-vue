@@ -13,9 +13,4 @@ app.use(createPinia())
 app.use(router)
 app.config.performance = import.meta.env.DEV
 
-const bootstrap = async (): Promise<void> => {
-  await router.isReady()
-  app.mount('#app')
-}
-
-void bootstrap()
+app.mount('#app')

@@ -13,6 +13,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     RouterLink: typeof import('vue-router')['RouterLink']
+    RouterLoadingBar: typeof import('./src/components/RouterLoadingBar/index.vue')['default']
     RouterView: typeof import('vue-router')['RouterView']
   }
 }
@@ -20,5 +21,6 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const RouterLink: typeof import('vue-router')['RouterLink']
+  const RouterLoadingBar: typeof import('./src/components/RouterLoadingBar/index.vue')['default']
   const RouterView: typeof import('vue-router')['RouterView']
 }

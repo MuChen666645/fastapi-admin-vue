@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "fastapi-admin-vue",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -33,6 +33,7 @@
     "@unocss/reset": "^66.7.5",
     "alova": "^3.5.2",
     "pinia": "^4.0.2",
+    "sass": "^1.102.0",
     "unplugin-auto-import": "^21.0.0",
     "vite-svg-loader": "^5.1.1",
     "vue": "^3.5.40",
