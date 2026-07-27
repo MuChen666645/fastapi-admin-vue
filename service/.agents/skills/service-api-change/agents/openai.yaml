@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service API Change"
+  short_description: "Implement verified FastAPI API changes"
+  default_prompt: "Use $service-api-change to implement and verify a scoped FastAPI API change."

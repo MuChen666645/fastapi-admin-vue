@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Production Readiness"
+  short_description: "Review deploy, health, and dependency readiness"
+  default_prompt: "Use $service-production-readiness to review backend release readiness and residual risks."

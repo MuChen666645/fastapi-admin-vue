@@ -55,7 +55,23 @@ test/                    单元、API、回归和 Docker 集成测试
 deploy/                  生产 Nginx 配置
 static/                  应用静态资源
 .codex/                  本项目的 Codex 工作约束和提示模板
+.agents/skills/          按需加载的项目级 Codex 技能
 ```
+
+## 项目技能
+
+可复用技能位于 `.agents/skills/`，按任务选择性读取：
+
+| 技能 | 适用范围 |
+| --- | --- |
+| `service-api-change` | API、DTO、分层实现和接口契约 |
+| `service-auth-rbac` | 认证、权限、租户和数据范围 |
+| `service-database-migration` | Alembic、MySQL schema、初始化 SQL 和 seed |
+| `service-test-validation` | 单元、API、离线和 integration 验证 |
+| `service-production-readiness` | Compose、健康、配置和发布检查 |
+| `service-code-review` | 只读缺陷评审和残余风险分析 |
+
+技能不是当前代码的事实来源。使用技能时仍须先阅读本文件及相关 `.codex/` 规则，并以源码、配置、迁移和测试核实接口和运行能力。
 
 文件名 `menu_contorller.py` 是现有项目名称，修改菜单模块时沿用该路径，不要为了纠正拼写进行无关重命名。
 

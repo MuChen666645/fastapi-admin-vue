@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Code Review"
+  short_description: "Review backend defects and release risks"
+  default_prompt: "Use $service-code-review to review the service for concrete defects and release risks."

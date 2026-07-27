@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Test Validation"
+  short_description: "Run focused and full backend verification"
+  default_prompt: "Use $service-test-validation to choose and run the right backend verification."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Database Migration"
+  short_description: "Design and validate safe schema migrations"
+  default_prompt: "Use $service-database-migration to design and validate a safe Alembic migration."

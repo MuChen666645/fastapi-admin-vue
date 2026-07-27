@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Auth and RBAC"
+  short_description: "Harden auth, RBAC, tenant, and scope checks"
+  default_prompt: "Use $service-auth-rbac to trace and harden a service authorization path."
