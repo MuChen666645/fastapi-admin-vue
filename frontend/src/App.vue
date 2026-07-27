@@ -1,11 +1,18 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { NLoadingBarProvider } from 'naive-ui'
+import { RouterView } from 'vue-router'
+
+import RouterLoadingBar from './components/RouterLoadingBar.vue'
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <n-loading-bar-provider
+    :loading-bar-style="{
+      loading: { backgroundColor: '#18a058' },
+      error: { backgroundColor: '#d03050' },
+    }"
+  >
+    <RouterLoadingBar />
+    <RouterView />
+  </n-loading-bar-provider>
 </template>
-
-<style scoped></style>
