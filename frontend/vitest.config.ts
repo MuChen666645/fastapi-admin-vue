@@ -1,14 +1,16 @@
-import { fileURLToPath } from 'node:url'
-import { mergeConfig, defineConfig, configDefaults } from 'vitest/config'
-import viteConfig from './vite.config'
+import { defineConfig, mergeConfig } from 'vitest/config'
+
+import { createViteConfig } from './vite.config'
 
 export default mergeConfig(
-  viteConfig,
+  createViteConfig({ command: 'serve', mode: 'test' }),
   defineConfig({
     test: {
       environment: 'jsdom',
-      exclude: [...configDefaults.exclude, 'e2e/**'],
-      root: fileURLToPath(new URL('./', import.meta.url)),
+      clearMocks: true,
+      restoreMocks: true,
+      passWithNoTests: true,
+      exclude: ['node_modules/**', 'dist/**', 'dist-*/**', 'coverage/**', 'e2e/**'],
     },
   }),
 )
