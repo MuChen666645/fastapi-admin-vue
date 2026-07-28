@@ -35,6 +35,11 @@ src/__tests__/App.spec.ts
 
 当前路由表为空，示例 Store 不是业务会话 Store，不能将模板代码当作成熟架构直接复制。
 
+## 设计稿参考
+
+- Pixso 设计文件：https://pixso.cn/app/design/uzGAyjde0EOwEse-BkB2Ug?icon_type=1&page-id=4%3A11257
+- 当前关联页面/组件：`BasicLayout`、`AppSidebar`
+
 ## 后端接口事实
 
 - 默认 API 前缀是 /api/v1，由 service/config/env.py 的 API_V1_PREFIX 控制。

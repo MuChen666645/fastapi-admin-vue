@@ -1,15 +1,19 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import '@unocss/reset/tailwind.css'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+
 import 'virtual:uno.css'
-// 通用字体
 import 'vfonts/Lato.css'
+import './styles/index.css'
 import App from './App.vue'
 import router from './router'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+pinia.use(piniaPluginPersistedstate)
+
+app.use(pinia)
 app.use(router)
 app.config.performance = import.meta.env.DEV
 

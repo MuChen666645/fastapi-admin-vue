@@ -78,3 +78,8 @@ pnpm build
 ```sh
 pnpm test:run
 ```
+
+## 设计稿关联
+
+- Pixso 设计文件：https://pixso.cn/app/design/uzGAyjde0EOwEse-BkB2Ug?icon_type=1&page-id=4%3A11257
+- 关联前端模块：`src/layouts/BasicLayout/components/AppSidebar/index.vue`

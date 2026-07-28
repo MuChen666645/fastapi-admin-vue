@@ -9,6 +9,7 @@ export default {
     'property-no-vendor-prefix': null,
     'selector-class-pattern': null,
     'selector-id-pattern': null,
+    'selector-pseudo-class-no-unknown': [true, { ignorePseudoClasses: ['deep'] }],
     'value-no-vendor-prefix': null,
   },
 }
