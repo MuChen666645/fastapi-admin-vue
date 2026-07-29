@@ -90,6 +90,36 @@ def test_tenant_scoped_seed_rows_include_the_default_tenant() -> None:
     assert "(1, CURRENT_TIMESTAMP, 'admin'" in users_block
 
 
+def test_builtin_route_menu_seed_uses_ionicons5_names() -> None:
+    seed_sql = SEED_SQL_PATH.read_text(encoding="utf-8")
+    menu_block = seed_sql[
+        seed_sql.index("INSERT IGNORE INTO menu") : seed_sql.index(
+            "-- 兼容旧菜单记录没有 tenant_id"
+        )
+    ]
+
+    expected_icons = {
+        "HomeOutline",
+        "SettingsOutline",
+        "AnalyticsOutline",
+        "PeopleOutline",
+        "ShieldCheckmarkOutline",
+        "MenuOutline",
+        "BusinessOutline",
+        "BriefcaseOutline",
+        "BookOutline",
+        "DocumentTextOutline",
+        "GlobeOutline",
+        "FolderOpenOutline",
+        "NotificationsOutline",
+        "TimeOutline",
+    }
+
+    assert all(f"'{icon}'" in menu_block for icon in expected_icons)
+    assert "'#'" not in menu_block
+    assert "UPDATE menu\nSET icon = CASE menu_id" in seed_sql
+
+
 def test_admin_menu_seed_is_scoped_to_declared_builtin_menu_ids() -> None:
     sql = SEED_SQL_PATH.read_text(encoding="utf-8")
 
