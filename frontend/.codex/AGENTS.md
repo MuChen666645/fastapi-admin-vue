@@ -1,110 +1,84 @@
 # 前端实现规则
 
-以下规则适用于 `frontend/` 下的 Vue 应用，是 Codex 和贡献者必须遵守的实现约束。
+以下规则适用于 `frontend/` 下的 Vue 应用。规则约束实现方式，不替代当前源码、后端 DTO、Controller、测试和构建配置对接口事实的证明。
 
-## 范围和所有权
+## 范围和优先级
 
-- 前端改动必须位于 `frontend/` 内。
-- 前端任务默认不得修改 `../service/`、部署文件或共享后端代码；只有用户明确要求联动修改时才允许跨项目操作。
-- 如果前后端契约不一致，必须记录不一致并请求契约决策，不得通过静默修改其中一侧来掩盖问题。
-- 不得手动修改 `node_modules/`、`dist/`、覆盖率产物、构建信息文件或锁文件。
-- 使用现有 `pnpm-lock.yaml`，不得切换包管理器；没有明确架构决策时，不得引入第二个 HTTP 客户端、状态库、路由抽象、UI 框架或样式体系。
+- 前端改动默认只位于 `frontend/`，不得修改 `service/`、部署文件、数据库迁移、`node_modules/`、`dist/`、覆盖率目录、缓存或锁文件。
+- 需求、当前源码和后端契约优先于本目录规则；发现规则与代码冲突时，先核实真实行为，再更新规则或请求契约决策。
+- 使用 Vue 3、Composition API、`<script setup lang="ts">`、TypeScript strict、Pinia、Vue Router、Alova 和 Naive UI。未经过明确决策，不新增同类框架或 HTTP 客户端。
+- 新增或修改的中文规则、注释、文档和任务模板使用中文；命令、路径、API 字段和标准技术名称保留原文。
 
-## 技术和代码风格
+## 类型规则
 
-- 新组件使用 Vue 3 Composition API 和 `<script setup lang="ts">`。
-- 遵守项目现有 TypeScript 严格配置。新代码必须通过 `vue-tsc --build`，不得使用 `any`、`@ts-ignore` 或无检查类型断言绕过契约。
-- 局部状态使用 `ref`、`computed`、`reactive`；跨路由或跨组件共享状态使用 Pinia。
-- 使用 `async`/`await`，明确处理加载、空数据、错误、未授权和取消状态。
-- 使用 `@/` 引用 `src/`，只在纯类型引用时使用 `import type`。
-- 组件只负责展示和交互；可复用行为放入组合式函数，跨路由状态放入 Store，网络请求放入 API 模块。
-- 不在模板中编写业务转换逻辑；复杂转换必须提取为命名函数并测试。
-- 列表必须使用稳定的 `key`，可插入、删除或排序的列表不得使用数组下标。
-- 禁止使用 `v-html`。能够使用计算属性或明确事件时，不要使用监听器。
-- 清理定时器、事件监听、订阅、未完成任务和对象 URL。
-- 遵守现有 Prettier 配置：不使用分号、使用单引号、单行宽度 100。
+- 所有共享类型必须定义在 `src/types/` 的独立类型文件中，禁止在页面、组件、API、路由和 Store 文件中定义可跨模块使用的 `interface`、`type` 或枚举。
+- 按领域拆分类型，例如 `src/types/api/auth.ts`、`src/types/api/user.ts`、`src/types/router.ts`、`src/types/store.ts`；每个领域目录通过 `index.ts` 汇总，`src/types/index.ts` 提供根统一出口。
+- API 类型保留后端蛇形字段，例如 `access_token`、`refresh_token`、`tenant_id` 和 `must_change_password`。只有明确的 UI 适配器可以转换为前端展示字段。
+- 类型文件只声明类型、常量类型和纯运行时守卫，不发起请求、不执行路由跳转、不读取 Store、不访问 DOM。
+- 运行时解析器与类型声明分离：API 响应解析放在对应 API 模块的 `parsers.ts` 或 `src/utils/guards/`，不得继续把所有领域类型和解析器堆在单一文件中。
+- 禁止使用 `any`、`@ts-ignore`、无检查的类型断言和通过放宽类型掩盖接口不一致。
 
-## 推荐分层
+## 图标规则
 
-功能复杂度增加时，按以下单向依赖组织代码：
+- UI 图标统一使用 Ionicons 5：图标从 `@vicons/ionicons5` 导入，禁止混用其他图标集、手写 SVG、Emoji、Unicode 字符或 CSS 绘制图标作为功能图标。
+- 需要统一尺寸、颜色或 `aria-hidden` 行为时，使用 `Icon` 包装器；包装器来源为 `@vicons/utils`。当前仓库尚未声明该包装器依赖，使用前必须先完成依赖声明和锁文件变更，不能隐式依赖传递安装。
+- 图标按钮必须提供 `aria-label` 和 `title`（当图标含义不明显时），文本按钮只用于明确的文字命令；不要用带文字的圆角矩形替代已有的常见图标命令。
+- 菜单图标、头部操作图标、主题/全屏/返回/刷新/删除/编辑图标都必须遵守同一图标集和尺寸规范。业务图标由页面或领域模块传入，不在通用按钮中猜测。
 
-```text
-页面或组件 -> 组合式函数或 Store -> API 模块 -> 类型化传输层
-```
+## 模块和统一出口
+
+新代码按领域模块组织，禁止继续扩大单文件聚合结构：
 
 ```text
-src/api          接口函数和传输 DTO
-src/components   可复用展示组件
-src/composables  可复用组合式逻辑
-src/constants    稳定的前端常量
-src/layouts      已认证的应用布局
-src/router       静态守卫和经过校验的动态路由注册
-src/stores       Pinia 应用状态和会话状态
-src/types        共享类型和运行时类型守卫
-src/utils        纯工具函数和边界适配器
-src/views        路由级页面
+src/
+├── api/
+│   ├── auth/
+│   │   ├── index.ts
+│   │   └── parsers.ts
+│   ├── user/
+│   │   ├── index.ts
+│   │   └── parsers.ts
+│   └── index.ts
+├── router/
+│   ├── modules/
+│   │   ├── public.ts
+│   │   ├── system.ts
+│   │   └── index.ts
+│   ├── guards/
+│   │   ├── auth.ts
+│   │   └── index.ts
+│   └── index.ts
+├── stores/
+│   ├── modules/
+│   │   ├── auth.ts
+│   │   ├── app.ts
+│   │   └── index.ts
+│   └── index.ts
+└── types/
+    ├── api/
+    │   ├── auth.ts
+    │   ├── user.ts
+    │   └── index.ts
+    ├── router.ts
+    └── index.ts
 ```
 
-只在真实功能需要时创建目录，不创建空目录或预留脚手架。
+- 每个领域目录必须有自己的 `index.ts`，根目录必须有统一出口；业务调用方优先从 `@/api`、`@/router`、`@/stores`、`@/types` 导入，不得跨模块引用实现文件。
+- 统一出口只负责导出，不放业务逻辑、请求、Store 实例化、路由守卫或副作用；禁止形成循环依赖。
+- `export *` 只允许用于无冲突的领域出口；同名导出必须使用显式命名导出，避免统一出口覆盖字段或函数。
+- 迁移旧单文件时保持兼容导出，完成调用方迁移和测试后再删除旧入口；不得为了目录改造改变 API 路径、路由名称、权限码或 Store 行为。
 
-## 接口契约
+## 页面和分层
 
-FastAPI 服务当前默认 API 前缀为 `/api/v1`，JSON 响应统一为：
+- 页面只负责展示、交互和页面级编排；业务规则放在 Store、composable 或 service API 层。
+- 请求只能通过 `src/api/<domain>/index.ts` 进入传输层，页面和 Store 不得直接调用 Alova、拼接 URL、设置 Authorization 或解析统一响应。
+- 路由模块只声明路由；认证守卫、动态路由校验和注册分别放在 `router/guards` 与 `router` 的专属模块中。
+- Store 只管理跨页面状态和动作，不访问 DOM，不直接依赖页面组件，不保存服务端密钥。
+- 组件必须明确加载、成功、空数据、校验失败、401、403、限流、网络错误、取消和可重试状态。
 
-```ts
-type ApiResponse<T> = {
-  code: number
-  error_code?: string | null
-  message: string
-  data: T | null
-}
-```
+## 安全和质量
 
-- API 地址和前缀必须放在类型化的公开 `VITE_*` 配置或共享传输层中，禁止在组件内散落 URL。
-- `VITE_*` 会被打包到浏览器，只能保存 API 地址等公开配置，禁止保存密钥、密码、签名密钥或内部服务令牌。
-- 响应解包、HTTP 错误归一化、超时和鉴权重试必须集中在传输层。
-- HTTP 状态码和响应 `code` 都必须处理；请求完成不代表业务成功。
-- 不可信响应数据在传输边界使用 `unknown`，通过运行时校验后才能进入业务层。
-- API 边界保留后端蛇形命名字段，例如 `access_token`、`refresh_token`、`captcha_id`、`user_id`、`start_time` 和 `end_time`。只有明确的 UI 适配器可以转换命名。
-- 分页必须严格匹配服务端响应，不得自行伪造总数，也不得用客户端过滤替代可能受权限或租户范围影响的服务端过滤。
-- 不得向用户暴露原始错误体、响应头、堆栈或内部标识。
-
-## 鉴权和权限
-
-- 用户名和手机号登录接口为 `POST /user/login/username`、`POST /user/login/phone`；后端当前要求表单编码，并包含 `captcha_id` 和 `captcha`。
-- 令牌响应包含 `access_token`、`refresh_token`、`token_type`、`expires_in` 和 `must_change_password`，保存前必须校验必要字段。
-- 除非接口另有明确说明，已认证请求使用 `Authorization: Bearer <访问令牌>`。
-- 访问令牌默认只保存在内存中。如果产品明确要求刷新页面后保持会话，只能使用范围最小的 `sessionStorage`，并记录 XSS 风险；默认禁止使用 `localStorage` 保存访问令牌或刷新令牌。
-- 禁止记录、渲染、拼接到 URL 或发送到分析系统：访问令牌、刷新令牌、密码、MFA 验证码、图形验证码和密码重置令牌。
-- 刷新令牌通过 `POST /user/token/refresh` 轮换，必须使用单飞机制，避免多个 401 同时触发刷新风暴。刷新失败后清理会话并跳转登录页。
-- 退出登录调用 `POST /user/logout`，但无论网络请求是否成功，都必须清理本地凭据和会话状态。
-- `GET /user/info` 是当前用户信息和权限的来源，`GET /user/routes` 是已认证动态路由的来源。
-- 前端路由守卫和权限指令只用于控制体验，后端仍必须保护所有读取、写入、导出、下载和敏感操作。
-- 权限判断必须匹配完整权限编码，不得根据菜单名称、URL 片段、路由是否存在或 JWT 解码结果推断权限。
-- 后端要求修改密码时，必须在允许进入普通业务页面前处理 `must_change_password`。
-
-## 动态路由
-
-- 即使 `/user/routes` 需要登录，也必须把它当作不可信服务端数据。
-- 注册路由前校验 `path`、`name`、`component`、`redirect`、`hidden`、`meta` 和 `children`。
-- `component` 只能通过静态的 `import.meta.glob` 映射或显式本地注册表解析。禁止直接导入服务端路径、执行代码或根据服务端输入构造模块 URL。
-- 对格式错误、名称重复、不安全路径、未知组件和非法重定向进行拒绝或隔离，不能让单个错误菜单导致整个路由崩溃。
-- 外链和 iframe 地址必须匹配明确的来源白名单；新窗口打开链接时使用 `noopener,noreferrer`。
-- 隐藏菜单和缺失菜单不是安全控制。
-
-## 表单和文件
-
-- 发送请求前校验必填项、长度、枚举值和字段关系；后端校验仍是最终依据。
-- 不得把客户端 MIME、文件名、扩展名、隐藏输入、查询参数或路由参数当作安全依据。
-- 上传界面可以做大小和扩展名提示，但必须正确处理服务端拒绝，不得绕过服务端内容检查。
-- 下载和导出可能返回原始二进制而不是 `ApiResponse<T>`。必须显式选择响应模式、保留鉴权头、释放对象 URL，禁止把二进制强行按 JSON 解析。
-- 不得暴露受保护文件的原始 URL，使用带鉴权的下载接口或后端生成的短期预签名 URL。
-- 不得在浏览器存储中保存重置令牌、MFA 恢复码、敏感草稿或不必要的个人数据。
-
-## 可靠性和可维护性
-
-- 限制轮询、重试、上传并发和请求扇出；会话初始化和搜索请求需要时应做去重或取消。
-- 生产代码不得静默回退到 Mock 数据，测试替身只能放在测试中。
-- 提交代码中避免 `console.log`；确需开发诊断时必须脱敏并显式限制在开发环境。
-- 禁止对未经校验的输入使用 `window.open`、重定向、URL 拼接、动态脚本、任意 iframe 或任意组件解析。
-- 注释只解释不明显的安全或契约原因，不重复描述代码表面行为。
+- 后端是认证、授权、租户、数据范围、业务状态和数据一致性的最终权威。前端隐藏按钮或路由不能替代后端权限校验。
+- Token、密码、MFA、图形验证码、密码重置令牌和真实生产数据不得写入日志、URL、源码、截图或长期浏览器存储。
+- 禁止 `v-html`、任意动态组件、未经校验的外链/iframe、任意 `window.open` 和把服务端组件路径直接作为动态导入地址。
+- 修改完成后至少执行 `pnpm run type-check`、`pnpm run lint`、`pnpm run lint:style`、`pnpm run format:check`、相关单元测试和 `git diff --check`。

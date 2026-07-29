@@ -6,7 +6,7 @@ import { useRouter } from 'vue-router'
 import AppBreadcrumb from '@/components/AppBreadcrumb/index.vue'
 import { useTheme } from '@/composables/useTheme'
 import { clearAuthenticatedRoutes } from '@/router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores'
 
 defineOptions({ name: 'AppHeader' })
 

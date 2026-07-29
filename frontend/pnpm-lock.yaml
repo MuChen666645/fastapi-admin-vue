@@ -57,6 +57,9 @@ importers:
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3
+      '@vicons/ionicons5':
+        specifier: ^0.13.0
+        version: 0.13.0
       '@vitejs/plugin-vue':
         specifier: ^6.0.8
         version: 6.0.8(vite@8.1.5(@types/node@24.13.3)(jiti@2.6.1)(sass@1.102.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3))
@@ -1136,6 +1139,9 @@ packages:
     resolution: {integrity: sha512-1z1TBCNJCR2WzjPtjzmCHr8rtzXHosMjLdsCNe6Mzsfwiw044gzzLVuiEZO9vIjkI50lvQ+gIOxOiVQG0hGAeA==}
     peerDependencies:
       vite: ^5.0.0-0 || ^6.0.0-0 || ^7.0.0-0 || ^8.0.0-0
+
+  '@vicons/ionicons5@0.13.0':
+    resolution: {integrity: sha512-zvZKBPjEXKN7AXNo2Na2uy+nvuv6SP4KAMQxpKL2vfHMj0fSvuw7JZcOPCjQC3e7ayssKnaoFVAhbYcW6v41qQ==}
 
   '@vitejs/plugin-vue-jsx@5.1.6':
     resolution: {integrity: sha512-YXvi4as2clxt6DFw5+a0tTA97ntiQXm/raR8ofNj3aNwwdlVGTiG2gp7EvfZW17P50acL/9bP0ccF4XnqNmlgA==}
@@ -5036,6 +5042,8 @@ snapshots:
       tinyglobby: 0.2.17
       unplugin-utils: 0.3.2
       vite: 8.1.5(@types/node@24.13.3)(jiti@2.6.1)(sass@1.102.0)(yaml@2.9.0)
+
+  '@vicons/ionicons5@0.13.0': {}
 
   '@vitejs/plugin-vue-jsx@5.1.6(vite@8.1.5(@types/node@24.13.3)(jiti@2.6.1)(sass@1.102.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3))':
     dependencies:

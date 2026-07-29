@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildDynamicRoutes } from '../router/dynamic'
-import { parseUserRoutes } from '../types/api'
+import { parseUserRoutes } from '../api/user/parsers'
 
 describe('dynamic routes', () => {
   it('keeps known local components and isolates unknown backend components', () => {

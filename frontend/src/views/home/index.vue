@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import { NCard, NGrid, NGridItem, NList, NListItem, NText } from 'naive-ui'
 
-import type { UserRoute } from '@/types/api'
-import { useAuthStore } from '@/stores/auth'
+import type { UserRoute } from '@/types'
+import { useAuthStore } from '@/stores'
 
 defineOptions({ name: 'HomeView' })
 

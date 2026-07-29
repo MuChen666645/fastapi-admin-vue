@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseCurrentUserResponse, parseTokenResponse, parseUserRoutes } from '../types/api'
+import { parseCurrentUserResponse, parseUserRoutes } from '../api/user/parsers'
+import { parseTokenResponse } from '../api/auth/parsers'
 
 describe('API 响应字段解析', () => {
   it('只要求令牌关键字段有效', () => {

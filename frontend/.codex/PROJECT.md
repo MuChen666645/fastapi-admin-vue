@@ -1,78 +1,77 @@
 # 前端项目事实
 
-本文件记录从当前工作区和 service 项目核对出的事实，是前端代码生成时的项目上下文。任务依赖可能变化的细节时，必须重新检查源码。
+本文件只记录已从当前工作区和 `service/` 源码核对出的事实。目标目录结构属于实现规则，不得把目标结构误写成当前已完成状态。
 
 ## 项目定位
 
-frontend 是与 FastAPI 管理服务配套的 Vue 3 单页应用。当前前端仍处于基础模板阶段，不应假设已经存在完整的登录页、布局、API 客户端、鉴权 Store 或动态路由加载器。
+`frontend/` 是与 FastAPI 管理服务通过 HTTP 契约协作的 Vue 3 单页应用，使用 TypeScript、Vite、Vue Router、Pinia、Alova、Naive UI 和 UnoCSS reset。
 
-## 技术栈和脚本
+当前认证和管理基础能力已存在，但部分目录仍是过渡结构：
 
-- Vue 3、Composition API、TypeScript、Vite。
-- Vue Router、Pinia、Alova。
-- Naive UI、UnoCSS reset、SVG 加载插件。
-- Vitest、Vue Test Utils、jsdom、vue-tsc、Prettier。
-- 包管理器是 pnpm，必须使用已提交的 pnpm-lock.yaml。
-- package.json 声明 Node 版本为 ^22.18.0 或 >=24.12.0。
-- 类型检查命令：pnpm type-check。
-- 单元测试命令：pnpm test:unit -- --run。
-- 生产构建命令：pnpm build。
-- 格式化命令：pnpm format。
-- src 的路径别名是 @，指向 src。
-- tsconfig.app.json 启用 noUncheckedIndexedAccess；新代码不得降低严格性。
+```text
+src/api/auth.ts          # 当前认证接口聚合文件
+src/router/index.ts      # 当前静态路由、守卫和动态路由注册入口
+src/router/dynamic.ts    # 当前动态路由转换
+src/stores/auth.ts       # 当前会话 Store
+src/types/api.ts         # 当前 API 类型和部分运行时解析器
+src/types/router.d.ts    # 当前路由元信息类型扩展
+```
 
-## 当前源码
+新功能必须遵循模块目录和统一出口规则；迁移上述旧入口时必须保留兼容行为并同步迁移调用方和测试。
 
-当前已确认的源码包括：
+## 技术和依赖事实
 
-~~~text
-src/App.vue
-src/main.ts
-src/router/index.ts
-src/stores/counter.ts
-src/__tests__/App.spec.ts
-~~~
+- 包管理器是 pnpm，必须使用 `frontend/pnpm-lock.yaml`。
+- `package.json` 声明 Node 版本为 `^22.18.0 || >=24.12.0`。
+- 已声明的图标依赖是 `@vicons/ionicons5`，当前未声明 `@vicons/utils`。
+- 统一图标规范使用 Ionicons 5；若需要使用 `@vicons/utils` 的 `Icon` 包装器，必须先将它作为直接依赖声明并更新锁文件。
+- `src` 的路径别名是 `@`，指向 `src`。
+- `tsconfig.app.json` 启用 `noUncheckedIndexedAccess`，新代码不得降低严格性。
+- 质量脚本包括 `pnpm run type-check`、`pnpm run lint`、`pnpm run lint:style`、`pnpm run format:check`、`pnpm run test:unit -- --run` 和 `pnpm run build`。
 
-当前路由表为空，示例 Store 不是业务会话 Store，不能将模板代码当作成熟架构直接复制。
+## 目标模块结构
 
-## 设计稿参考
+新增或迁移领域代码按以下结构组织：
 
-- Pixso 设计文件：https://pixso.cn/app/design/uzGAyjde0EOwEse-BkB2Ug?icon_type=1&page-id=4%3A11257
-- 当前关联页面/组件：`BasicLayout`、`AppSidebar`
+```text
+src/
+├── api/
+│   ├── auth/index.ts
+│   ├── user/index.ts
+│   └── index.ts
+├── router/
+│   ├── modules/index.ts
+│   ├── guards/index.ts
+│   └── index.ts
+├── stores/
+│   ├── modules/index.ts
+│   └── index.ts
+└── types/
+    ├── api/index.ts
+    ├── router.ts
+    └── index.ts
+```
 
-## 后端接口事实
+每层的 `index.ts` 是统一出口，只做显式导出，不保存业务状态、不执行请求、不创建 Router/Pinia 实例、不安装插件，也不产生导航副作用。
 
-- 默认 API 前缀是 /api/v1，由 service/config/env.py 的 API_V1_PREFIX 控制。
-- JSON API 通常由 ResponseInterceptor 包装为 code、error_code、message、data。
-- 登录接口是 POST /api/v1/user/login/username 和 POST /api/v1/user/login/phone，当前使用表单编码。
-- 登录字段包括 captcha_id、captcha、用户名或手机号、password，以及可选 mfa_code。
-- 图形验证码接口是 GET /api/v1/captcha/image；旧的数字验证码接口已经停用并返回 410。
-- 刷新令牌接口是 POST /api/v1/user/token/refresh。
-- 退出登录接口是 POST /api/v1/user/logout。
-- 当前用户信息接口是 GET /api/v1/user/info。
-- 当前用户动态路由接口是 GET /api/v1/user/routes。
-- 令牌字段包括 access_token、refresh_token、token_type、expires_in、must_change_password。
-- 动态路由字段包括 path、name、component、redirect、hidden、meta、children。
-- 列表接口通常使用 fastapi-pagination 的分页结构，必须以具体 DTO 和实际响应为准。
-- 文件上传、下载、导出和流式接口可能返回原始二进制，不能套用 JSON 解包。
-- 后端权限编码、租户过滤、字段权限和数据范围是服务端强制控制，前端不能自行放宽。
+## 前端接口事实
 
-## 后端架构事实
+- 默认 API 前缀由后端 `API_V1_PREFIX` 控制，当前为 `/api/v1`。
+- JSON 响应通常由 `ResponseInterceptor` 包装为 `{ code, error_code?, message, data }`。
+- 登录接口为 `POST /api/v1/user/login/username` 和 `POST /api/v1/user/login/phone`，当前使用表单编码，字段包括 `captcha_id`、`captcha`、用户名或手机号、`password` 和可选 `mfa_code`。
+- 图形验证码为 `GET /api/v1/captcha/image`，请求需要防缓存时间戳。
+- 刷新令牌为 `POST /api/v1/user/token/refresh`，退出为 `POST /api/v1/user/logout`。
+- 当前用户信息为 `GET /api/v1/user/info`，动态路由为 `GET /api/v1/user/routes`。
+- 令牌字段包括 `access_token`、`refresh_token`、`token_type`、`expires_in` 和 `must_change_password`。
+- 密码找回接口为 `POST /api/v1/user/password/forgot` 和 `POST /api/v1/user/password/reset`，字段和响应必须以当前后端 DTO、Controller、Service 和测试为准。
+- 文件上传、下载、导出和流式接口可能返回原始二进制，不能强行套用 JSON 解包。
 
-后端主要分层为：
+## 后端权威边界
 
-~~~text
-Controller -> Service -> DAO -> Database
-~~~
-
-- Controller 负责路由、参数、依赖和响应声明。
-- Service 负责业务规则、权限、租户、数据范围、幂等和外部服务编排。
-- DAO 负责 SQL 查询、分页和持久化。
-- entity/dto 是外部 API 合同，entity/do 是数据库模型。
-- 业务 HTTP 请求使用 request.state.mysql。
-- 审计、迁移、调度、导出、通知和独立 Worker 使用 app.state.mysql_session_factory 或明确的独立会话工厂。
-- Redis 是 app.state.redis 上的共享客户端，不是请求级客户端。
+- 后端负责认证、授权、租户、数据范围、字段权限、业务状态和数据一致性。
+- 前端路由守卫、权限指令、隐藏菜单和禁用按钮只改善体验，不能代替后端校验。
+- API 响应、服务端菜单、外部链接、上传信息和查询参数都必须经过边界验证后才能进入业务层。
 
 ## 事实更新规则
 
-涉及接口字段、路由、鉴权、文件、分页、构建工具或依赖时，必须重新阅读对应的 service 控制器、DTO、配置和测试。不要仅凭本文件生成接口。
+涉及 API 字段、路由、依赖、图标包、鉴权、文件、分页、构建工具或目录职责时，必须重新检查对应源码、`package.json`、锁文件、后端 Controller、DTO、配置和测试。不要仅凭历史文档生成接口、字段、权限或依赖名称。

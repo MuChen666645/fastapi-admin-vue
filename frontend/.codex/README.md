@@ -1,6 +1,6 @@
 # 前端 Codex 核心文件
 
-本目录保存 Vue 前端项目的专属规则，用于提升代码生成的准确率、可维护性和安全性。
+本目录保存 Vue 前端项目的专属规则，用于统一类型、图标、API、路由、Pinia Store 的模块边界和代码生成约束。
 
 ## 强制阅读顺序
 
@@ -15,6 +15,14 @@
 7. WORKFLOW.md：任务分析、实现、测试和交付流程。
 8. PROMPTS/bugfix.md 或 PROMPTS/feature.md：对应的任务模板。
 
+## 统一模块约定
+
+- 共享类型放在 `src/types/` 的独立领域文件中，通过 `src/types/index.ts` 统一导出。
+- API 按领域放在 `src/api/<domain>/`，通过 `src/api/index.ts` 统一导出。
+- 路由按领域放在 `src/router/modules/`，守卫放在 `src/router/guards/`，通过 Router 出口注册。
+- Store 按领域放在 `src/stores/modules/`，通过 `src/stores/index.ts` 统一导出。
+- 功能图标统一使用 `@vicons/ionicons5`；`@vicons/utils` 仅作为已声明依赖的图标包装工具。
+
 ## 规范来源
 
 - 用户明确要求优先级最高。
@@ -24,6 +32,6 @@
 
 ## 维护要求
 
-当接口字段、路由、鉴权、文件、分页、依赖、构建工具或目录职责发生确认过的变化时，必须同步更新 PROJECT.md、ARCHITECTURE.md、BOUNDARY.md 或 WORKFLOW.md。
+当接口字段、路由、鉴权、文件、分页、依赖、图标包、构建工具或目录职责发生确认过的变化时，必须同步更新 PROJECT.md、ARCHITECTURE.md、BOUNDARY.md 或 WORKFLOW.md。
 
 本目录不得保存真实密钥、令牌、生产数据、生成物、临时日志或调试输出。

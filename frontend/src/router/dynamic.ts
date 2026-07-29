@@ -1,10 +1,10 @@
 import { RouterView } from 'vue-router'
 import type { Component } from 'vue'
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw, Router } from 'vue-router'
 
 import BackendModuleView from '@/views/backend/index.vue'
 import HomeView from '@/views/home/index.vue'
-import type { UserRoute } from '@/types/api'
+import type { UserRoute } from '@/types'
 
 const componentRegistry: Record<string, Component> = {
   'home/index': HomeView,
@@ -76,4 +76,31 @@ export const findFirstVisibleRouteName = (routes: UserRoute[]): string | null =>
   }
 
   return null
+}
+
+let registeredRouteNames: string[] = []
+
+export const registerAuthenticatedRoutes = (router: Router, serverRoutes: UserRoute[]): void => {
+  if (registeredRouteNames.length > 0) {
+    return
+  }
+
+  const dynamicRoutes = buildDynamicRoutes(serverRoutes)
+  registeredRouteNames = dynamicRoutes.flatMap((route) => {
+    if (typeof route.name !== 'string' || router.hasRoute(route.name)) {
+      return []
+    }
+
+    router.addRoute('app', route)
+    return [route.name]
+  })
+}
+
+export const clearAuthenticatedRoutes = (router: Router): void => {
+  registeredRouteNames.forEach((name) => {
+    if (router.hasRoute(name)) {
+      router.removeRoute(name)
+    }
+  })
+  registeredRouteNames = []
 }

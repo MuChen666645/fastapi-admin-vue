@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import { NEmpty, NLayoutSider, NMenu, NText } from 'naive-ui'
+import type { Component } from 'vue'
+import {
+  GridOutline,
+  HomeOutline,
+  PeopleOutline,
+  SettingsOutline,
+  ShieldCheckmarkOutline,
+} from '@vicons/ionicons5'
+import { NEmpty, NIcon, NLayoutSider, NMenu, NText } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
-import type { UserRoute } from '@/types/api'
-import { useAuthStore } from '@/stores/auth'
+import type { UserRoute } from '@/types'
+import { useAuthStore } from '@/stores'
 
 defineOptions({ name: 'AppSidebar' })
 
@@ -33,28 +41,32 @@ const menuOptions = computed(() => toMenuOptions(auth.routes))
 const activeMenuKey = computed(() => (route.name ? String(route.name) : null))
 const userInitial = computed(() => auth.displayName.slice(0, 1).toUpperCase())
 
-const getMenuGlyph = (routeName: string): string => {
+const getMenuIcon = (routeName: string): Component => {
   if (routeName === 'home') {
-    return '⌂'
+    return HomeOutline
   }
 
   if (routeName.includes('user')) {
-    return '●'
+    return PeopleOutline
   }
 
   if (routeName.includes('role')) {
-    return '◆'
+    return ShieldCheckmarkOutline
   }
 
   if (routeName.includes('config')) {
-    return '⚙'
+    return SettingsOutline
   }
 
-  return '•'
+  return GridOutline
 }
 
 const renderMenuIcon = (routeName: string) =>
-  h('span', { class: 'menu-item-icon', 'aria-hidden': 'true' }, getMenuGlyph(routeName))
+  h(
+    NIcon,
+    { class: 'menu-item-icon', 'aria-hidden': 'true' },
+    { default: () => h(getMenuIcon(routeName)) },
+  )
 
 const handleMenuSelect = (key: string | number): void => {
   if (String(key) === activeMenuKey.value) {

@@ -1,16 +1,7 @@
-import {
-  parseCaptchaImageResponse,
-  parseCurrentUserResponse,
-  parseTokenResponse,
-  parseUserRoutes,
-  type CaptchaImageResponse,
-  type CurrentUserResponse,
-  type LoginCredentials,
-  type TokenResponse,
-  type UserRoute,
-} from '@/types/api'
-
+import type { CaptchaImageResponse, LoginCredentials, TokenResponse } from '@/types'
 import { registerRefreshTokenRequest, requestJson } from '@/utils/request'
+
+import { parseCaptchaImageResponse, parseTokenResponse } from './parsers'
 
 const createLoginBody = (credentials: LoginCredentials): URLSearchParams => {
   const body = new URLSearchParams()
@@ -53,12 +44,6 @@ export const refreshTokens = (refreshToken: string): Promise<TokenResponse> =>
   )
 
 registerRefreshTokenRequest(refreshTokens)
-
-export const fetchCurrentUser = (): Promise<CurrentUserResponse> =>
-  requestJson('/user/info', {}, parseCurrentUserResponse)
-
-export const fetchUserRoutes = (): Promise<UserRoute[]> =>
-  requestJson('/user/routes', {}, parseUserRoutes)
 
 export const changeCurrentPassword = (oldPassword: string, newPassword: string): Promise<null> =>
   requestJson(

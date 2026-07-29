@@ -10,9 +10,9 @@ const authApi = vi.hoisted(() => ({
   refreshTokens: vi.fn(),
 }))
 
-vi.mock('../api/auth', () => authApi)
+vi.mock('../api', () => authApi)
 
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '../stores'
 
 describe('auth store', () => {
   beforeEach(() => {

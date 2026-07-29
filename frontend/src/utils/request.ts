@@ -1,8 +1,8 @@
 import { createAlova } from 'alova'
 import adapterFetch from 'alova/fetch'
-import type { RequestBody } from 'alova'
 
-import { parseApiResponse, type TokenResponse } from '@/types/api'
+import type { AuthTransportHandlers, RequestOptions, TokenResponse } from '@/types'
+import { parseApiResponse } from '@/utils/guards/api'
 
 const requestTimeout = 15_000
 
@@ -23,14 +23,6 @@ export class ApiError extends Error {
     this.code = code
     this.errorCode = errorCode
   }
-}
-
-interface AuthTransportHandlers {
-  getAccessToken: () => string | null
-  getRefreshToken: () => string | null
-  setTokens: (tokens: TokenResponse) => void
-  clearSession: () => void
-  refreshTokens: ((refreshToken: string) => Promise<TokenResponse>) | null
 }
 
 const authHandlers: AuthTransportHandlers = {
@@ -135,14 +127,6 @@ const refreshAccessToken = async (): Promise<boolean> => {
   })()
 
   return refreshPromise
-}
-
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-  data?: RequestBody
-  headers?: Record<string, string>
-  auth?: boolean
-  skipAuthRefresh?: boolean
 }
 
 export const requestJson = async <T>(

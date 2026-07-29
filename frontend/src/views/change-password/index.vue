@@ -4,7 +4,7 @@ import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NText } from 'naive-u
 import type { FormInst, FormRules } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores'
 
 defineOptions({ name: 'ChangePasswordView' })
 

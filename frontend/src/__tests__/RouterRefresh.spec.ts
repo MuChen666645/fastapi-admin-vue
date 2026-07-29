@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import router, { clearAuthenticatedRoutes } from '../router'
-import { useAuthStore } from '../stores/auth'
-import type { UserRoute } from '../types/api'
+import { useAuthStore } from '../stores'
+import type { UserRoute } from '../types'
 
 const authorizedRoute: UserRoute = {
   path: 'system/config',

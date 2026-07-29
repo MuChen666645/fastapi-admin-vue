@@ -8,7 +8,7 @@ vi.mock('../utils/request', () => ({
   requestJson,
 }))
 
-import { fetchCaptcha } from '../api/auth'
+import { fetchCaptcha } from '../api'
 
 describe('认证接口', () => {
   afterEach(() => {
@@ -16,6 +16,7 @@ describe('认证接口', () => {
   })
 
   beforeEach(() => {
+    requestJson.mockClear()
     requestJson.mockResolvedValue({
       captcha_id: 'captcha-id',
       image: 'data:image/png;base64,captcha',
