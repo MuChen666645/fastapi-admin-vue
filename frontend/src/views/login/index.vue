@@ -1,23 +1,30 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import {
-  NAlert,
-  NButton,
-  NForm,
-  NFormItem,
-  NInput,
-  NRadioButton,
-  NRadioGroup,
-  NText,
-} from 'naive-ui'
+  LockClosedOutline,
+  MoonOutline,
+  PersonOutline,
+  RefreshOutline,
+  ShieldCheckmarkOutline,
+  SunnyOutline,
+} from '@vicons/ionicons5'
+import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NText } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
-import { fetchCaptcha } from '@/api/auth'
+import { fetchCaptcha } from '@/api'
 import { useTheme } from '@/composables/useTheme'
-import { useAuthStore } from '@/stores/auth'
-import type { LoginCredentials } from '@/types/api'
+import { useAuthStore } from '@/stores'
+import type { LoginCredentials } from '@/types'
 import { ApiError } from '@/utils/request'
+import {
+  clearRememberedLogin,
+  getRememberedLogin,
+  saveRememberedLogin,
+} from '@/utils/loginPreferences'
+
+import FramShip from '@/assets/images/login/FramShip.svg'
+import Illustration1 from '@/assets/images/login/Illustration1.svg'
 
 defineOptions({ name: 'LoginView' })
 
@@ -25,13 +32,13 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const formRef = ref<FormInst | null>(null)
+const rememberedLogin = getRememberedLogin()
 const form = ref({
-  loginType: 'username' as LoginCredentials['loginType'],
-  identifier: auth.rememberedUsername,
-  password: '',
+  identifier: rememberedLogin?.identifier ?? auth.rememberedUsername,
+  password: rememberedLogin?.password ?? '',
   captcha: '',
   mfaCode: '',
-  remember: Boolean(auth.rememberedUsername),
+  remember: rememberedLogin !== null || Boolean(auth.rememberedUsername),
 })
 const captchaId = ref('')
 const captchaImage = ref('')
@@ -88,15 +95,23 @@ const handleLogin = async (): Promise<void> => {
   try {
     await auth.signIn(
       {
-        loginType: form.value.loginType,
+        loginType: 'username' as LoginCredentials['loginType'],
         identifier: form.value.identifier,
         password: form.value.password,
         captcha_id: captchaId.value,
         captcha: form.value.captcha,
         mfa_code: form.value.mfaCode || undefined,
-      },
+      } as LoginCredentials,
       form.value.remember,
     )
+    if (form.value.remember) {
+      saveRememberedLogin({
+        identifier: form.value.identifier,
+        password: form.value.password,
+      })
+    } else {
+      clearRememberedLogin()
+    }
   } catch (error) {
     errorMessage.value =
       error instanceof ApiError
@@ -134,64 +149,92 @@ onMounted(() => {
 
 <template>
   <main class="login-page" :class="{ 'login-page--dark': isDarkMode }">
+    <!-- 左侧品牌展示区 -->
     <section class="login-brand-panel" aria-labelledby="brand-title">
-      <div class="brand-header">
-        <NText class="brand-name" strong>FastApi管理后台</NText>
+      <!-- 装饰性背景渐变 -->
+      <div class="brand-bg-gradient" aria-hidden="true"></div>
+
+      <!-- 装饰性插画 -->
+      <div class="brand-decoration brand-decoration--top" aria-hidden="true">
+        <Illustration1 class="brand-decoration-svg" aria-hidden="true" focusable="false" />
       </div>
 
+      <!-- Logo -->
+      <header class="brand-header">
+        <div class="brand-logo" aria-hidden="true">
+          <NIcon :size="24"><ShieldCheckmarkOutline /></NIcon>
+        </div>
+        <NText class="brand-name" strong>FastApi-Admin</NText>
+      </header>
+
+      <!-- 船形插画 -->
+      <div class="brand-illustration" aria-hidden="true">
+        <FramShip class="brand-illustration-svg" aria-hidden="true" focusable="false" />
+      </div>
+
+      <!-- 标语 -->
       <div class="brand-copy">
-        <div class="brand-icon" aria-hidden="true">✓</div>
         <NText id="brand-title" tag="h1" class="brand-title" strong>
-          高效管理您的业务<br />一切尽在掌控
+          一款开箱即用的后台管理系统
         </NText>
-        <NText class="brand-description">
-          完整的后台管理解决方案，实时数据分析、用户管理、订单追踪，一站式搞定。
-        </NText>
-        <ul class="brand-features" aria-label="系统特性">
-          <li><span aria-hidden="true">✓</span>基于角色的权限控制</li>
-          <li><span aria-hidden="true">✓</span>实时数据分析仪表盘</li>
-          <li><span aria-hidden="true">✓</span>完整的操作审计日志</li>
-        </ul>
+        <NText class="brand-subtitle">基于 Vue3 + Naive UI + Vite</NText>
       </div>
 
-      <NText class="brand-copyright">© 2026 管理后台，保留所有权利。</NText>
+      <NText class="brand-copyright">© 2026 FastApi-Admin</NText>
     </section>
 
+    <!-- 右侧登录表单区 -->
     <section class="login-workspace" aria-labelledby="login-title">
-      <button
-        type="button"
-        class="theme-toggle"
-        :aria-label="isDarkMode ? '切换浅色主题' : '切换深色主题'"
-        :title="isDarkMode ? '切换浅色主题' : '切换深色主题'"
-        @click="toggleTheme"
-      >
-        <span aria-hidden="true">{{ isDarkMode ? '☀' : '☾' }}</span>
-      </button>
+      <!-- 顶部工具栏 -->
+      <div class="workspace-topbar">
+        <NButton
+          quaternary
+          circle
+          size="small"
+          class="theme-toggle"
+          :aria-label="isDarkMode ? '切换浅色主题' : '切换深色主题'"
+          :title="isDarkMode ? '切换浅色主题' : '切换深色主题'"
+          @click="toggleTheme"
+        >
+          <template #icon>
+            <NIcon :size="18">
+              <SunnyOutline v-if="isDarkMode" />
+              <MoonOutline v-else />
+            </NIcon>
+          </template>
+        </NButton>
+      </div>
 
-      <div class="login-form-shell">
+      <!-- 登录卡片 -->
+      <div class="login-card">
         <div class="login-heading">
-          <NText id="login-title" tag="h2" class="login-title" strong>欢迎回来</NText>
-          <NText class="login-subtitle">登录您的管理后台账号</NText>
+          <NText id="login-title" tag="h2" class="login-title" strong>
+            欢迎使用 FastApi-Admin
+          </NText>
         </div>
 
         <NAlert v-if="errorMessage" type="error" :show-icon="false" class="login-error">
           {{ errorMessage }}
         </NAlert>
 
-        <NForm ref="formRef" :model="form" :rules="rules" label-placement="top" size="large">
-          <NFormItem label="登录方式" path="loginType">
-            <NRadioGroup v-model:value="form.loginType" name="loginType" class="login-method">
-              <NRadioButton value="username">用户名</NRadioButton>
-              <NRadioButton value="phone">手机号</NRadioButton>
-            </NRadioGroup>
-          </NFormItem>
-
-          <NFormItem :label="form.loginType === 'username' ? '用户名' : '手机号'" path="identifier">
+        <NForm
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-placement="top"
+          size="large"
+          class="login-form"
+        >
+          <NFormItem label="用户名" path="identifier">
             <NInput
               v-model:value="form.identifier"
-              :placeholder="form.loginType === 'username' ? '请输入用户名' : '请输入手机号'"
+              placeholder="请输入用户名"
               autocomplete="username"
-            />
+            >
+              <template #prefix>
+                <NIcon :size="16" class="input-icon"><PersonOutline /></NIcon>
+              </template>
+            </NInput>
           </NFormItem>
 
           <NFormItem label="密码" path="password">
@@ -201,7 +244,11 @@ onMounted(() => {
               placeholder="请输入密码"
               show-password-on="click"
               autocomplete="current-password"
-            />
+            >
+              <template #prefix>
+                <NIcon :size="16" class="input-icon"><LockClosedOutline /></NIcon>
+              </template>
+            </NInput>
           </NFormItem>
 
           <NFormItem label="图形验证码" path="captcha">
@@ -216,7 +263,10 @@ onMounted(() => {
                 @click="handleCaptchaRefresh"
               >
                 <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" />
-                <span v-else>{{ captchaLoading ? '加载中' : '点击刷新' }}</span>
+                <span v-else>
+                  <NIcon :size="18"><RefreshOutline /></NIcon>
+                  {{ captchaLoading ? '加载中' : '点击刷新' }}
+                </span>
               </button>
             </div>
           </NFormItem>
@@ -232,26 +282,21 @@ onMounted(() => {
           <div class="login-actions">
             <label class="remember-option">
               <input v-model="form.remember" type="checkbox" />
-              <span>记住登录名</span>
+              <span>记住我</span>
             </label>
-            <NText class="login-help">验证码每次登录必填</NText>
           </div>
 
           <NButton
             type="primary"
             block
             class="login-submit"
+            :bordered="false"
             :loading="submitting"
             @click="handleLogin"
           >
-            立即登录
+            登录
           </NButton>
         </NForm>
-
-        <div class="login-security-note">
-          <span class="security-dot" aria-hidden="true"></span>
-          <span>登录后将根据服务端权限加载可访问菜单</span>
-        </div>
       </div>
     </section>
   </main>
@@ -259,271 +304,254 @@ onMounted(() => {
 
 <style scoped>
 .login-page {
-  --login-background: #f1f3f6;
+  --login-bg: #f4f6f8;
   --login-surface: #fff;
-  --login-text: #17211f;
-  --login-muted: #87918f;
-  --login-border: #dde3e5;
-  --login-primary: #18a357;
-  --login-primary-dark: #0f8a49;
+  --login-text: #1d2b28;
+  --login-muted: #72817c;
+  --login-primary: #6c7ce5;
+  --login-primary-dark: #5762e0;
+  --login-accent: #8ea1e9;
+  --login-button-bg: rgb(175 188 237 / 58%);
+  --login-button-border: #aeb4cb;
+  --login-input-surface: #fff;
+  --login-input-border: #d5ded9;
+  --login-input-border-hover: #7c89db;
+  --login-input-border-focus: #7c89db;
+  --login-input-focus-shadow: 0 0 0 2px rgb(124 137 219 / 18%);
+  --login-card-shadow: 0 4px 41px 13px rgb(253 231 231 / 60%);
+  --login-gradient-start: rgb(132 105 151 / 4%);
+  --login-gradient-end: rgb(116 124 175 / 29%);
+  --login-text-gradient-start: rgb(129 134 194 / 0%);
+  --login-text-gradient-end: rgb(88 98 224 / 57%);
 
   display: grid;
-  min-height: 100vh;
+  width: 100%;
+  height: 100dvh;
+  min-height: 560px;
+  overflow: hidden;
   color: var(--login-text);
-  background: var(--login-background);
-  grid-template-columns: minmax(360px, 60vw) minmax(0, 1fr);
+  background: var(--login-bg);
+  grid-template-columns: minmax(0, 2fr) minmax(420px, 1fr);
 }
 
-.login-page--dark {
-  --login-background: #1a211f;
-  --login-surface: #232c29;
-  --login-text: #f3f7f5;
-  --login-muted: #a5b1ac;
-  --login-border: #3c4a45;
-}
-
+/* ===== 左侧品牌展示区 ===== */
 .login-brand-panel {
   position: relative;
   display: flex;
-  min-height: 100vh;
+  min-height: 0;
+  height: 100%;
   flex-direction: column;
-  overflow: hidden;
-  padding: 42px 36px 30px;
+  padding: 48px 6vw 36px;
   color: #fff;
-  background: var(--login-primary);
-  isolation: isolate;
+  background: linear-gradient(135deg, #6c7ce5 0%, #8e9add 50%, #747caf 100%);
+  overflow: hidden;
 }
 
-.login-brand-panel::before,
-.login-brand-panel::after {
+.brand-bg-gradient {
   position: absolute;
-  z-index: -1;
-  border: 1px solid rgb(255 255 255 / 16%);
-  border-radius: 50%;
-  content: '';
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    var(--login-gradient-start) 0%,
+    var(--login-gradient-end) 100%
+  );
   pointer-events: none;
 }
 
-.login-brand-panel::before {
-  top: -170px;
-  left: -220px;
-  width: 660px;
-  height: 660px;
-  box-shadow:
-    0 0 0 52px rgb(255 255 255 / 7%),
-    0 0 0 104px rgb(255 255 255 / 6%),
-    0 0 0 156px rgb(255 255 255 / 5%),
-    0 0 0 208px rgb(255 255 255 / 4%);
+.brand-decoration {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.login-brand-panel::after {
-  right: -170px;
-  bottom: -270px;
-  width: 470px;
-  height: 470px;
-  border-color: rgb(255 255 255 / 11%);
+.brand-decoration--top {
+  top: 22px;
+  right: 22px;
+  width: 333px;
+  height: 268px;
+  opacity: 0.5;
 }
 
-.brand-header,
-.brand-copy,
-.brand-copyright {
-  position: relative;
-  z-index: 1;
+.brand-decoration-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .brand-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
-.brand-mark {
+.brand-logo {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  border: 1px solid rgb(255 255 255 / 28%);
-  border-radius: 6px;
-  background: rgb(255 255 255 / 15%);
-  font-size: 13px;
-  font-weight: 700;
+  color: var(--login-primary);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 .brand-name {
   color: #fff;
-  font-size: 15px;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+}
+
+.brand-illustration {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.brand-illustration-svg {
+  display: block;
+  width: min(100%, 650px);
+  max-height: 500px;
+  filter: drop-shadow(0 8px 24px rgb(0 0 0 / 15%));
 }
 
 .brand-copy {
-  max-width: 440px;
-  margin-top: auto;
-  margin-bottom: auto;
-}
-
-.brand-icon {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 22px;
-  place-items: center;
-  border: 1px solid rgb(255 255 255 / 22%);
-  border-radius: 13px;
-  background: rgb(255 255 255 / 13%);
-  font-size: 30px;
-  font-weight: 300;
-  line-height: 1;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin: 0 0 20px;
 }
 
 .brand-title {
+  display: block;
   margin: 0;
   color: #fff;
-  font-size: clamp(28px, 2.6vw, 37px);
+  font-size: 36px;
   line-height: 1.3;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 15%);
 }
 
-.brand-description {
+.brand-subtitle {
   display: block;
-  max-width: 410px;
-  margin-top: 18px;
-  color: rgb(255 255 255 / 82%);
-  font-size: 13px;
-  line-height: 1.8;
-}
-
-.brand-features {
-  display: grid;
-  gap: 13px;
-  margin: 26px 0 0;
-  padding: 0;
-  color: rgb(255 255 255 / 92%);
-  font-size: 13px;
-  list-style: none;
-}
-
-.brand-features li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.brand-features li span {
-  display: grid;
-  width: 16px;
-  height: 16px;
-  place-items: center;
-  border: 1px solid rgb(255 255 255 / 72%);
-  border-radius: 50%;
-  font-size: 11px;
+  margin-top: 12px;
+  color: rgb(255 255 255 / 85%);
+  font-size: 18px;
 }
 
 .brand-copyright {
-  color: rgb(255 255 255 / 62%);
-  font-size: 11px;
+  position: relative;
+  z-index: 1;
+  color: rgb(255 255 255 / 56%);
+  font-size: 12px;
+  text-align: center;
 }
 
+/* ===== 右侧登录表单区 ===== */
 .login-workspace {
   position: relative;
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 76px 40px 52px;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 28px 28px;
+  background: linear-gradient(135deg, #fbfcff 0%, #f0f2fa 52%, #e7ebf6 100%);
+}
+
+.workspace-topbar {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
 }
 
 .theme-toggle {
-  position: absolute;
-  top: 26px;
-  right: 28px;
-  display: grid;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  place-items: center;
+  width: 36px;
+  height: 36px;
   color: var(--login-muted);
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  font-size: 19px;
-  line-height: 1;
 }
 
 .theme-toggle:hover,
 .theme-toggle:focus-visible {
   color: var(--login-primary);
-  background: rgb(24 163 87 / 10%);
-  outline: none;
 }
 
-.login-form-shell {
-  width: min(100%, 360px);
+/* ===== 登录卡片 ===== */
+.login-card {
+  width: min(100%, 420px);
+  max-height: calc(100dvh - 40px);
+  padding: 32px 32px 24px;
+  border-radius: 16px;
+  background: var(--login-surface);
+  box-shadow: var(--login-card-shadow);
 }
 
 .login-heading {
-  display: grid;
-  gap: 7px;
-  margin-bottom: 25px;
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .login-title {
   margin: 0;
-  color: var(--login-text);
-  font-size: 26px;
+  color: var(--login-primary);
+  font-size: 25px;
   line-height: 1.25;
-}
-
-.login-subtitle,
-.login-help,
-.login-security-note {
-  color: var(--login-muted);
-}
-
-.login-subtitle {
-  font-size: 13px;
+  opacity: 0.85;
 }
 
 .login-error {
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
-.login-method {
-  display: flex;
+.login-form {
   width: 100%;
 }
 
-.login-method :deep(.n-radio-button) {
-  flex: 1;
-}
-
-.login-method :deep(.n-radio-button__label) {
-  width: 100%;
-  text-align: center;
+.input-icon {
+  color: var(--login-muted);
 }
 
 .captcha-field {
   display: grid;
   width: 100%;
-  grid-template-columns: minmax(0, 1fr) 112px;
-  gap: 9px;
+  grid-template-columns: minmax(0, 1fr) 124px;
+  gap: 10px;
 }
 
 .captcha-image {
   display: grid;
   min-width: 0;
-  height: 40px;
+  height: 44px;
   padding: 0;
   place-items: center;
   overflow: hidden;
   color: var(--login-muted);
-  border: 1px solid var(--login-border);
-  border-radius: 4px;
+  border: 1px solid var(--login-input-border);
+  border-radius: 6px;
   background: var(--login-surface);
   cursor: pointer;
   font-size: 12px;
 }
 
+.captcha-image span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .captcha-image:hover:not(:disabled),
 .captcha-image:focus-visible {
-  border-color: var(--login-primary);
+  color: var(--login-input-border-hover);
+  border-color: var(--login-input-border-hover);
   outline: none;
 }
 
@@ -542,9 +570,9 @@ onMounted(() => {
 .login-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
-  margin: 1px 0 19px;
+  margin: 0 0 16px;
 }
 
 .remember-option {
@@ -552,138 +580,204 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   color: var(--login-muted);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 
 .remember-option input {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   margin: 0;
   accent-color: var(--login-primary);
 }
 
-.login-help {
-  font-size: 12px;
-  text-align: right;
-}
-
 .login-submit {
-  height: 42px;
-  font-size: 14px;
+  height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: var(--login-primary) !important;
+}
+
+.login-submit:hover {
+  background: var(--login-primary-dark) !important;
+}
+
+/* ===== Naive UI 组件样式覆盖 ===== */
+.login-card :deep(.n-form-item-label) {
+  color: var(--login-text);
+  font-size: 13px;
   font-weight: 600;
 }
 
-.login-submit :deep(.n-button__content) {
-  letter-spacing: 0;
+.login-card :deep(.n-form-item) {
+  margin-bottom: 12px;
 }
 
-.login-security-note {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  margin-top: 21px;
-  font-size: 11px;
-  text-align: center;
+.login-card :deep(.n-input),
+.login-card :deep(.n-input--focus) {
+  min-height: 42px;
+  border-radius: 8px;
+  background-color: var(--login-input-surface);
+
+  --n-color: var(--login-input-surface);
+  --n-color-focus: var(--login-input-surface);
+  --n-border: 1px solid var(--login-input-border);
+  --n-border-hover: 1px solid var(--login-input-border-hover) !important;
+  --n-border-focus: 1px solid var(--login-input-border-focus) !important;
+  --n-box-shadow-focus: var(--login-input-focus-shadow);
 }
 
-.security-dot {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--login-primary);
-}
-
-.login-form-shell :deep(.n-form-item-label) {
-  color: var(--login-text);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.login-form-shell :deep(.n-form-item) {
-  margin-bottom: 17px;
-}
-
-.login-form-shell :deep(.n-input),
-.login-form-shell :deep(.n-radio-button) {
-  border-color: var(--login-border);
-  background: var(--login-surface);
-}
-
-.login-form-shell :deep(.n-input) {
-  --n-border: 1px solid var(--login-border);
-  --n-border-hover: 1px solid var(--login-primary);
-  --n-border-focus: 1px solid var(--login-primary);
-  --n-box-shadow-focus: 0 0 0 2px rgb(24 163 87 / 12%);
-}
-
-.login-form-shell :deep(.n-input__input-el),
-.login-form-shell :deep(.n-input__placeholder) {
+.login-card :deep(.n-input__input-el),
+.login-card :deep(.n-input__textarea-el) {
   color: var(--login-text);
 }
 
-.login-form-shell :deep(.n-input__placeholder) {
+.login-card :deep(.n-input__placeholder) {
   color: var(--login-muted);
 }
 
-.login-form-shell :deep(.n-radio-button--checked) {
-  color: var(--login-primary-dark);
-  border-color: var(--login-primary);
-  background: rgb(24 163 87 / 9%);
-}
-
-.login-form-shell :deep(.n-button--primary-type) {
+.login-card :deep(.n-button--primary-type) {
   --n-color: var(--login-primary);
   --n-color-hover: var(--login-primary-dark);
   --n-color-pressed: var(--login-primary-dark);
   --n-border: 1px solid var(--login-primary);
-  --n-border-hover: 1px solid var(--login-primary-dark);
-  --n-border-pressed: 1px solid var(--login-primary-dark);
+  --n-border-hover: 1px solid var(--login-primary-dark) !important;
+  --n-border-pressed: 1px solid var(--login-primary-dark) !important;
+}
+
+/* ===== 深色模式 ===== */
+.login-page--dark {
+  --login-bg: #1b2220;
+  --login-surface: #252e2b;
+  --login-input-surface: #3c3c3e;
+  --login-text: #eef5f1;
+  --login-muted: #a2b0aa;
+  --login-primary: #7c89db;
+  --login-primary-dark: #6976c8;
+  --login-accent: #aeb8f3;
+  --login-input-border: #5f6a8f;
+  --login-input-border-hover: #7c89db;
+  --login-input-border-focus: #7c89db;
+  --login-input-focus-shadow: 0 0 0 2px rgb(124 137 219 / 24%);
+  --login-card-shadow: 0 4px 41px 13px rgb(0 0 0 / 30%);
+  --login-gradient-start: rgb(11 17 50 / 12%);
+  --login-gradient-end: rgb(10 15 43 / 42%);
+}
+
+.login-page--dark .login-brand-panel {
+  background: linear-gradient(135deg, #343d78 0%, #4a558e 50%, #303867 100%);
+}
+
+.login-page--dark .brand-logo {
+  color: #626fc2;
+  border: 1px solid rgb(174 184 243 / 45%);
+  background: #eef1ff;
+  box-shadow: 0 4px 12px rgb(11 17 50 / 30%);
+}
+
+.login-page--dark .brand-decoration {
+  opacity: 0.36;
+}
+
+.login-page--dark .brand-illustration-svg {
+  filter: drop-shadow(0 8px 24px rgb(7 11 34 / 34%));
+}
+
+.login-page--dark .login-workspace {
+  background: linear-gradient(135deg, #20252e 0%, #1e232d 52%, #1a1f29 100%);
+}
+
+.login-page--dark .login-card {
+  background: var(--login-surface);
+}
+
+.login-page--dark .login-title {
+  color: var(--login-accent);
+}
+
+/* ===== 响应式 ===== */
+@media (width <= 900px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1.7fr) minmax(390px, 1fr);
+  }
+
+  .login-brand-panel {
+    padding-right: 40px;
+    padding-left: 40px;
+  }
+
+  .login-workspace {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .brand-illustration-svg {
+    width: min(100%, 500px);
+  }
 }
 
 @media (width <= 760px) {
   .login-page {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 150px minmax(0, 1fr);
   }
 
   .login-brand-panel {
-    min-height: 390px;
-    padding: 28px 24px 24px;
+    min-height: 0;
+    padding: 20px 24px 18px;
   }
 
-  .brand-copy {
-    margin-top: 54px;
-    margin-bottom: 38px;
+  .brand-illustration {
+    display: none;
+  }
+
+  .brand-decoration--top {
+    display: none;
   }
 
   .brand-title {
-    font-size: 30px;
+    font-size: 22px;
+  }
+
+  .brand-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
   }
 
   .login-workspace {
-    min-height: auto;
-    padding: 54px 22px 44px;
+    min-height: 0;
+    padding: 18px 24px 24px;
+  }
+
+  .login-card {
+    width: 100%;
+    min-width: 0;
+    max-height: calc(100dvh - 168px);
+    padding: 24px 24px 20px;
   }
 }
 
 @media (width <= 420px) {
   .login-brand-panel {
-    min-height: 360px;
-  }
-
-  .brand-description {
-    font-size: 12px;
-  }
-
-  .login-workspace {
     padding-right: 16px;
     padding-left: 16px;
   }
 
+  .brand-title {
+    font-size: 24px;
+  }
+
+  .login-workspace {
+    padding: 16px;
+  }
+
+  .login-card {
+    padding: 20px 18px 16px;
+  }
+
   .captcha-field {
-    grid-template-columns: minmax(0, 1fr) 100px;
+    grid-template-columns: minmax(0, 1fr) 104px;
   }
 }
 </style>

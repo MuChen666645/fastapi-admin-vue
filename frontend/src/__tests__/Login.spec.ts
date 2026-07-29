@@ -9,10 +9,10 @@ const authApi = vi.hoisted(() => ({
   fetchCaptcha: vi.fn(),
 }))
 
-vi.mock('../api/auth', () => authApi)
+vi.mock('../api', () => authApi)
 
 import LoginView from '../views/login/index.vue'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '../stores'
 
 const HomeView = defineComponent({
   template: '<div data-testid="home-page">Home page</div>',
@@ -42,6 +42,7 @@ const createLoginRouter = () =>
 
 describe('LoginView', () => {
   beforeEach(() => {
+    localStorage.clear()
     authApi.fetchCaptcha.mockResolvedValue({
       captcha_id: 'captcha-id',
       image: 'data:image/png;base64,captcha',
@@ -60,10 +61,36 @@ describe('LoginView', () => {
       },
     })
 
-    await wrapper.get('button').trigger('click')
+    await wrapper.get('.login-submit').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('login')
+
+    wrapper.unmount()
+  })
+
+  it('toggles dark mode on the whole login page', async () => {
+    const router = createLoginRouter()
+
+    await router.push('/login')
+    await router.isReady()
+
+    const wrapper = mount(LoginView, {
+      global: {
+        plugins: [router, createPinia()],
+      },
+    })
+
+    const loginPage = wrapper.get('.login-page')
+    expect(loginPage.classes()).not.toContain('login-page--dark')
+
+    await wrapper.get('.theme-toggle').trigger('click')
+    expect(loginPage.classes()).toContain('login-page--dark')
+    expect(localStorage.getItem('fastapi-admin:theme')).toBe('dark')
+
+    await wrapper.get('.theme-toggle').trigger('click')
+    expect(loginPage.classes()).not.toContain('login-page--dark')
+    expect(localStorage.getItem('fastapi-admin:theme')).toBe('light')
 
     wrapper.unmount()
   })
@@ -97,18 +124,17 @@ describe('LoginView', () => {
     await identifierInput.setValue('admin')
     await passwordInput.setValue('password')
     await captchaInput.setValue('1234')
+    await wrapper.get('.remember-option input').setValue(true)
 
-    const buttons = wrapper.findAll('button')
-    const submitButton = buttons[buttons.length - 1]
-    if (!submitButton) {
-      throw new Error('登录按钮未渲染')
-    }
-
-    await submitButton.trigger('click')
+    await wrapper.get('.login-submit').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('home')
     expect(auth.signIn).toHaveBeenCalledOnce()
+    expect(JSON.parse(localStorage.getItem('fastapi-admin:remembered-login') ?? '{}')).toEqual({
+      identifier: 'admin',
+      password: 'password',
+    })
 
     wrapper.unmount()
   })
