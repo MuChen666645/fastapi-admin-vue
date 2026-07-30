@@ -9,7 +9,7 @@ export const protectedRoutes: RouteRecordRaw[] = [
     name: 'change-password',
     component: ChangePasswordView,
     meta: {
-      title: '淇敼瀵嗙爜',
+      title: '修改密码',
       menu: false,
       hideBreadcrumb: true,
       requiresAuth: true,
@@ -21,7 +21,7 @@ export const protectedRoutes: RouteRecordRaw[] = [
     name: 'app',
     component: BasicLayout,
     meta: {
-      title: '绠＄悊鍚庡彴',
+      title: '管理后台',
       menu: false,
       hideBreadcrumb: true,
       requiresAuth: true,

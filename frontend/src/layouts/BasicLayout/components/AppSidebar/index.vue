@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
+import type { Component } from 'vue'
 import { NEmpty, NIcon, NLayoutSider, NMenu, NText } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
 import type { UserRoute } from '@/types'
 import { useAuthStore } from '@/stores'
-import { resolveMenuIcon } from '@/router/menu-icons'
+import { resolveIconComponent } from '@/hooks'
 
 defineOptions({ name: 'AppSidebar' })
 
@@ -16,15 +17,20 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
+const renderMenuIcon = (icon: Component) =>
+  h(NIcon, { class: 'menu-item-icon', 'aria-hidden': 'true' }, { default: () => h(icon) })
+
 const toMenuOptions = (routes: UserRoute[]): MenuOption[] => {
   return routes
     .filter((item) => !item.hidden)
     .map((item) => {
       const children = toMenuOptions(item.children)
+      const icon = resolveIconComponent(item.meta.icon)
+
       return {
         key: item.name,
         label: item.meta.title,
-        icon: () => renderMenuIcon(item.meta.icon),
+        ...(icon ? { icon: () => renderMenuIcon(icon) } : {}),
         ...(children.length > 0 ? { children } : {}),
       }
     })
@@ -33,13 +39,6 @@ const toMenuOptions = (routes: UserRoute[]): MenuOption[] => {
 const menuOptions = computed(() => toMenuOptions(auth.routes))
 const activeMenuKey = computed(() => (route.name ? String(route.name) : null))
 const userInitial = computed(() => auth.displayName.slice(0, 1).toUpperCase())
-
-const renderMenuIcon = (iconKey: string | null) =>
-  h(
-    NIcon,
-    { class: 'menu-item-icon', 'aria-hidden': 'true' },
-    { default: () => h(resolveMenuIcon(iconKey)) },
-  )
 
 const handleMenuSelect = (key: string | number): void => {
   if (String(key) === activeMenuKey.value) {

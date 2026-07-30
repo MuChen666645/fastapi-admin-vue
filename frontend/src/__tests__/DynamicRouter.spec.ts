@@ -1,9 +1,28 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('@/layouts/BasicLayout/index.vue', () => ({ default: {} }))
+vi.mock('@/views/error/403.vue', () => ({ default: {} }))
+vi.mock('@/views/error/404.vue', () => ({ default: {} }))
+vi.mock('@/views/change-password/index.vue', () => ({ default: {} }))
+vi.mock('@/views/login/index.vue', () => ({ default: {} }))
 
 import { buildDynamicRoutes } from '../router/dynamic'
+import { errorRoutes, protectedRoutes, publicRoutes } from '../router/modules'
 import { parseUserRoutes } from '../api/user/parsers'
 
 describe('dynamic routes', () => {
+  it('uses readable Chinese titles for static routes', () => {
+    const routes = [...publicRoutes, ...protectedRoutes, ...errorRoutes]
+
+    expect(routes.map((route) => route.meta?.title)).toEqual([
+      '登录',
+      '修改密码',
+      '管理后台',
+      '无权限访问',
+      '页面不存在',
+    ])
+  })
+
   it('keeps known local components and isolates unknown backend components', () => {
     const routes = parseUserRoutes([
       {

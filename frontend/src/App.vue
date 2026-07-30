@@ -10,7 +10,7 @@ import {
 import { RouterView } from 'vue-router'
 
 import RouterLoadingBar from './components/RouterLoadingBar/index.vue'
-import { useTheme } from './composables/useTheme'
+import { useTheme } from './hooks'
 
 const { isDarkMode, naiveTheme } = useTheme()
 </script>

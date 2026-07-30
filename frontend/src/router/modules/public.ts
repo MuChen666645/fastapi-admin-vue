@@ -8,7 +8,7 @@ export const publicRoutes: RouteRecordRaw[] = [
     name: 'login',
     component: LoginView,
     meta: {
-      title: '鐧诲綍',
+      title: '登录',
       menu: false,
       hideBreadcrumb: true,
       public: true,

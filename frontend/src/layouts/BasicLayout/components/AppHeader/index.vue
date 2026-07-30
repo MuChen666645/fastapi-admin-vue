@@ -4,7 +4,7 @@ import { NAvatar, NDropdown, NLayoutHeader, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb/index.vue'
-import { useTheme } from '@/composables/useTheme'
+import { useTheme } from '@/hooks'
 import { clearAuthenticatedRoutes } from '@/router'
 import { useAuthStore } from '@/stores'
 

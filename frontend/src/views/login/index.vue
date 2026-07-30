@@ -13,7 +13,7 @@ import type { FormInst, FormRules } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchCaptcha } from '@/api'
-import { useTheme } from '@/composables/useTheme'
+import { useTheme } from '@/hooks'
 import { useAuthStore } from '@/stores'
 import type { LoginCredentials } from '@/types'
 import { ApiError } from '@/utils/request'

@@ -9,7 +9,7 @@ export const errorRoutes: RouteRecordRaw[] = [
     name: 'forbidden',
     component: ForbiddenView,
     meta: {
-      title: '鏃犳潈闄愯闂?',
+      title: '无权限访问',
       menu: false,
       hideBreadcrumb: true,
       public: true,
@@ -20,7 +20,7 @@ export const errorRoutes: RouteRecordRaw[] = [
     name: 'not-found',
     component: NotFoundView,
     meta: {
-      title: '椤甸潰涓嶅瓨鍦?',
+      title: '页面不存在',
       menu: false,
       hideBreadcrumb: true,
       public: true,
