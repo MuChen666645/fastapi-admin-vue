@@ -1,6 +1,11 @@
-import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
+import { defineComponent, h, KeepAlive, nextTick, ref, type Component } from 'vue'
 import { mount } from '@vue/test-utils'
-import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
+import {
+  createMemoryHistory,
+  createRouter,
+  RouterView,
+  type RouteLocationNormalizedLoaded,
+} from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 
@@ -26,17 +31,30 @@ const createRouteCacheHost = () =>
     setup: () => {
       const { cachedComponentNames, getCachedRouteComponent, getRouteKey } = useRouteCache()
 
+      interface RouteViewSlot {
+        Component: Component | null
+        route: RouteLocationNormalizedLoaded
+      }
+
       return () =>
         h(
           RouterView,
           {},
           {
-            default: ({ Component, route }) =>
-              h(KeepAlive, { include: cachedComponentNames.value }, () =>
-                h(getCachedRouteComponent(Component, route), {
-                  key: getRouteKey(route),
-                }),
-              ),
+            default: ({ Component, route }: RouteViewSlot) => {
+              if (!Component) {
+                return h('div')
+              }
+
+              const cachedComponent = getCachedRouteComponent(Component, route)
+              if (!cachedComponent) {
+                return h('div')
+              }
+
+              return h(KeepAlive, { include: cachedComponentNames.value }, () =>
+                h(cachedComponent, { key: getRouteKey(route) }),
+              )
+            },
           },
         )
     },

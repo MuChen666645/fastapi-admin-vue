@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import {
   ChevronBackOutline,
   ChevronForwardOutline,
@@ -71,10 +71,6 @@ watch(
   syncCurrentTab,
   { immediate: true },
 )
-
-onBeforeUnmount(() => {
-  tabsStore.reset()
-})
 
 const hideContextMenu = (): void => {
   contextMenu.visible = false

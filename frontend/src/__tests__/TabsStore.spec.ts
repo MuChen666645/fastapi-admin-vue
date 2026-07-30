@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+import { createApp } from 'vue'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -15,7 +17,23 @@ const createTab = (key: string, closable = true, icon: string | null = null): Ap
   closable,
 })
 
+const createPersistedPinia = () => {
+  const app = createApp({ render: () => null })
+  const pinia = createPinia().use(piniaPluginPersistedstate)
+  app.use(pinia)
+  app.mount(document.createElement('div'))
+  return { app, pinia }
+}
+
 describe('tabs store', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    sessionStorage.clear()
+  })
+
   it('keeps the first route as a fixed tab', () => {
     setActivePinia(createPinia())
     const tabs = useTabsStore()
@@ -60,5 +78,29 @@ describe('tabs store', () => {
 
     tabs.removeTab('users')
     expect(tabs.cachedComponentNames).toEqual([])
+  })
+
+  it('restores tab data from session storage after a page refresh', () => {
+    const firstApp = createPersistedPinia()
+    setActivePinia(firstApp.pinia)
+    const tabs = useTabsStore()
+
+    tabs.addTab(createTab('home', false, 'HomeOutline'))
+    tabs.addTab(createTab('users', true, 'PeopleOutline'))
+
+    const restoredApp = createPersistedPinia()
+    setActivePinia(restoredApp.pinia)
+    const restoredTabs = useTabsStore()
+
+    expect(restoredTabs.tabs.map((tab) => [tab.key, tab.icon, tab.closable])).toEqual([
+      ['home', 'HomeOutline', false],
+      ['users', 'PeopleOutline', true],
+    ])
+
+    restoredTabs.reset()
+    expect(restoredTabs.tabs).toEqual([])
+
+    firstApp.app.unmount()
+    restoredApp.app.unmount()
   })
 })

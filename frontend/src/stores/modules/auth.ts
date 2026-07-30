@@ -18,6 +18,7 @@ import type {
   UserRoute,
 } from '@/types'
 import { ApiError, configureAuthTransport } from '@/utils/request'
+import { useTabsStore } from './tabs'
 
 export const useAuthStore = defineStore(
   'auth',
@@ -51,6 +52,7 @@ export const useAuthStore = defineStore(
     }
 
     const clearSession = (): void => {
+      useTabsStore().reset()
       accessToken.value = null
       refreshToken.value = null
       mustChangePassword.value = false
