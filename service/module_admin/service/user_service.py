@@ -92,6 +92,7 @@ class UserService:
             "hidden": str(menu.get("is_hidden")) == "1",
             "meta": {
                 "title": menu.get("menu_name") or "",
+                "menuType": menu.get("menu_type") or "C",
                 "icon": menu.get("icon"),
                 "noCache": str(menu.get("is_cache")) != "1",
                 "link": menu.get("link_url"),

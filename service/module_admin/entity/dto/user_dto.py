@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -288,6 +289,10 @@ class UserRouteMetaDto(BaseModel):
     """当前用户前端路由元数据。"""
 
     title: str = Field(description="菜单标题")
+    menuType: Literal["C", "L", "I", "W"] = Field(
+        default="C",
+        description="菜单类型: C=路由, L=外链, I=Iframe, W=历史外链",
+    )
     icon: str | None = Field(default=None, description="菜单图标")
     noCache: bool = Field(default=True, description="是否不缓存")
     link: str | None = Field(default=None, description="外链地址")

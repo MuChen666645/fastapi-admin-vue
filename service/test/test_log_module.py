@@ -218,6 +218,7 @@ def test_user_route_tree_uses_frontend_route_shape() -> None:
             "hidden": False,
             "meta": {
                 "title": "system",
+                "menuType": "C",
                 "icon": "Setting",
                 "noCache": True,
                 "link": None,
@@ -231,6 +232,7 @@ def test_user_route_tree_uses_frontend_route_shape() -> None:
                     "hidden": False,
                     "meta": {
                         "title": "user",
+                        "menuType": "C",
                         "icon": "User",
                         "noCache": False,
                         "link": None,
@@ -240,3 +242,22 @@ def test_user_route_tree_uses_frontend_route_shape() -> None:
             ],
         }
     ]
+
+
+def test_user_route_preserves_external_menu_type() -> None:
+    route = UserService._menu_to_route(
+        {
+            "menu_id": 10,
+            "parent_id": 0,
+            "menu_name": "docs",
+            "menu_path": "/docs",
+            "component": None,
+            "icon": "GlobeOutline",
+            "is_hidden": "0",
+            "is_cache": "0",
+            "link_url": "https://example.com/docs",
+            "menu_type": "L",
+        }
+    )
+
+    assert route["meta"]["menuType"] == "L"
