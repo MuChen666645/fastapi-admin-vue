@@ -1,55 +1,61 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { NLayout, NLayoutContent } from 'naive-ui'
 import { RouterView } from 'vue-router'
 
 import AppFooter from './components/AppFooter/index.vue'
 import AppHeader from './components/AppHeader/index.vue'
 import AppSidebar from './components/AppSidebar/index.vue'
+import AppTabs from './components/AppTabs/index.vue'
+import { useRouteCache } from '@/hooks/useRouteCache'
 
 defineOptions({ name: 'BasicLayout' })
 
 const sidebarCollapsed = ref(false)
+const routeViewKey = ref(0)
+const { cachedComponentNames, getCachedRouteComponent, getRouteKey } = useRouteCache()
+
+const syncSidebarForViewport = (): void => {
+  if (typeof window.matchMedia !== 'function') {
+    return
+  }
+
+  sidebarCollapsed.value = window.matchMedia('(max-width: 900px)').matches
+}
+
+onMounted(() => {
+  syncSidebarForViewport()
+  window.addEventListener('resize', syncSidebarForViewport)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncSidebarForViewport)
+})
+
+const refreshRouteView = (): void => {
+  routeViewKey.value += 1
+}
 </script>
 
 <template>
-  <NLayout has-sider class="basic-layout min-h-screen">
+  <NLayout has-sider class="basic-layout">
     <AppSidebar v-model:collapsed="sidebarCollapsed" />
     <NLayout class="main-layout">
       <AppHeader v-model:sidebar-collapsed="sidebarCollapsed" />
-      <NLayoutContent class="layout-content">
+      <AppTabs @refresh="refreshRouteView" />
+      <NLayoutContent class="layout-content" :native-scrollbar="false">
         <main class="content-container mx-auto w-full">
-          <RouterView />
+          <RouterView v-slot="{ Component, route: viewRoute }">
+            <KeepAlive :include="cachedComponentNames">
+              <component
+                :is="getCachedRouteComponent(Component, viewRoute)"
+                :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
+              />
+            </KeepAlive>
+          </RouterView>
         </main>
       </NLayoutContent>
       <AppFooter />
     </NLayout>
   </NLayout>
 </template>
-
-<style scoped>
-.basic-layout {
-  background: var(--app-color-page);
-}
-
-.main-layout {
-  min-width: 0;
-  background: var(--app-color-page);
-}
-
-.layout-content {
-  min-height: calc(100vh - 125px);
-  background: var(--app-color-page);
-}
-
-.content-container {
-  min-height: calc(100vh - 128px);
-  padding: 24px 32px 40px;
-}
-
-@media (width <= 768px) {
-  .content-container {
-    padding: 20px 16px 32px;
-  }
-}
-</style>

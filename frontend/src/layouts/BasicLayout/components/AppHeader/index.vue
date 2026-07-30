@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { NAvatar, NDropdown, NLayoutHeader, useMessage } from 'naive-ui'
+import {
+  MenuOutline,
+  MoonOutline,
+  NotificationsOutline,
+  SearchOutline,
+  ShieldCheckmarkOutline,
+  SunnyOutline,
+} from '@vicons/ionicons5'
+import { NAvatar, NDropdown, NIcon, NLayoutHeader, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb/index.vue'
-import { useTheme } from '@/hooks'
+import { useTheme } from '@/hooks/useTheme'
 import { clearAuthenticatedRoutes } from '@/router'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useTabsStore } from '@/stores'
 
 defineOptions({ name: 'AppHeader' })
 
@@ -17,13 +25,14 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const auth = useAuthStore()
+const tabsStore = useTabsStore()
 const message = useMessage()
 const { isDarkMode, toggleTheme } = useTheme()
 
 const isFullscreen = ref(false)
 const userInitial = computed(() => auth.displayName.slice(0, 1).toUpperCase())
 const userAvatar = computed(() => auth.currentUser?.user.avatar ?? undefined)
-const userRole = computed(() => auth.currentUser?.roles[0]?.name || '已登录用户')
+const userRole = computed(() => auth.currentUser?.roles[0]?.name || '系统管理员')
 const userMenuOptions = [
   { label: '个人中心', key: 'profile' },
   { label: '系统设置', key: 'settings' },
@@ -85,8 +94,9 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
   try {
     await auth.signOut()
   } catch {
-    // 退出接口失败时，本地会话仍已由 Store 清理，继续回到登录页。
+    // 退出接口失败时，Store 仍会清理本地会话并回到登录页。
   } finally {
+    tabsStore.reset()
     clearAuthenticatedRoutes()
     await router.replace({ name: 'login' })
   }
@@ -102,23 +112,45 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <NLayoutHeader bordered class="app-header">
+  <NLayoutHeader class="app-header">
     <div class="header-left">
       <button
         type="button"
         class="header-icon-button sidebar-toggle"
-        :aria-label="props.sidebarCollapsed ? '展开菜单' : '收缩菜单'"
-        :title="props.sidebarCollapsed ? '展开菜单' : '收缩菜单'"
+        :aria-label="props.sidebarCollapsed ? '展开菜单' : '收起菜单'"
+        :title="props.sidebarCollapsed ? '展开菜单' : '收起菜单'"
         @click="toggleSidebar"
       >
-        <span aria-hidden="true">☰</span>
+        <NIcon :size="19"><MenuOutline /></NIcon>
       </button>
-      <div class="header-breadcrumb">
-        <AppBreadcrumb />
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">
+          <NIcon :size="19"><ShieldCheckmarkOutline /></NIcon>
+        </span>
+        <strong>FastAPI Admin</strong>
+        <span class="brand-version">v1.0</span>
       </div>
+      <label class="header-search">
+        <NIcon :size="15" aria-hidden="true"><SearchOutline /></NIcon>
+        <input type="search" placeholder="搜索功能..." aria-label="搜索功能" />
+      </label>
+    </div>
+
+    <div class="header-breadcrumb">
+      <AppBreadcrumb />
     </div>
 
     <div class="header-actions">
+      <button
+        type="button"
+        class="header-icon-button notification-button"
+        aria-label="通知"
+        title="通知"
+      >
+        <NIcon :size="18"><NotificationsOutline /></NIcon>
+        <span class="notification-dot" aria-hidden="true" />
+      </button>
+      <span class="header-divider" aria-hidden="true" />
       <button
         type="button"
         class="header-icon-button fullscreen-toggle"
@@ -126,7 +158,7 @@ onBeforeUnmount(() => {
         :title="isFullscreen ? '退出全屏' : '进入全屏'"
         @click="toggleFullscreen"
       >
-        <span aria-hidden="true">⛶</span>
+        <span aria-hidden="true">{{ isFullscreen ? '⤢' : '⛶' }}</span>
       </button>
       <button
         type="button"
@@ -135,7 +167,10 @@ onBeforeUnmount(() => {
         :title="isDarkMode ? '切换亮色模式' : '切换暗色模式'"
         @click="toggleTheme"
       >
-        <span aria-hidden="true">{{ isDarkMode ? '☀' : '☾' }}</span>
+        <NIcon :size="18" aria-hidden="true">
+          <SunnyOutline v-if="isDarkMode" />
+          <MoonOutline v-else />
+        </NIcon>
       </button>
 
       <NDropdown
@@ -145,7 +180,7 @@ onBeforeUnmount(() => {
         @select="handleUserMenu"
       >
         <button type="button" class="user-trigger" aria-haspopup="menu" title="打开用户菜单">
-          <NAvatar round :size="34" :src="userAvatar" class="user-avatar">
+          <NAvatar round :size="32" :src="userAvatar" class="user-avatar">
             {{ userInitial }}
           </NAvatar>
           <span class="user-meta">
@@ -157,143 +192,3 @@ onBeforeUnmount(() => {
     </div>
   </NLayoutHeader>
 </template>
-
-<style scoped>
-.app-header {
-  display: flex;
-  min-height: 64px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  color: var(--app-color-text);
-  background: var(--app-color-surface);
-  border-bottom: 1px solid var(--app-color-border);
-}
-
-.header-left,
-.header-actions,
-.user-trigger {
-  display: flex;
-  align-items: center;
-}
-
-.header-left {
-  min-width: 0;
-  gap: 20px;
-}
-
-.header-actions {
-  gap: 8px;
-}
-
-.header-breadcrumb {
-  min-width: 0;
-}
-
-.header-breadcrumb :deep(.app-breadcrumb) {
-  margin: 0;
-}
-
-.header-icon-button {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  place-items: center;
-  color: var(--app-color-text-muted);
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 19px;
-  line-height: 1;
-}
-
-.header-icon-button:hover,
-.header-icon-button:focus-visible {
-  color: var(--app-color-primary);
-  background: var(--app-color-surface-muted);
-  outline: none;
-}
-
-.fullscreen-toggle {
-  font-size: 21px;
-}
-
-.theme-toggle {
-  font-size: 20px;
-}
-
-.user-trigger {
-  gap: 10px;
-  padding: 4px 0 4px 8px;
-  color: var(--app-color-text);
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-
-.user-trigger:focus-visible {
-  border-radius: 6px;
-  outline: 2px solid var(--app-color-primary);
-  outline-offset: 2px;
-}
-
-.user-avatar {
-  color: #fff;
-  background: #2f6df6;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.user-meta {
-  display: grid;
-  min-width: 92px;
-  gap: 2px;
-}
-
-.user-name,
-.user-role {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-name {
-  font-size: 13px;
-}
-
-.user-role {
-  color: var(--app-color-text-muted);
-  font-size: 11px;
-}
-
-.user-arrow {
-  color: var(--app-color-text-muted);
-  font-size: 17px;
-}
-
-@media (width <= 768px) {
-  .app-header {
-    padding: 0 14px;
-  }
-
-  .header-left {
-    gap: 10px;
-  }
-
-  .header-actions {
-    gap: 2px;
-  }
-
-  .user-meta,
-  .user-arrow {
-    display: none;
-  }
-
-  .user-trigger {
-    padding-left: 4px;
-  }
-}
-</style>

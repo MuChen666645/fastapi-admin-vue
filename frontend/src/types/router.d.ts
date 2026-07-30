@@ -9,6 +9,7 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     allowPasswordChange?: boolean
     dynamic?: boolean
+    menuType?: import('./api/router').UserRouteMenuType
     icon?: string | null
     noCache?: boolean
     link?: string | null

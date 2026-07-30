@@ -2,6 +2,9 @@ import { computed, ref } from 'vue'
 import { darkTheme } from 'naive-ui'
 
 const THEME_STORAGE_KEY = 'fastapi-admin:theme'
+const THEME_TRANSITION_CLASS = 'app-theme-changing'
+
+let themeTransitionTimer: number | undefined
 
 const readStoredTheme = (): boolean => {
   if (typeof window === 'undefined') {
@@ -27,6 +30,23 @@ const persistTheme = (isDark: boolean): void => {
   }
 }
 
+const startThemeTransition = (): void => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  document.documentElement.classList.add(THEME_TRANSITION_CLASS)
+
+  if (themeTransitionTimer !== undefined) {
+    window.clearTimeout(themeTransitionTimer)
+  }
+
+  themeTransitionTimer = window.setTimeout(() => {
+    document.documentElement.classList.remove(THEME_TRANSITION_CLASS)
+    themeTransitionTimer = undefined
+  }, 0)
+}
+
 const darkMode = ref(readStoredTheme())
 
 export const useTheme = () => {
@@ -34,6 +54,7 @@ export const useTheme = () => {
   const naiveTheme = computed(() => (darkMode.value ? darkTheme : null))
 
   const toggleTheme = (): void => {
+    startThemeTransition()
     darkMode.value = !darkMode.value
     persistTheme(darkMode.value)
   }

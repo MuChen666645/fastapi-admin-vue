@@ -8,28 +8,7 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <NLayoutFooter class="app-footer" bordered>
-    <NText depth="3">{{ appTitle }}</NText>
-    <NText depth="3">API v1 · {{ currentYear }}</NText>
+  <NLayoutFooter class="app-footer">
+    <NText depth="3">© {{ currentYear }} {{ appTitle }}. All rights reserved.</NText>
   </NLayoutFooter>
 </template>
-
-<style scoped>
-.app-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 32px;
-  background: var(--app-color-surface);
-  border-top: 1px solid var(--app-color-border);
-  font-size: 12px;
-  box-sizing: border-box;
-}
-
-@media (width <= 768px) {
-  .app-footer {
-    flex-wrap: wrap;
-    padding: 14px 16px;
-  }
-}
-</style>

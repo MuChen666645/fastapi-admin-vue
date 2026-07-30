@@ -4,7 +4,7 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 import 'virtual:uno.css'
 import 'vfonts/Lato.css'
-import './styles/index.css'
+import './assets/styles/fastapi-admin.scss'
 import App from './App.vue'
 import router from './router'
 

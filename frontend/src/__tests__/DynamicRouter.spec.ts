@@ -6,7 +6,7 @@ vi.mock('@/views/error/404.vue', () => ({ default: {} }))
 vi.mock('@/views/change-password/index.vue', () => ({ default: {} }))
 vi.mock('@/views/login/index.vue', () => ({ default: {} }))
 
-import { buildDynamicRoutes } from '../router/dynamic'
+import { buildDynamicRoutes } from '../router/route-utils'
 import { errorRoutes, protectedRoutes, publicRoutes } from '../router/modules'
 import { parseUserRoutes } from '../api/user/parsers'
 
@@ -43,9 +43,24 @@ describe('dynamic routes', () => {
         meta: { title: '未知页面', icon: null, noCache: true, link: null },
         children: [],
       },
+      {
+        path: 'docs',
+        name: 'docs',
+        component: null,
+        redirect: null,
+        hidden: false,
+        meta: {
+          title: '在线文档',
+          menuType: 'L',
+          icon: null,
+          noCache: true,
+          link: 'https://example.com/docs',
+        },
+        children: [],
+      },
     ])
 
-    expect(buildDynamicRoutes(routes).map((route) => route.name)).toEqual(['dashboard'])
+    expect(buildDynamicRoutes(routes).map((route) => route.name)).toEqual(['dashboard', 'docs'])
   })
 
   it('rejects unsafe backend route paths before registration', () => {
@@ -62,5 +77,32 @@ describe('dynamic routes', () => {
         },
       ]),
     ).toEqual([])
+  })
+
+  it('redirects container menus to their first navigable child', () => {
+    const routes = parseUserRoutes([
+      {
+        path: 'system',
+        name: 'system',
+        component: null,
+        redirect: null,
+        hidden: false,
+        meta: { title: '系统管理', menuType: 'C', icon: null, noCache: true, link: null },
+        children: [
+          {
+            path: 'users',
+            name: 'users',
+            component: 'home/index',
+            redirect: null,
+            hidden: false,
+            meta: { title: '用户管理', menuType: 'C', icon: null, noCache: true, link: null },
+            children: [],
+          },
+        ],
+      },
+    ])
+
+    const systemRoute = buildDynamicRoutes(routes).find((route) => route.name === 'system')
+    expect(systemRoute?.redirect).toEqual({ name: 'users' })
   })
 })

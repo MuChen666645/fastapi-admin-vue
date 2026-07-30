@@ -5,8 +5,9 @@ export type {
   LoginCredentials,
   TokenResponse,
   UserRoute,
+  UserRouteMenuType,
   UserRouteMeta,
 } from './api'
 export type { AuthStatus } from './store'
-export type { AuthenticatedRouteRegistrar } from './router'
+export type { AppTab, AuthenticatedRouteRegistrar } from './router'
 export type { AuthTransportHandlers, RequestOptions } from './transport'

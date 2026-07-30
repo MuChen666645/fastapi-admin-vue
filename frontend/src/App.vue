@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import {
   NConfigProvider,
   NDialogProvider,
@@ -10,31 +11,44 @@ import {
 import { RouterView } from 'vue-router'
 
 import RouterLoadingBar from './components/RouterLoadingBar/index.vue'
-import { useTheme } from './hooks'
+import { useTheme } from './hooks/useTheme'
 
 const { isDarkMode, naiveTheme } = useTheme()
+const themeOverrides = computed(() => {
+  const primaryColor = isDarkMode.value ? '#aeb8f3' : '#6c7ce5'
+  const primaryColorHover = isDarkMode.value ? '#8ea1e9' : '#5762e0'
+
+  return {
+    common: {
+      primaryColor,
+      primaryColorHover,
+      primaryColorPressed: primaryColorHover,
+      borderRadius: '8px',
+    },
+  }
+})
+
+const syncDocumentTheme = (isDark: boolean): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.documentElement.classList.toggle('app-theme-dark', isDark)
+}
+
+watch(isDarkMode, syncDocumentTheme, { immediate: true })
 </script>
 
 <template>
   <div class="app-root" :class="{ 'app-root--dark': isDarkMode }">
-    <NConfigProvider
-      :theme="naiveTheme"
-      :theme-overrides="{
-        common: {
-          primaryColor: '#2f8063',
-          primaryColorHover: '#24664f',
-          primaryColorPressed: '#1e5844',
-          borderRadius: '8px',
-        },
-      }"
-    >
+    <NConfigProvider :theme="naiveTheme" :theme-overrides="themeOverrides">
       <NGlobalStyle />
       <NMessageProvider>
         <NDialogProvider>
           <NNotificationProvider>
             <NLoadingBarProvider
               :loading-bar-style="{
-                loading: { backgroundColor: '#2f8063' },
+                loading: { backgroundColor: isDarkMode ? '#aeb8f3' : '#6c7ce5' },
                 error: { backgroundColor: '#b54747' },
               }"
             >

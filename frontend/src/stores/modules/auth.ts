@@ -38,7 +38,7 @@ export const useAuthStore = defineStore(
       () => accessToken.value !== null && status.value === 'authenticated',
     )
     const displayName = computed(
-      () => currentUser.value?.user.nickname || currentUser.value?.user.username || '鐢ㄦ埛',
+      () => currentUser.value?.user.nickname || currentUser.value?.user.username || '用户',
     )
 
     const applyTokens = (tokens: TokenResponse): void => {
@@ -81,7 +81,7 @@ export const useAuthStore = defineStore(
         try {
           applyTokens(await refreshTokens(persistedRefreshToken))
         } catch (error) {
-          sessionError.value = error instanceof Error ? error : new Error('浼氳瘽鍒锋柊澶辫触')
+          sessionError.value = error instanceof Error ? error : new Error('会话刷新失败')
           clearSession()
           return false
         }
@@ -103,7 +103,7 @@ export const useAuthStore = defineStore(
         status.value = 'authenticated'
         return true
       } catch (error) {
-        sessionError.value = error instanceof Error ? error : new Error('浼氳瘽鍒濆鍖栧け璐?')
+        sessionError.value = error instanceof Error ? error : new Error('会话初始化失败')
         if (error instanceof ApiError && error.status === 401) {
           clearSession()
         } else {
@@ -148,7 +148,7 @@ export const useAuthStore = defineStore(
       if (!initialized) {
         const initializationError = sessionError.value
         clearSession()
-        throw initializationError ?? new Error('鐧诲綍鍚庢棤娉曞垵濮嬪寲浼氳瘽')
+        throw initializationError ?? new Error('登录后无法初始化会话')
       }
     }
 
@@ -157,7 +157,7 @@ export const useAuthStore = defineStore(
       mustChangePassword.value = false
       const initialized = await initializeSession()
       if (!initialized) {
-        throw new Error('瀵嗙爜宸蹭慨鏀癸紝浣嗘棤娉曞姞杞界敤鎴疯彍鍗?')
+        throw new Error('密码已修改，但无法加载用户菜单')
       }
     }
 

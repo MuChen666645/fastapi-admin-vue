@@ -1,4 +1,4 @@
-import type { CurrentUserResponse, UserRoute } from '@/types'
+import type { CurrentUserResponse, UserRoute, UserRouteMenuType } from '@/types'
 import {
   isRecord,
   readBoolean,
@@ -20,6 +20,18 @@ const isSafeRoutePath = (value: string): boolean =>
 const isSafeRouteName = (value: string): boolean =>
   value.length <= 64 && /^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(value)
 
+const isUserRouteMenuType = (value: string): value is UserRouteMenuType =>
+  value === 'C' || value === 'L' || value === 'I' || value === 'W'
+
+const isSafeExternalLink = (value: string): boolean => {
+  try {
+    const url = new URL(value)
+    return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
 const parseUserRoute = (value: unknown): UserRoute => {
   if (!isRecord(value)) {
     throw new Error('接口路由节点无效')
@@ -39,9 +51,19 @@ const parseUserRoute = (value: unknown): UserRoute => {
   }
 
   const metaValue = isRecord(value.meta) ? value.meta : {}
+  const menuTypeValue = readString(metaValue.menuType, 'C') ?? 'C'
+  if (!isUserRouteMenuType(menuTypeValue)) {
+    throw new Error('接口菜单类型无效')
+  }
+
+  const menuType = menuTypeValue
   const link = readString(metaValue.link)
-  if (link !== null && !isSafeRoutePath(link)) {
-    throw new Error('接口外链未被允许')
+  if (link !== null) {
+    const isLinkedMenu = menuType === 'L' || menuType === 'I' || menuType === 'W'
+    const isValidLink = isLinkedMenu ? isSafeExternalLink(link) : isSafeRoutePath(link)
+    if (!isValidLink) {
+      throw new Error('接口外链未被允许')
+    }
   }
 
   const children = Array.isArray(value.children) ? value.children : []
@@ -61,6 +83,7 @@ const parseUserRoute = (value: unknown): UserRoute => {
     hidden: readBoolean(value.hidden, false),
     meta: {
       title: readString(metaValue.title, name) ?? name,
+      menuType,
       icon: readString(metaValue.icon),
       noCache: readBoolean(metaValue.noCache, true),
       link,

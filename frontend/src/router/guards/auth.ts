@@ -2,7 +2,7 @@ import type { NavigationGuard, Router } from 'vue-router'
 
 import { useAuthStore } from '@/stores'
 import type { AuthenticatedRouteRegistrar } from '@/types'
-import { findFirstVisibleRouteName } from '../dynamic'
+import { findFirstVisibleRouteName } from '../route-utils'
 
 export const createAuthGuard =
   (router: Router, registerRoutes: AuthenticatedRouteRegistrar): NavigationGuard =>

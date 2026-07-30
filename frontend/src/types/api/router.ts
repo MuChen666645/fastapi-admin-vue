@@ -1,5 +1,8 @@
+export type UserRouteMenuType = 'C' | 'L' | 'I' | 'W'
+
 export interface UserRouteMeta {
   title: string
+  menuType: UserRouteMenuType
   icon: string | null
   noCache: boolean
   link: string | null

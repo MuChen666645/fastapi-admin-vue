@@ -1,1 +1,1 @@
-export { useAuthStore } from './modules'
+export { useAuthStore, useTabsStore } from './modules'

@@ -14,6 +14,7 @@ const authorizedRoute: UserRoute = {
   hidden: false,
   meta: {
     title: '系统设置',
+    menuType: 'C',
     icon: null,
     noCache: false,
     link: null,
