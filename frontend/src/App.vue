@@ -10,6 +10,7 @@ import {
 } from 'naive-ui'
 import { RouterView } from 'vue-router'
 
+import GlobalLoading from './components/GlobalLoading/index.vue'
 import RouterLoadingBar from './components/RouterLoadingBar/index.vue'
 import { useTheme } from './hooks/useTheme'
 
@@ -52,6 +53,7 @@ watch(isDarkMode, syncDocumentTheme, { immediate: true })
                 error: { backgroundColor: '#b54747' },
               }"
             >
+              <GlobalLoading />
               <RouterLoadingBar />
               <RouterView />
             </NLoadingBarProvider>

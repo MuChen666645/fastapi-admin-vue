@@ -16,6 +16,8 @@
 
 开发环境默认代理 `/api/*` 到 FastAPI 的 `http://127.0.0.1:3000`，保留 `/api/v1` 前缀。生产环境应由 Nginx 或其他网关代理 `/api`，不要把容器内部地址写入浏览器环境变量。
 
+路由统一从后端 `/user/routes` 获取。后端路由的 `component` 会在前端静态 `src/views/**/*.vue` 映射中解析，支持 `home/index`、`@/views/home/index.vue` 和 `../views/home/index.vue` 等形式。未找到本地组件的路由不会注册，并会在控制台输出警告。
+
 Vite 环境文件按 mode 加载：`.env` 保存公共配置，`.env.development` 用于开发，`.env.staging` 用于预发布，`.env.production` 用于生产；对应的 `.local` 文件可覆盖本机配置且不会提交。单元测试使用 Vitest 内置的 `test` mode，不维护 `.env.test`。
 
 常用命令：

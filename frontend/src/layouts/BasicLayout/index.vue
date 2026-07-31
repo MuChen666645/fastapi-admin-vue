@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { NLayout, NLayoutContent } from 'naive-ui'
 import { RouterView } from 'vue-router'
 
+import ContentLoading from '@/components/ContentLoading/index.vue'
 import AppFooter from './components/AppFooter/index.vue'
 import AppHeader from './components/AppHeader/index.vue'
 import AppSidebar from './components/AppSidebar/index.vue'
@@ -44,18 +45,28 @@ const refreshRouteView = (): void => {
       <AppHeader v-model:sidebar-collapsed="sidebarCollapsed" />
       <AppTabs @refresh="refreshRouteView" />
       <NLayoutContent class="layout-content" :native-scrollbar="false">
-        <main class="content-container mx-auto w-full">
-          <RouterView v-slot="{ Component, route: viewRoute }">
-            <KeepAlive :include="cachedComponentNames">
-              <component
-                :is="getCachedRouteComponent(Component, viewRoute)"
-                :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
-              />
-            </KeepAlive>
-          </RouterView>
-        </main>
+        <div class="layout-content__body">
+          <ContentLoading />
+          <main class="content-container mx-auto w-full">
+            <RouterView v-slot="{ Component, route: viewRoute }">
+              <KeepAlive :include="cachedComponentNames">
+                <component
+                  :is="getCachedRouteComponent(Component, viewRoute)"
+                  :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
+                />
+              </KeepAlive>
+            </RouterView>
+          </main>
+        </div>
       </NLayoutContent>
       <AppFooter />
     </NLayout>
   </NLayout>
 </template>
+
+<style scoped>
+.layout-content__body {
+  position: relative;
+  min-height: 100%;
+}
+</style>

@@ -78,12 +78,12 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
   }
 
   if (menuKey === 'settings') {
-    if (router.hasRoute('config')) {
-      await router.push({ name: 'config' })
+    if (router.hasRoute('system-settings')) {
+      await router.push({ name: 'system-settings' })
       return
     }
 
-    message.info('系统设置菜单暂未授权')
+    message.info('系统设置页面暂未配置')
     return
   }
 

@@ -10,6 +10,7 @@ export default mergeConfig(
       clearMocks: true,
       restoreMocks: true,
       passWithNoTests: true,
+      setupFiles: ['./src/__tests__/setup.ts'],
       exclude: ['node_modules/**', 'dist/**', 'dist-*/**', 'coverage/**', 'e2e/**'],
     },
   }),

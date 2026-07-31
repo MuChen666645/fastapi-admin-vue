@@ -43,4 +43,5 @@ export const clearAuthenticatedRoutes = (): void => {
 router.beforeEach(createAuthGuard(router, registerAuthenticatedRoutes))
 
 export { buildDynamicRoutes, findFirstVisibleRouteName, resolveRouteComponent } from './route-utils'
+export { loadApplicationRoutes } from './route-source'
 export default router

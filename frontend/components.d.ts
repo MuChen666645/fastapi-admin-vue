@@ -13,6 +13,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppBreadcrumb: typeof import('./src/components/AppBreadcrumb/index.vue')['default']
+    ContentLoading: typeof import('./src/components/ContentLoading/index.vue')['default']
+    GlobalLoading: typeof import('./src/components/GlobalLoading/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterLoadingBar: typeof import('./src/components/RouterLoadingBar/index.vue')['default']
     RouterView: typeof import('vue-router')['RouterView']
@@ -22,6 +24,8 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const AppBreadcrumb: typeof import('./src/components/AppBreadcrumb/index.vue')['default']
+  const ContentLoading: typeof import('./src/components/ContentLoading/index.vue')['default']
+  const GlobalLoading: typeof import('./src/components/GlobalLoading/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterLoadingBar: typeof import('./src/components/RouterLoadingBar/index.vue')['default']
   const RouterView: typeof import('vue-router')['RouterView']

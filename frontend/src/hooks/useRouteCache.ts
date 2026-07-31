@@ -2,7 +2,7 @@ import { computed, defineComponent, h, onBeforeUnmount, type Component } from 'v
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { useRoute } from 'vue-router'
 
-import { getRouteCacheName } from '@/router/route-cache'
+import { getRouteCacheName, isRouteCacheable } from '@/router/route-cache'
 import { useTabsStore } from '@/stores'
 
 interface RouteCacheTarget {
@@ -14,16 +14,13 @@ interface RouteCacheTarget {
 const getRouteKey = (targetRoute: RouteCacheTarget): string =>
   String(targetRoute.name ?? targetRoute.path)
 
-const isCacheableRoute = (targetRoute: RouteCacheTarget): boolean =>
-  targetRoute.meta.noCache === false
-
 export const useRouteCache = () => {
   const route = useRoute()
   const tabsStore = useTabsStore()
   const routeComponentCache = new Map<string, Component>()
 
   const cachedComponentNames = computed(() => {
-    const currentCacheName = isCacheableRoute(route) ? [getRouteCacheName(getRouteKey(route))] : []
+    const currentCacheName = isRouteCacheable(route) ? [getRouteCacheName(getRouteKey(route))] : []
 
     return [...new Set([...tabsStore.cachedComponentNames, ...currentCacheName])]
   })
@@ -32,7 +29,7 @@ export const useRouteCache = () => {
     component: Component | null | undefined,
     targetRoute: RouteCacheTarget,
   ): Component | null | undefined => {
-    if (!component || !isCacheableRoute(targetRoute)) {
+    if (!component || !isRouteCacheable(targetRoute)) {
       return component
     }
 

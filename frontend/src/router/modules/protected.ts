@@ -2,6 +2,7 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import BasicLayout from '@/layouts/BasicLayout/index.vue'
 import ChangePasswordView from '@/views/change-password/index.vue'
+import SystemConfigView from '@/views/system/config/index.vue'
 
 export const protectedRoutes: RouteRecordRaw[] = [
   {
@@ -26,5 +27,22 @@ export const protectedRoutes: RouteRecordRaw[] = [
       hideBreadcrumb: true,
       requiresAuth: true,
     },
+    children: [
+      {
+        path: 'system/settings',
+        name: 'system-settings',
+        component: SystemConfigView,
+        meta: {
+          title: '系统设置',
+          menu: false,
+          hideBreadcrumb: false,
+          requiresAuth: true,
+          noCache: false,
+          icon: 'SettingsOutline',
+          menuType: 'C',
+          link: null,
+        },
+      },
+    ],
   },
 ]

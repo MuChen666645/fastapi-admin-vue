@@ -11,3 +11,4 @@ export type {
 export type { AuthStatus } from './store'
 export type { AppTab, AuthenticatedRouteRegistrar } from './router'
 export type { AuthTransportHandlers, RequestOptions } from './transport'
+export type { LottieAnimationOptions } from './lottie'

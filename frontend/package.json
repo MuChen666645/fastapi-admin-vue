@@ -33,6 +33,7 @@
     "@unocss/reset": "^66.7.5",
     "alova": "^3.5.2",
     "echarts": "^6.1.0",
+    "lottie-web": "^5.13.0",
     "pinia": "^4.0.2",
     "pinia-plugin-persistedstate": "^4.7.1",
     "sass": "^1.102.0",

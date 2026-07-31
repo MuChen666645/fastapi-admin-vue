@@ -2,14 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import 'pinia-plugin-persistedstate'
 
-import {
-  changeCurrentPassword,
-  fetchCurrentUser,
-  fetchUserRoutes,
-  login,
-  logout,
-  refreshTokens,
-} from '@/api'
+import { changeCurrentPassword, fetchCurrentUser, login, logout, refreshTokens } from '@/api'
 import type {
   AuthStatus,
   CurrentUserResponse,
@@ -18,6 +11,7 @@ import type {
   UserRoute,
 } from '@/types'
 import { ApiError, configureAuthTransport } from '@/utils/request'
+import { loadApplicationRoutes } from '@/router/route-source'
 import { useTabsStore } from './tabs'
 
 export const useAuthStore = defineStore(
@@ -101,7 +95,7 @@ export const useAuthStore = defineStore(
         currentUser.value = await fetchCurrentUser()
         permissions.value = currentUser.value.permissions
 
-        routes.value = await fetchUserRoutes()
+        routes.value = await loadApplicationRoutes()
         status.value = 'authenticated'
         return true
       } catch (error) {

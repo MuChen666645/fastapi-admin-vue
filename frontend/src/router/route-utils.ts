@@ -9,43 +9,68 @@ type ViewLoader = () => Promise<{ default: Component }>
 
 const viewLoaders = import.meta.glob('../views/**/*.vue') as Record<string, ViewLoader>
 
-const routeComponentAliases: Record<string, string> = {
-  'home/index': 'home/index',
-  'system/user/index': 'backend/index',
-  'system/role/index': 'backend/index',
-  'system/menu/index': 'backend/index',
-  'system/dept/index': 'backend/index',
-  'system/post/index': 'backend/index',
-  'system/dict/index': 'backend/index',
-  'system/file/index': 'backend/index',
-  'system/config/index': 'backend/index',
-  'system/notice/index': 'backend/index',
-  'monitor/log/index': 'backend/index',
-  'monitor/online/index': 'backend/index',
-  'monitor/job/index': 'backend/index',
+const normalizeComponentName = (componentName: string): string =>
+  componentName
+    .trim()
+    .replace(/\.vue$/g, '')
+    .replace(/^@\/views\//, '')
+    .replace(/^(?:\.\.\/|\.\/)views\//, '')
+    .replace(/^\/?views\//, '')
+    .replace(/^\.?\/+/, '')
+
+const resolvedComponents = new Map<string, Component>()
+const warnedComponents = new Set<string>()
+
+const getViewLoader = (componentName: string): ViewLoader | null => {
+  const viewPath = `../views/${componentName}.vue`
+  return Object.prototype.hasOwnProperty.call(viewLoaders, viewPath)
+    ? (viewLoaders[viewPath] ?? null)
+    : null
 }
 
-const normalizeComponentName = (componentName: string): string =>
-  componentName.replace(/^\/+|\.vue$/g, '')
+const warnMissingComponent = (componentName: string, normalizedName: string): void => {
+  const warningKey = normalizedName || componentName
+  if (warnedComponents.has(warningKey)) {
+    return
+  }
+
+  warnedComponents.add(warningKey)
+  console.warn(
+    `[router] 未找到路由组件：${componentName}，期望路径为 src/views/${normalizedName}.vue`,
+  )
+}
 
 export const resolveRouteComponent = (componentName: string | null): Component | null => {
-  if (!componentName) {
+  if (!componentName?.trim()) {
     return null
   }
 
   const normalizedName = normalizeComponentName(componentName)
-  if (!Object.prototype.hasOwnProperty.call(routeComponentAliases, normalizedName)) {
+  if (
+    !normalizedName ||
+    normalizedName.includes('..') ||
+    normalizedName.includes('\\') ||
+    normalizedName.includes('//') ||
+    !/^[A-Za-z0-9_./-]+$/u.test(normalizedName)
+  ) {
+    warnMissingComponent(componentName, normalizedName)
     return null
   }
 
-  const aliasedName = routeComponentAliases[normalizedName]
-  const viewPath = `../views/${aliasedName}.vue`
-  if (!Object.prototype.hasOwnProperty.call(viewLoaders, viewPath)) {
+  const cachedComponent = resolvedComponents.get(normalizedName)
+  if (cachedComponent) {
+    return cachedComponent
+  }
+
+  const loader = getViewLoader(normalizedName)
+  if (!loader) {
+    warnMissingComponent(componentName, normalizedName)
     return null
   }
 
-  const loader = viewLoaders[viewPath]
-  return loader ? defineAsyncComponent(loader) : null
+  const component = defineAsyncComponent(loader)
+  resolvedComponents.set(normalizedName, component)
+  return component
 }
 
 const normalizeRoutePath = (path: string): string => path.replace(/^\/+|\/+$/g, '')

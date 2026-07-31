@@ -6,7 +6,7 @@ vi.mock('@/views/error/404.vue', () => ({ default: {} }))
 vi.mock('@/views/change-password/index.vue', () => ({ default: {} }))
 vi.mock('@/views/login/index.vue', () => ({ default: {} }))
 
-import { buildDynamicRoutes } from '../router/route-utils'
+import { buildDynamicRoutes, resolveRouteComponent } from '../router/route-utils'
 import { errorRoutes, protectedRoutes, publicRoutes } from '../router/modules'
 import { parseUserRoutes } from '../api/user/parsers'
 
@@ -23,44 +23,75 @@ describe('dynamic routes', () => {
     ])
   })
 
-  it('keeps known local components and isolates unknown backend components', () => {
-    const routes = parseUserRoutes([
-      {
-        path: 'dashboard',
-        name: 'dashboard',
-        component: 'home/index',
-        redirect: null,
-        hidden: false,
-        meta: { title: '首页', icon: null, noCache: false, link: null },
-        children: [],
-      },
-      {
-        path: 'unknown',
-        name: 'unknown',
-        component: 'server/execute',
-        redirect: null,
-        hidden: false,
-        meta: { title: '未知页面', icon: null, noCache: true, link: null },
-        children: [],
-      },
-      {
-        path: 'docs',
-        name: 'docs',
-        component: null,
-        redirect: null,
-        hidden: false,
-        meta: {
-          title: '在线文档',
-          menuType: 'L',
-          icon: null,
-          noCache: true,
-          link: 'https://example.com/docs',
-        },
-        children: [],
-      },
-    ])
+  it('keeps system settings available as a static authenticated child route', () => {
+    const appRoute = protectedRoutes.find((route) => route.name === 'app')
+    const settingsRoute = appRoute?.children?.find((route) => route.name === 'system-settings')
 
-    expect(buildDynamicRoutes(routes).map((route) => route.name)).toEqual(['dashboard', 'docs'])
+    expect(settingsRoute?.path).toBe('system/settings')
+    expect(settingsRoute?.meta?.requiresAuth).toBe(true)
+    expect(settingsRoute?.meta?.menu).toBe(false)
+  })
+
+  it('filters unknown backend components and warns once', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    try {
+      const routes = parseUserRoutes([
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: 'home/index',
+          redirect: null,
+          hidden: false,
+          meta: { title: '首页', icon: null, noCache: false, link: null },
+          children: [],
+        },
+        {
+          path: 'unknown',
+          name: 'unknown',
+          component: 'server/execute',
+          redirect: null,
+          hidden: false,
+          meta: { title: '未知页面', icon: null, noCache: true, link: null },
+          children: [],
+        },
+        {
+          path: 'docs',
+          name: 'docs',
+          component: null,
+          redirect: null,
+          hidden: false,
+          meta: {
+            title: '在线文档',
+            menuType: 'L',
+            icon: null,
+            noCache: true,
+            link: 'https://example.com/docs',
+          },
+          children: [],
+        },
+      ])
+
+      expect(buildDynamicRoutes(routes).map((route) => route.name)).toEqual(['dashboard', 'docs'])
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('server/execute'))
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('normalizes frontend view paths before resolving local components', () => {
+    const directComponent = resolveRouteComponent('home/index.vue')
+    const aliasComponent = resolveRouteComponent('@/views/home/index.vue')
+    const relativeComponent = resolveRouteComponent('../views/home/index.vue')
+    const relativeViewComponent = resolveRouteComponent('./views/home/index.vue')
+    const rootViewComponent = resolveRouteComponent('/views/home/index.vue')
+
+    expect(directComponent).not.toBeNull()
+    expect(aliasComponent).toBe(directComponent)
+    expect(relativeComponent).toBe(directComponent)
+    expect(relativeViewComponent).toBe(directComponent)
+    expect(rootViewComponent).toBe(directComponent)
   })
 
   it('rejects unsafe backend route paths before registration', () => {
