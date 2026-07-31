@@ -4,9 +4,7 @@ import lottie, {
   type RendererType,
 } from 'lottie-web'
 
-import type { LottieAnimationOptions } from '@/types'
-
-type LottieAnimationHandle = Pick<AnimationItem, 'destroy' | 'pause' | 'play'>
+import type { LottieAnimationHandle, LottieAnimationOptions } from '@/types'
 
 export const loadLottieAnimation = (
   container: Element,

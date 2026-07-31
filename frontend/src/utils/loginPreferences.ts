@@ -1,7 +1,4 @@
-export interface RememberedLogin {
-  identifier: string
-  password: string
-}
+import type { RememberedLogin } from '@/types'
 
 const LOGIN_PREFERENCES_KEY = 'fastapi-admin:remembered-login'
 

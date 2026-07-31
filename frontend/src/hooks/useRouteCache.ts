@@ -1,15 +1,9 @@
 import { computed, defineComponent, h, onBeforeUnmount, type Component } from 'vue'
-import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { useRoute } from 'vue-router'
 
 import { getRouteCacheName, isRouteCacheable } from '@/router/route-cache'
 import { useTabsStore } from '@/stores'
-
-interface RouteCacheTarget {
-  name: string | symbol | null | undefined
-  path: string
-  meta: RouteLocationNormalizedLoaded['meta']
-}
+import type { RouteCacheTarget } from '@/types'
 
 const getRouteKey = (targetRoute: RouteCacheTarget): string =>
   String(targetRoute.name ?? targetRoute.path)

@@ -8,7 +8,23 @@ export type {
   UserRouteMenuType,
   UserRouteMeta,
 } from './api'
-export type { AuthStatus } from './store'
-export type { AppTab, AuthenticatedRouteRegistrar } from './router'
+export type { BreadcrumbItem } from './breadcrumb'
+export type {
+  DashboardActivity,
+  DashboardAnnouncement,
+  DashboardCardTone,
+  DashboardQuickAction,
+  DashboardSummaryCard,
+} from './dashboard'
+export type { RememberedLogin } from './login'
+export type {
+  AppTab,
+  AuthenticatedRouteRegistrar,
+  RouteCacheTarget,
+  RouteViewSlot,
+  ViewLoader,
+} from './router'
+export type { AuthStatus, RouteLoadingScope } from './store'
+export type { ContentWidth, SettingsTab, ThemeMode } from './system-config'
 export type { AuthTransportHandlers, RequestOptions } from './transport'
-export type { LottieAnimationOptions } from './lottie'
+export type { LottieAnimationHandle, LottieAnimationOptions } from './lottie'

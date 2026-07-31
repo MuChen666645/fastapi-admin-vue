@@ -1,8 +1,10 @@
-# 功能开发提示词
+# 前端功能开发模板
 
-你正在维护 E:/fastapi-admin-vue/frontend。请先阅读仓库根目录 AGENTS.md、frontend/AGENTS.md、.codex/AGENTS.md、.codex/PROJECT.md、.codex/ARCHITECTURE.md、.codex/BOUNDARY.md 和 .codex/WORKFLOW.md。
+维护目录：`E:/fastapi-admin-vue/frontend`
 
-## 功能需求
+开始前阅读：仓库根目录 `AGENTS.md`、`frontend/AGENTS.md`、`.codex/AGENTS.md`、`.codex/PROJECT.md`、`.codex/ARCHITECTURE.md`、`.codex/BOUNDARY.md` 和 `.codex/WORKFLOW.md`。
+
+## 需求输入
 
 ```text
 功能名称：
@@ -10,40 +12,50 @@
 目标路由或页面：
 用户角色和权限：
 涉及接口：
-验收标准：
+成功标准：
+异常和空状态：
 ```
 
-## 必须执行的流程
+## 开发要求
 
-1. 先检查当前目录结构、现有组件、路由、Store、API 模块、测试和同类功能，确认项目没有已有实现可以复用。
-2. 核对后端控制器、DTO、权限编码、响应包装、分页结构、字段命名和文件响应类型；不要自行发明接口契约。
-3. 先设计数据流和边界：页面或组件 -> 组合式函数或 Store -> API 模块 -> 类型化传输层。
-4. 先在 `src/types/` 独立领域文件中定义类型，再通过 `src/types/index.ts` 或领域出口导出；运行时解析器与类型声明分离。
-5. API、路由和 Store 必须按领域拆分，分别通过 `src/api/index.ts`、`src/router/index.ts`、`src/stores/index.ts` 的统一出口暴露，调用方不得绕过出口引用实现文件。
-6. 使用 TypeScript 类型和必要的运行时校验处理接口数据，不使用 `any` 或未经检查的类型断言。
-7. 功能图标统一从 `@vicons/ionicons5` 静态导入；`@vicons/utils` 仅在已声明依赖后用于图标包装，禁止混用其他图标库、手写 SVG、Emoji 或 Unicode 符号。
-8. 明确加载、空数据、校验失败、无权限、401、403、限流、网络错误、重试和取消状态。
-9. 将权限判断用于界面显示和导航优化，但不能把它当作后端授权的替代品；动态路由组件只能从本地白名单解析。
-10. 文件上传、下载和导出必须区分 JSON 与原始二进制响应；为 API 适配器、权限逻辑、路由转换、会话状态和安全敏感逻辑添加专项测试。
-11. 完成功能后执行 `.codex/WORKFLOW.md` 和项目交付清单，只提交与本功能相关的前端改动。
+1. 先检查现有页面、组件、路由、Store、API、类型、环境配置和同类测试，确认能否复用。
+2. 涉及接口时核对真实方法、完整路径、请求编码、响应包装、错误结构、登录态、权限和字段命名；后端默认只读核对，不修改后端。
+3. 先设计数据流：页面/组件 -> hook 或 Store -> `@/api` -> `src/utils/request.ts` -> FastAPI。
+4. 所有 `type`、`interface`、`enum` 声明放入 `src/types/` 并通过 `@/types` 导入；响应解析放入 API 领域的 `parsers.ts`。新增 CSS 优先使用 UnoCSS，`views` 下目录使用语义化名称；禁止 `any`、未经检查的断言和猜测字段。
+5. 静态路由放 `src/router/modules/`，后端动态路由必须通过本地 View 白名单解析；项目不使用 `VITE_ROUTE_MODE`。
+6. 页面只负责展示、交互和编排。页面较大时，将业务面板拆到该页面的 `components/`，不要复制成全局公共组件。
+7. 跨页面状态进入 Pinia Store，可复用生命周期和局部行为进入 `src/hooks/`；Store 不访问 DOM、不依赖页面组件。
+8. 功能图标从 `@vicons/ionicons5` 静态导入，图标按钮补充 `aria-label`/`title`，装饰图标使用 `aria-hidden`。
+9. 覆盖加载、成功、空数据、校验失败、401、403、网络错误、取消、重复提交和可重试状态；不要使用假数据掩盖真实错误。
+10. 涉及缓存或 Loading 时，分别验证 tabs 持久化、KeepAlive 缓存、路由刷新、全屏 Loading 和内容区 Loading。
 
-## 依赖和范围限制
+## 验收和验证
 
-- 优先使用项目已有的 Vue、Pinia、Vue Router、Alova、Naive UI 和工具链。
-- 未经明确决策，不添加新的 HTTP 客户端、状态管理、UI 框架或运行时依赖。
-- 默认不得修改 `service/`、部署配置、锁文件和生成产物。
-- 不在生产代码中使用 Mock 成功数据或隐藏真实错误。
-- 不把密钥、密码、令牌、验证码、MFA 值和生产数据放入源码、环境变量、日志、截图或测试数据。
+```text
+验收路径：
+关键断言：
+异常路径：
+权限边界：
+```
 
-## 输出格式
+在 `frontend/` 目录执行：
 
-完成后使用中文报告：
+```text
+pnpm run check
+pnpm run test:run
+pnpm run build
+git diff --check
+```
+
+## 交付报告
 
 ```text
 实现内容：
 接口和数据契约：
+路由、Store、缓存和 Loading 影响：
 权限和安全处理：
 验证结果：
 未完成验证及原因：
 涉及文件：
+剩余风险：
 ```

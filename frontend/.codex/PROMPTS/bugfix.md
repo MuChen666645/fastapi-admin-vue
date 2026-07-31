@@ -1,10 +1,10 @@
-# 缺陷修复提示词
+# 前端缺陷修复模板
 
-你正在维护 E:/fastapi-admin-vue/frontend。请先阅读仓库根目录 AGENTS.md、frontend/AGENTS.md、.codex/AGENTS.md、.codex/PROJECT.md、.codex/ARCHITECTURE.md、.codex/BOUNDARY.md 和 .codex/WORKFLOW.md。
+维护目录：`E:/fastapi-admin-vue/frontend`
 
-## 修复目标
+开始前阅读：仓库根目录 `AGENTS.md`、`frontend/AGENTS.md`、`.codex/AGENTS.md`、`.codex/PROJECT.md`、`.codex/ARCHITECTURE.md`、`.codex/BOUNDARY.md` 和 `.codex/WORKFLOW.md`。
 
-请修复以下缺陷：
+## 缺陷输入
 
 ```text
 现象：
@@ -12,39 +12,42 @@
 预期结果：
 实际结果：
 错误信息或截图：
-影响页面、路由或接口：
+影响页面、路由、Store 或接口：
 ```
 
-## 必须执行的流程
+## 修复要求
 
-1. 先读取相关组件、路由、Store、组合式函数、API 模块和测试，不要直接猜测原因。
-2. 使用完整复现路径确认问题发生在展示层、状态层、传输层、接口契约还是后端行为。
-3. 如果涉及接口，核对 `service/` 中对应的控制器、DTO、响应包装、鉴权要求和二进制响应行为；默认不得修改后端。
-4. 若涉及类型、接口、路由、Store 或图标，先核对其领域模块和统一出口；不得把新代码继续塞入旧聚合文件。
-5. 说明根因和触发条件，再实施范围最小、可维护的修复。
-6. 保持现有功能和接口字段不变，不通过 `any`、类型忽略、假数据或静默兜底掩盖错误。
-7. 功能图标统一使用 `@vicons/ionicons5`，禁止以 Emoji、Unicode、手写 SVG 或其他图标库临时替代。
-8. 为回归路径补充或更新专项测试，至少覆盖成功路径以及与本缺陷相关的错误、空值、未授权或竞态状态。
-9. 检查是否引入 XSS、令牌泄露、越权误导、无限重试、请求重复或对象 URL 泄漏。
-10. 运行 `.codex/WORKFLOW.md` 中适用的验证命令，并报告不能运行的命令及真实原因。
+1. 先读取真实组件、布局、路由守卫、Store、hook、API parser 和现有测试，复现后再判断根因。
+2. 区分展示层、页面状态、Pinia 状态、传输层、动态路由、KeepAlive、Loading 生命周期和后端契约问题。
+3. 涉及接口时只读核对后端 Controller、DTO、配置和测试；默认不修改 `service/`。
+4. 说明触发条件和根因，实施最小且可维护的修复，不用 `any`、`@ts-ignore`、假数据、放宽安全校验或静默兜底掩盖问题。
+5. 动态路由仍只能从本地 View 白名单解析；未知组件应过滤并警告，不能直接导入服务端字符串。
+6. 为回归路径补充专项测试，至少覆盖修复成功路径以及相关的错误、空值、未授权、重复导航或竞态状态。
+7. 如果涉及 KeepAlive，分别证明组件缓存行为和 tabs 列表持久化行为；如果涉及 Loading，分别验证布局外全屏和布局内内容区范围。
+8. 检查 XSS、令牌泄露、越权误导、无限重试、重复请求、Lottie 实例泄漏和对象 URL 泄漏风险。
 
-## 安全边界
+9. 修复过程中不得在页面、组件、Hook、Store、Router 或工具文件内新增类型声明；类型统一放入 `src/types/`。新增样式优先使用 UnoCSS，并保持 `views` 目录语义化。
 
-- 前端修复不能替代后端权限校验。
-- 不得把访问令牌、刷新令牌、密码、验证码、MFA 值或生产数据写入日志、URL、截图和测试夹具。
-- 动态路由组件只能从本地白名单加载。
-- 客户端文件扩展名和 MIME 检查不能视为最终安全校验。
-- 下载、导出等原始二进制响应不能强行按 JSON 解析。
+## 验证命令
 
-## 输出格式
+```text
+pnpm run check
+pnpm run test:run
+pnpm run build
+git diff --check
+```
 
-完成后使用中文报告：
+Windows 下若 Vite/Vitest 因 `spawn EPERM` 无法启动，使用允许子进程的环境重试，并分别报告静态检查和运行时测试结果。
+
+## 交付报告
 
 ```text
 根因：
 修改：
 回归风险：
+安全影响：
 验证：
 未完成验证及原因：
 涉及文件：
+剩余风险：
 ```

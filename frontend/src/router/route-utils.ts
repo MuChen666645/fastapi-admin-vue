@@ -3,9 +3,7 @@ import type { Component } from 'vue'
 import { RouterView } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
-import type { UserRoute } from '@/types'
-
-type ViewLoader = () => Promise<{ default: Component }>
+import type { UserRoute, ViewLoader } from '@/types'
 
 const viewLoaders = import.meta.glob('../views/**/*.vue') as Record<string, ViewLoader>
 

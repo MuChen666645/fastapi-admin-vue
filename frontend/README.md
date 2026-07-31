@@ -1,87 +1,144 @@
-# frontend
+# FastAPI Admin Vue 前端
 
-## 环境变量
+这是 FastAPI Admin 的 Vue 3 管理前端，负责登录态、后端菜单路由、管理页面、标签页、主题和路由 Loading 交互。认证、授权、租户、数据范围和业务状态由 FastAPI 服务端最终决定。
 
-复制 `.env.example` 为 `.env.local`，再按运行环境修改。Vite 只会把 `VITE_*` 变量注入前端，因此这些变量只能保存浏览器可公开读取的配置，不能填写密码、Token、签名密钥或内部服务凭据。
+## 技术栈
 
-常用变量：
+- Vue 3 + `<script setup lang="ts">` + TypeScript strict
+- Vite + Vue Router + Pinia
+- Alova fetch adapter + Naive UI
+- UnoCSS reset、Sass、Ionicons 5
+- Lottie Web、Vitest、Vue Test Utils、ESLint、Stylelint、Prettier
 
-- `VITE_API_BASE_URL`：前端 API 基础路径，默认 `/api/v1`。
-- `VITE_API_PROXY_TARGET`：开发代理目标，默认 `http://127.0.0.1:3000`。
-- `VITE_API_PROXY_ENABLED`：是否启用开发代理；预发布和生产默认关闭。
-- `VITE_DEV_HOST`、`VITE_DEV_PORT`、`VITE_DEV_OPEN`：Vite 开发服务器配置。
-- `VITE_PREVIEW_HOST`、`VITE_PREVIEW_PORT`：`vite preview` 服务配置。
-- `VITE_BASE_PATH`：部署在子路径时的静态资源基础路径，默认 `/`。
-- `VITE_SOURCEMAP`：是否生成 sourcemap，默认关闭。
+包管理器为 pnpm，Node 版本以 `package.json` 的 `engines` 为准。
 
-开发环境默认代理 `/api/*` 到 FastAPI 的 `http://127.0.0.1:3000`，保留 `/api/v1` 前缀。生产环境应由 Nginx 或其他网关代理 `/api`，不要把容器内部地址写入浏览器环境变量。
-
-路由统一从后端 `/user/routes` 获取。后端路由的 `component` 会在前端静态 `src/views/**/*.vue` 映射中解析，支持 `home/index`、`@/views/home/index.vue` 和 `../views/home/index.vue` 等形式。未找到本地组件的路由不会注册，并会在控制台输出警告。
-
-Vite 环境文件按 mode 加载：`.env` 保存公共配置，`.env.development` 用于开发，`.env.staging` 用于预发布，`.env.production` 用于生产；对应的 `.local` 文件可覆盖本机配置且不会提交。单元测试使用 Vitest 内置的 `test` mode，不维护 `.env.test`。
-
-常用命令：
-
-```sh
-pnpm dev                 # 开发运行
-pnpm dev:staging         # 预发布运行
-pnpm build               # 生产打包到 dist/
-pnpm build:staging       # 预发布打包到 dist-staging/
-pnpm preview             # 预览生产构建
-pnpm preview:staging     # 预览预发布构建
-pnpm test:run            # 运行单元测试
-```
-
-`dev`、`build`、`preview` 和 `test` 入口都会先运行 `pnpm run check`，依次执行类型检查、ESLint、Stylelint 和 Prettier 格式检查。提交时由 `lint-staged` 对暂存文件执行自动修复。
-
-This template should help get you started developing with Vue 3 in Vite.
-
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## 快速开始
 
 ```sh
 pnpm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 pnpm dev
 ```
 
-### Type-Check, Compile and Minify for Production
+默认开发服务为 `http://127.0.0.1:5173`。`pnpm dev` 会先执行 `pnpm run check`，检查通过后才启动 Vite。
 
-```sh
-pnpm build
+开发环境默认将 `/api` 代理到 `http://127.0.0.1:3000`。如果 FastAPI 服务地址不同，复制 `.env.example` 为 `.env.local` 后修改 `VITE_API_PROXY_TARGET`，不要把密钥、Token 或内部凭据写入环境文件。
+
+## 环境变量
+
+| 变量                                              | 用途                      | 示例                         |
+| ------------------------------------------------- | ------------------------- | ---------------------------- |
+| `VITE_APP_TITLE`                                  | HTML 标题和页脚名称       | `FastAPI Admin`              |
+| `VITE_API_BASE_URL`                               | 浏览器请求的 API 基础路径 | `/api/v1`                    |
+| `VITE_API_PROXY_TARGET`                           | 开发代理目标              | `http://127.0.0.1:3000`      |
+| `VITE_API_PROXY_ENABLED`                          | 是否启用 `/api` 代理      | `true`/`false`               |
+| `VITE_DEV_HOST`、`VITE_DEV_PORT`、`VITE_DEV_OPEN` | 开发服务配置              | `127.0.0.1`、`5173`、`false` |
+| `VITE_PREVIEW_HOST`、`VITE_PREVIEW_PORT`          | preview 服务配置          | `127.0.0.1`、`4173`          |
+| `VITE_BASE_PATH`                                  | 部署基础路径              | `/`                          |
+| `VITE_SOURCEMAP`                                  | 是否生成 sourcemap        | `false`                      |
+
+项目不使用 `VITE_ROUTE_MODE`。登录后业务路由始终通过后端 `/api/v1/user/routes` 获取。
+
+## 路由和权限
+
+静态路由位于 `src/router/modules/`：
+
+- `/login`：公开登录页。
+- `/change-password`：认证后的密码修改页。
+- `/`：`BasicLayout` 应用布局。
+- `/system/settings`：统一系统设置入口，路由名为 `system-settings`，不作为后端菜单显示。
+- `/403` 和 not-found：错误页。
+
+登录后，前端调用 `GET /api/v1/user/routes`，将服务端返回的业务路由注册到 `app` 布局下。后端 `component` 会映射到本地 `src/views/**/*.vue`，支持以下形式：
+
+```text
+home/index
+@/views/home/index.vue
+../views/home/index.vue
+./views/home/index.vue
+/views/home/index.vue
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+路径和路由名称会先经过运行时校验。找不到本地组件的路由会被过滤，并在控制台输出一次警告；前端不把路由菜单当作后端授权替代品。
 
-```sh
-pnpm test:run
+## 目录结构
+
+```text
+src/
+├── api/                 # 领域 API 和响应解析
+├── components/          # 全局 Loading、面包屑、路由进度条
+├── hooks/               # 主题、Lottie、图标、路由缓存等可复用行为
+├── layouts/BasicLayout/ # 侧边栏、头部、标签页、内容区和页脚
+├── router/              # 静态路由、认证守卫、动态路由转换
+├── stores/modules/      # auth、tabs、route-loading
+├── types/               # API、路由、Store、传输和 Lottie 类型
+├── utils/               # 传输边界、运行时守卫和 Lottie 封装
+├── views/               # 路由级页面
+└── __tests__/           # Vitest 单元与组件测试
 ```
 
-## 设计稿关联
+大页面的业务区域放在页面目录的 `components/` 中，例如 `src/views/system/config/components/`。公共组件才放入 `src/components/`。所有 `type`、`interface`、`enum` 声明统一放在 `src/types/`，通过 `@/types` 导入；新增普通样式优先使用 UnoCSS utility class。`src/views/` 下目录使用能表达业务域和页面职责的语义化名称。
 
-- Pixso 设计文件：https://pixso.cn/app/design/uzGAyjde0EOwEse-BkB2Ug?icon_type=1&page-id=4%3A11257
-- 关联前端模块：`src/layouts/BasicLayout/components/AppSidebar/index.vue`
+## 认证与 API
+
+API 调用统一经过 `src/api/<domain>/index.ts` 和 `src/utils/request.ts`。当前认证相关接口包括：
+
+```text
+POST /user/login/username
+POST /user/login/phone
+GET  /captcha/image
+POST /user/token/refresh
+POST /user/logout
+PUT  /user/me/password
+GET  /user/info
+GET  /user/routes
+```
+
+统一响应通常为 `{ code, error_code?, message, data }`。API parser 从 `unknown` 校验字段后才交给 Store 或页面。401 会由传输层使用共享刷新请求重试一次，失败后清理会话。
+
+## Loading、标签页和缓存
+
+- 初始导航和布局外页面使用 `GlobalLoading` 全屏 Lottie 动画。
+- `BasicLayout` 内部页面切换使用 `ContentLoading`，只覆盖内容区，不遮挡侧边栏、顶部栏和标签页。
+- `RouterLoadingBar` 使用 Naive UI 顶部进度条。
+- `meta.noCache === false` 的页面允许 KeepAlive 缓存，缓存名为 `RouteTab_<route-key>`。
+- tabs 列表由 `useTabsStore` 使用 `sessionStorage` 持久化；组件缓存和标签列表是两个独立状态。
+
+Lottie 封装位于 `src/utils/lottie.ts` 和 `src/hooks/useLottie.ts`，动画数据位于 `src/assets/lottie/car-loading3-data.json`。
+
+## 常用命令
+
+```sh
+pnpm run check             # 类型、ESLint、Stylelint、Prettier
+pnpm run test:run          # 检查后运行全部 Vitest
+pnpm run build             # 检查后构建 production 到 dist/
+pnpm run build:staging     # 构建 staging 到 dist-staging/
+pnpm run preview           # 检查后预览 production 构建
+git diff --check           # 检查差异中的空白错误
+```
+
+定向测试示例：
+
+```sh
+pnpm exec vitest run src/__tests__/DynamicRouter.spec.ts
+pnpm exec vitest run src/__tests__/Lottie.spec.ts
+pnpm exec vitest run src/__tests__/SystemConfig.spec.ts
+```
+
+Windows 下如果 Vite/Vitest 报 `spawn EPERM`，需要在允许子进程的环境重试，并分别报告静态检查和运行时测试结果。
+
+## 安全注意事项
+
+- 不把 Token、密码、验证码、MFA、密码重置令牌和生产数据写入日志、URL、源码、截图或测试输出。
+- 服务端路由组件只允许映射到本地 View 白名单，不允许根据服务端字符串任意导入组件。
+- 当前用户主动选择记住登录时，`src/utils/loginPreferences.ts` 会将账号和密码写入 `localStorage`，这是已知风险；新功能不得扩大该行为，后续应单独进行安全整改。
+
+## Codex 文档
+
+前端规则和事实文档位于 `.codex/`：
+
+- `AGENTS.md`：强制实现规则。
+- `PROJECT.md`：当前项目事实、脚本、环境和接口。
+- `ARCHITECTURE.md`：模块职责、路由、会话、缓存和 Loading 数据流。
+- `BOUNDARY.md`：修改范围、安全边界和禁止事项。
+- `WORKFLOW.md`：任务分析、实现、验证和交付流程。
+- `PROMPTS/feature.md`、`PROMPTS/bugfix.md`：任务输入和交付模板。

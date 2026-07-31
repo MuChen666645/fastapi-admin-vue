@@ -1,17 +1,13 @@
-import { defineComponent, h, KeepAlive, nextTick, ref, type Component } from 'vue'
+import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
-import {
-  createMemoryHistory,
-  createRouter,
-  RouterView,
-  type RouteLocationNormalizedLoaded,
-} from 'vue-router'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 
 import { useRouteCache } from '../hooks/useRouteCache'
 import { getRouteCacheName } from '../router/route-cache'
 import { useTabsStore } from '../stores'
+import type { RouteViewSlot } from '../types'
 
 const createCounterView = (testId: string) =>
   defineComponent({
@@ -30,11 +26,6 @@ const createRouteCacheHost = () =>
   defineComponent({
     setup: () => {
       const { cachedComponentNames, getCachedRouteComponent, getRouteKey } = useRouteCache()
-
-      interface RouteViewSlot {
-        Component: Component | null
-        route: RouteLocationNormalizedLoaded
-      }
 
       return () =>
         h(

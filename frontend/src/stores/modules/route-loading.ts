@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-export type RouteLoadingScope = 'screen' | 'content'
+import type { RouteLoadingScope } from '@/types'
 
 const MINIMUM_VISIBLE_DURATION = 240
 

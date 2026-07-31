@@ -103,25 +103,13 @@ watch(() => props.resetKey, resetGeneral)
           </div>
           <NSwitch v-model:value="pageTransition" aria-label="页面切换过渡条" />
         </div>
-        <div class="setting-row">
+         <div class="setting-row">
           <div class="setting-copy">
             <h3>页面切换 Loading</h3>
             <p>路由切换时显示全屏或内容区加载反馈</p>
           </div>
-          <NSwitch v-model:value="loadingAnimation" aria-label="页面切换 Loading" />
+          <NSwitch v-model:value="loadingAnimation" aria-label="页面切换过渡条" />
         </div>
-      </div>
-      <div class="motion-previews" aria-label="动画样式">
-        <button type="button" class="motion-choice motion-choice--active" aria-label="淡入动画">
-          <span class="motion-preview motion-preview--fade" />
-          <NIcon :size="15" aria-hidden="true"><CheckmarkOutline /></NIcon>
-        </button>
-        <button type="button" class="motion-choice" aria-label="滑入动画">
-          <span class="motion-preview motion-preview--slide" />
-        </button>
-        <button type="button" class="motion-choice" aria-label="缩放动画">
-          <span class="motion-preview motion-preview--scale" />
-        </button>
       </div>
     </div>
 

@@ -1,84 +1,45 @@
-# 前端实现规则
+# 前端 Codex 核心规则
 
-以下规则适用于 `frontend/` 下的 Vue 应用。规则约束实现方式，不替代当前源码、后端 DTO、Controller、测试和构建配置对接口事实的证明。
+本文件是 `frontend/.codex/` 的强制实现规则。它约束代码组织、安全边界和验证方式，不替代当前源码、测试、构建配置或后端接口契约。
 
-## 范围和优先级
+## 规则加载
 
-- 前端改动默认只位于 `frontend/`，不得修改 `service/`、部署文件、数据库迁移、`node_modules/`、`dist/`、覆盖率目录、缓存或锁文件。
-- 需求、当前源码和后端契约优先于本目录规则；发现规则与代码冲突时，先核实真实行为，再更新规则或请求契约决策。
-- 使用 Vue 3、Composition API、`<script setup lang="ts">`、TypeScript strict、Pinia、Vue Router、Alova 和 Naive UI。未经过明确决策，不新增同类框架或 HTTP 客户端。
-- 新增或修改的中文规则、注释、文档和任务模板使用中文；命令、路径、API 字段和标准技术名称保留原文。
+修改前端文件前按以下顺序读取：
 
-## 类型规则
+1. 仓库根目录 `AGENTS.md`。
+2. `frontend/AGENTS.md`。
+3. 本文件。
+4. `PROJECT.md`、`ARCHITECTURE.md`、`BOUNDARY.md`、`WORKFLOW.md`。
+5. 与任务对应的 `PROMPTS/feature.md` 或 `PROMPTS/bugfix.md`。
 
-- 所有共享类型必须定义在 `src/types/` 的独立类型文件中，禁止在页面、组件、API、路由和 Store 文件中定义可跨模块使用的 `interface`、`type` 或枚举。
-- 按领域拆分类型，例如 `src/types/api/auth.ts`、`src/types/api/user.ts`、`src/types/router.ts`、`src/types/store.ts`；每个领域目录通过 `index.ts` 汇总，`src/types/index.ts` 提供根统一出口。
-- API 类型保留后端蛇形字段，例如 `access_token`、`refresh_token`、`tenant_id` 和 `must_change_password`。只有明确的 UI 适配器可以转换为前端展示字段。
-- 类型文件只声明类型、常量类型和纯运行时守卫，不发起请求、不执行路由跳转、不读取 Store、不访问 DOM。
-- 运行时解析器与类型声明分离：API 响应解析放在对应 API 模块的 `parsers.ts` 或 `src/utils/guards/`，不得继续把所有领域类型和解析器堆在单一文件中。
-- 禁止使用 `any`、`@ts-ignore`、无检查的类型断言和通过放宽类型掩盖接口不一致。
+## 必须遵守
 
-## 图标规则
+- 使用 Vue 3 Composition API、`<script setup lang="ts">`、TypeScript strict、Pinia、Vue Router、Alova 和 Naive UI；不在未评审时引入同类框架或 HTTP 客户端。
+- 所有请求经过 `src/api/<domain>/index.ts` 和 `src/utils/request.ts`。页面和 Store 不得直接访问 Alova、`fetch`、Axios 或服务端 URL。
+- API 响应先由 `parsers.ts` 接收 `unknown` 并校验，再交给业务层；禁止用类型断言绕过校验。
+- 所有 production 和 test 中的 `type`、`interface`、`enum` 声明都放在 `src/types/` 的语义化领域文件中，并通过 `@/types` 统一出口导出；页面、组件、Hook、Store、Router 和工具文件只允许导入类型，不允许声明类型。
+- 编写样式时优先使用 UnoCSS utility class。`<style scoped>` 仅用于组件专属复杂选择器、伪元素、关键帧、CSS 变量和第三方样式覆盖；不要为普通布局、间距、颜色和响应式规则新增重复 CSS。
+- `src/views/` 下的目录名必须语义化并描述业务域或页面职责，使用现有的小写 kebab-case 约定；禁止 `page`、`view`、`temp`、`common`、`misc`、数字和无意义缩写。页面业务组件放到对应页面的 `components/`，跨页面复用组件放到 `src/components/`。
+- 路由模块只声明路由，守卫只处理认证和安全重定向，动态路由只从本地 View 白名单解析。
+- Store 只管理跨页面状态和动作，不访问 DOM、不依赖页面组件、不保存服务端密钥。
+- 功能图标统一从 `@vicons/ionicons5` 静态导入；按钮必须有可访问名称，装饰图标必须 `aria-hidden`。
+- 不写入真实密钥、Token、密码、验证码、MFA、生产数据、临时日志或生成物。
+- 不用假数据、静默 Mock、`any`、`@ts-ignore`、无检查断言或放宽权限来掩盖问题。
 
-- UI 图标统一使用 Ionicons 5：图标从 `@vicons/ionicons5` 导入，禁止混用其他图标集、手写 SVG、Emoji、Unicode 字符或 CSS 绘制图标作为功能图标。
-- 需要统一尺寸、颜色或 `aria-hidden` 行为时，使用 `Icon` 包装器；包装器来源为 `@vicons/utils`。当前仓库尚未声明该包装器依赖，使用前必须先完成依赖声明和锁文件变更，不能隐式依赖传递安装。
-- 图标按钮必须提供 `aria-label` 和 `title`（当图标含义不明显时），文本按钮只用于明确的文字命令；不要用带文字的圆角矩形替代已有的常见图标命令。
-- 菜单图标、头部操作图标、主题/全屏/返回/刷新/删除/编辑图标都必须遵守同一图标集和尺寸规范。业务图标由页面或领域模块传入，不在通用按钮中猜测。
+## 当前路由事实
 
-## 模块和统一出口
+- `src/router/index.ts` 创建 Router、注册静态路由和认证守卫，并暴露动态路由注册/清理能力。
+- `src/router/modules/public.ts` 提供登录页，`protected.ts` 提供认证入口、修改密码页和 `system-settings`，`error.ts` 提供 403/404。
+- 认证后通过 `GET /api/v1/user/routes` 获取业务路由，并将通过校验的路由添加到 `app` 布局下。
+- 项目不再使用 `VITE_ROUTE_MODE`，不再维护前端静态业务路由清单。
 
-新代码按领域模块组织，禁止继续扩大单文件聚合结构：
+## 当前状态事实
 
-```text
-src/
-├── api/
-│   ├── auth/
-│   │   ├── index.ts
-│   │   └── parsers.ts
-│   ├── user/
-│   │   ├── index.ts
-│   │   └── parsers.ts
-│   └── index.ts
-├── router/
-│   ├── modules/
-│   │   ├── public.ts
-│   │   ├── system.ts
-│   │   └── index.ts
-│   ├── guards/
-│   │   ├── auth.ts
-│   │   └── index.ts
-│   └── index.ts
-├── stores/
-│   ├── modules/
-│   │   ├── auth.ts
-│   │   ├── app.ts
-│   │   └── index.ts
-│   └── index.ts
-└── types/
-    ├── api/
-    │   ├── auth.ts
-    │   ├── user.ts
-    │   └── index.ts
-    ├── router.ts
-    └── index.ts
-```
+- `auth` Store 管理 Token、当前用户、权限、后端路由和初始化状态；仅持久化刷新 Token 与记住的用户名。
+- `tabs` Store 使用 `sessionStorage` 持久化标签页；`route-loading` Store 管理 `screen`/`content` 两种 Loading 范围，并保持最短可见时间。
+- `BasicLayout` 将内容区 Loading、标签页、面包屑、KeepAlive 和路由页面组合在一起。
+- Lottie 封装位于 `src/utils/lottie.ts` 和 `src/hooks/useLottie.ts`，动画组件使用 `src/assets/lottie/car-loading3-data.json`。
 
-- 每个领域目录必须有自己的 `index.ts`，根目录必须有统一出口；业务调用方优先从 `@/api`、`@/router`、`@/stores`、`@/types` 导入，不得跨模块引用实现文件。
-- 统一出口只负责导出，不放业务逻辑、请求、Store 实例化、路由守卫或副作用；禁止形成循环依赖。
-- `export *` 只允许用于无冲突的领域出口；同名导出必须使用显式命名导出，避免统一出口覆盖字段或函数。
-- 迁移旧单文件时保持兼容导出，完成调用方迁移和测试后再删除旧入口；不得为了目录改造改变 API 路径、路由名称、权限码或 Store 行为。
+## 维护规则
 
-## 页面和分层
-
-- 页面只负责展示、交互和页面级编排；业务规则放在 Store、composable 或 service API 层。
-- 请求只能通过 `src/api/<domain>/index.ts` 进入传输层，页面和 Store 不得直接调用 Alova、拼接 URL、设置 Authorization 或解析统一响应。
-- 路由模块只声明路由；认证守卫、动态路由校验和注册分别放在 `router/guards` 与 `router` 的专属模块中。
-- Store 只管理跨页面状态和动作，不访问 DOM，不直接依赖页面组件，不保存服务端密钥。
-- 组件必须明确加载、成功、空数据、校验失败、401、403、限流、网络错误、取消和可重试状态。
-
-## 安全和质量
-
-- 后端是认证、授权、租户、数据范围、业务状态和数据一致性的最终权威。前端隐藏按钮或路由不能替代后端权限校验。
-- Token、密码、MFA、图形验证码、密码重置令牌和真实生产数据不得写入日志、URL、源码、截图或长期浏览器存储。
-- 禁止 `v-html`、任意动态组件、未经校验的外链/iframe、任意 `window.open` 和把服务端组件路径直接作为动态导入地址。
-- 修改完成后至少执行 `pnpm run type-check`、`pnpm run lint`、`pnpm run lint:style`、`pnpm run format:check`、相关单元测试和 `git diff --check`。
+当确认了 API、路由、权限、依赖、目录职责、缓存或构建脚本变化时，必须同步更新 `PROJECT.md`、`ARCHITECTURE.md`、`BOUNDARY.md` 或 `WORKFLOW.md` 中受影响的事实。文档不得保留已经删除的路径、变量、脚本或兼容分支。

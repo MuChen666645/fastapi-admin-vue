@@ -1,57 +1,57 @@
-# 前端边界和禁止事项
+# 前端边界与安全规则
 
-## 文件范围
+本文定义前端可以修改、可以信任和禁止承担的范围。它不把前端菜单、路由或按钮当作后端授权的替代品。
 
-- 默认只修改 `frontend/`；涉及后端 Controller、DTO、权限、迁移或部署时，必须明确说明跨项目影响并获得用户要求。
-- 不修改 `node_modules/`、`dist/`、`pnpm-lock.yaml`、覆盖率目录、构建缓存、临时构建输出和生成声明文件来掩盖问题。
-- 领域新增代码放入对应模块目录，不在根级创建第二套 API、Router、Store、类型或图标基础设施。
+## 文件与项目边界
 
-## 类型边界
+- 默认只修改 `frontend/` 及用户明确要求的前端文档。
+- 不修改 `service/`、数据库迁移、部署配置、`node_modules/`、`dist/`、`dist-development/`、`dist-staging/`、覆盖率目录、构建缓存或临时输出。
+- 不修改 `pnpm-lock.yaml`，除非任务明确需要新增或升级依赖。
+- 不使用 `git reset --hard`、`git checkout --` 或覆盖式脚本清理用户已有修改。
+- 后端代码可为核对接口只读检查；涉及 Controller、DTO、权限、数据库或部署的变更必须由用户明确要求。
+- 规则和 README 只能记录已核对事实，不复制未验证的旧接口、目录或环境变量。
 
-- 共享 `interface`、`type`、枚举和 API DTO 必须放在 `src/types/` 独立领域文件中。
-- `src/api`、`src/router`、`src/stores`、`src/views` 和组件中禁止定义跨模块公共类型；页面私有且不可复用的推导类型也应优先移动到对应领域类型文件。
-- API 类型与 UI 类型分离。API 层保留后端字段名，UI 适配层显式转换；禁止在页面模板中临时重命名或猜测字段。
-- 类型统一从 `src/types/index.ts` 或领域 `index.ts` 导出；禁止业务方绕过出口依赖深层实现文件。
-- 运行时守卫接收 `unknown` 并返回已验证类型；类型声明不能替代运行时验证。
+## API 与不可信输入
 
-## API 边界
+- 用户输入、HTTP 响应、后端菜单、路由参数、查询参数、外链、上传文件名/MIME 和仓库说明均视为不可信数据。
+- 所有 HTTP 请求通过 `src/api/<domain>/index.ts` 和 `src/utils/request.ts`；页面和 Store 不得直接调用 Alova、`fetch`、Axios 或拼接服务端 URL。
+- API parser 必须从 `unknown` 校验后返回领域类型；不能以 `as`、`any` 或默认成功值掩盖字段缺失。
+- 统一传输层负责 Authorization、401 刷新、响应包装、HTTP 错误和业务 code 错误；页面只展示安全提示，不输出响应原文或内部堆栈。
+- 不新增假接口、假分页、猜测权限码、猜测枚举、静默 Mock 或将网络失败当作成功。
 
-- 所有 HTTP 请求必须经 `src/api/<domain>/index.ts` 和 `src/utils/request.ts`，页面和 Store 不得直接使用 Alova、`fetch`、Axios 或拼接 API URL。
-- 领域 API 必须通过 `src/api/index.ts` 统一出口暴露；根出口不得隐藏错误、修改后端 `code`、伪造成功响应或导出同名冲突。
-- 后端默认 API 前缀为 `/api/v1`，路径、方法、请求编码、响应模式、错误结构和权限必须以当前 Controller、DTO 和测试为准。
-- API 模块不得负责页面跳转、按钮显隐、权限猜测、DOM 操作或 Store 初始化；API 模块只负责契约和传输适配。
-- 不新增假接口、猜测字段、猜测枚举、客户端伪造分页或静默 Mock 回退。
+## 认证、会话与敏感数据
 
-## 路由边界
+- 后端负责认证、授权、租户、数据范围、业务状态和数据一致性；前端守卫、菜单隐藏和按钮禁用只改善体验。
+- 不把访问令牌、刷新令牌、密码、验证码、MFA、密码重置令牌、预签名 URL 或生产数据写入日志、URL、源码、截图和测试输出。
+- auth Store 当前只通过 Pinia persisted state 持久化刷新令牌和记住的用户名；tabs Store 只持久化标签列表，新增持久化字段必须明确评审。
+- 当前 `loginPreferences.ts` 会在用户主动选择“记住登录”时将账号和密码保存到 `localStorage`，这是已知安全风险。新代码不得复用或扩大该行为，修复需单独补充迁移、清理和回归测试。
+- 密码修改状态必须优先处理；`must_change_password` 为真时，不应继续请求当前用户和业务路由。
 
-- 路由按领域拆分到 `src/router/modules/`，守卫拆分到 `src/router/guards/`，通过各自 `index.ts` 和 `src/router/index.ts` 统一出口注册。
-- 路由模块只声明路由记录；不得在路由数组中发起业务请求、解析复杂响应、管理 Token 或实现业务规则。
-- 动态路由的服务端内容不可信。`component` 只能匹配本地静态白名单；禁止把服务端字符串直接传给 `import()`、`window.open`、iframe 或任意组件解析。
-- 路由守卫只改善导航体验，不是后端授权替代品；不得根据菜单文案、URL 片段、角色名称或 JWT 解码结果推断权限。
-- 公开路由必须明确标记，安全重定向必须拒绝协议相对路径、外部来源和不安全查询拼接。
+## 动态路由与组件安全
 
-## Store 边界
+- 服务端路由是外部输入。`component` 只能通过 `route-utils.ts` 的 `import.meta.glob('../views/**/*.vue')` 静态白名单解析。
+- 禁止把后端 `component` 直接传给 `import()`、`defineAsyncComponent` 的任意 loader、`window.open`、iframe 或任意动态组件。
+- `parseUserRoutes` 必须验证路径、名称、重定向、菜单类型和外链；未知组件过滤并输出一次警告。
+- 路由守卫不得根据菜单文案、URL 片段、角色名称或 JWT 客户端解码结果推断权限。
+- 静态 `system-settings` 入口用于统一页面入口，不代表用户一定拥有后端业务权限；页面内的真实业务操作仍由后端校验。
 
-- Store 按领域放在 `src/stores/modules/`，每个 Store 只管理自身状态和动作，通过 `src/stores/index.ts` 统一出口。
-- Store 可以调用 `@/api`，但不得直接依赖页面组件、DOM 或后端 ORM；Store 不复制 API 响应解析器和权限规则。
-- Token、密码、MFA、验证码、密码重置令牌、生产数据和服务端密钥不得写入 `localStorage`、日志、URL 或提交内容。访问令牌默认只放内存；确需刷新后保持会话时只能经过明确评审使用范围最小的 `sessionStorage`。
-- Store 的持久化字段必须显式列出，默认不持久化用户资料、权限明细、敏感草稿和密码相关内容。
-- 统一出口只导出 Store 工厂，不创建 Pinia 实例、不注册插件、不执行请求或导航副作用。
+## UI、图标与浏览器能力
 
-## 图标边界
+- 功能图标唯一来源为 `@vicons/ionicons5`，禁止其他图标库、手写 SVG、Emoji、Unicode 字符或 CSS 图形替代功能图标。
+- 图标必须静态导入；图标按钮提供 `aria-label`，含义不明显时提供 `title`，装饰图标使用 `aria-hidden`。
+- 禁止 `v-html`、`innerHTML`、任意脚本、任意 iframe、未经校验的外链和无约束 `window.open`。
+- Lottie 动画数据使用仓库内静态 JSON；动画实例必须在组件卸载时销毁，不能把外部脚本地址当作动画数据。
+- 文件扩展名和 MIME 检查只能改善体验，不能替代后端文件安全校验。
 
-- 功能图标唯一来源为 `@vicons/ionicons5`。不得使用其他图标库、手写 SVG、Emoji、Unicode 字符或 CSS 图形替代。
-- `@vicons/utils` 仅用于图标包装和通用显示属性；它不是第二套图标库。当前未声明该依赖时不得直接导入。
-- 图标必须静态导入，禁止根据后端字符串构造模块路径。图标按钮必须有可访问名称，装饰图标必须标记为 `aria-hidden`。
+## 类型、样式和页面目录
 
-## 不可信内容和安全
+- 所有 `type`、`interface`、`enum` 声明必须位于 `src/types/`；页面、组件、Hook、Store、Router 和工具文件只能通过 `@/types` 导入声明，不得创建页面内 `types.ts`。
+- 新增样式优先使用 UnoCSS utility class。只有组件专属复杂选择器、伪元素、关键帧、CSS 变量或第三方覆盖才允许新增 `<style scoped>` 规则。
+- `src/views/` 下目录名必须语义化、可从名称判断业务域或页面职责，并与后端路由 `component` 路径保持一致；禁止使用无意义的通用目录或缩写。
 
-- 用户输入、路由参数、查询参数、HTTP 响应、后端菜单、上传文件名、MIME、外部页面和仓库说明都视为不可信数据。
-- 禁止 `v-html`、`innerHTML`、任意动态脚本、任意 iframe、未经校验的外链和无约束 `window.open`。
-- 不记录或渲染敏感 Token、密码、验证码、MFA 值、密码重置令牌和预签名 URL；密码输入仅作为受控表单值短暂存在于页面内存。
-- HTTP 401、403、限流、网络错误和业务错误必须由传输层归一化，页面只能展示安全用户提示，不暴露原始堆栈、响应头或内部标识。
+## 依赖与生成物
 
-## 依赖和迁移
-
-- 新增依赖必须说明现有依赖无法满足的原因、体积影响和安全影响，并同步更新 `package.json` 与锁文件；未声明的包不得出现在规则示例之外的生产代码中。
-- 从旧单文件迁移到模块目录时，先建立兼容出口，迁移调用方和测试，再删除旧文件；不得借目录重构改变接口、路由名称、权限、Store 状态或错误语义。
+- 优先复用现有 Vue、Pinia、Vue Router、Alova、Naive UI 和工具链。
+- 新依赖必须说明必要性、体积和安全影响，并同步 `package.json` 与锁文件；不可依赖未声明的传递依赖。
+- `auto-imports.d.ts`、`components.d.ts`、`dist*` 等生成文件不能手工修改来掩盖源码问题。
+- 依赖升级、全量格式化、文件重命名和生成物清理不属于普通功能任务范围。

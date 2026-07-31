@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { CheckmarkOutline, DesktopOutline, GridOutline, ListOutline } from '@vicons/ionicons5'
+import { GridOutline } from '@vicons/ionicons5'
 import { NIcon, NSwitch } from 'naive-ui'
 
-import type { ContentWidth, LayoutMode } from './types'
+import type { ContentWidth } from './types'
 
 defineOptions({ name: 'LayoutSettings' })
 
 const props = defineProps<{ resetKey: number }>()
 
-const layoutModes = [
-  { value: 'side' as const, label: '侧边栏布局', icon: ListOutline },
-  { value: 'top' as const, label: '顶部菜单布局', icon: DesktopOutline },
-  { value: 'mix' as const, label: '混合导航布局', icon: GridOutline },
-]
 
-const layoutMode = ref<LayoutMode>('side')
 const contentWidth = ref<ContentWidth>('full')
 const showSidebar = ref(true)
 const showTabs = ref(true)
@@ -23,7 +17,6 @@ const showBreadcrumb = ref(true)
 const showFooter = ref(true)
 
 const resetLayout = (): void => {
-  layoutMode.value = 'side'
   contentWidth.value = 'full'
   showSidebar.value = true
   showTabs.value = true
@@ -43,39 +36,6 @@ watch(() => props.resetKey, resetLayout)
       <div>
         <h2>布局设置</h2>
         <p>选择导航布局和内容区的显示方式</p>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="section-heading">
-        <h3>布局模式</h3>
-        <p>设置应用的导航组织方式</p>
-      </div>
-      <div class="layout-grid">
-        <button
-          v-for="mode in layoutModes"
-          :key="mode.value"
-          type="button"
-          class="layout-choice"
-          :class="{ 'layout-choice--active': layoutMode === mode.value }"
-          :aria-pressed="layoutMode === mode.value"
-          @click="layoutMode = mode.value"
-        >
-          <span class="layout-preview" :class="`layout-preview--${mode.value}`">
-            <span class="layout-preview__nav" />
-            <span class="layout-preview__content">
-              <span class="layout-preview__line" />
-              <span class="layout-preview__block" />
-            </span>
-          </span>
-          <span class="layout-choice__title">
-            <NIcon :size="16" aria-hidden="true"><component :is="mode.icon" /></NIcon>
-            {{ mode.label }}
-          </span>
-          <span v-if="layoutMode === mode.value" class="choice-check" aria-hidden="true">
-            <NIcon :size="13"><CheckmarkOutline /></NIcon>
-          </span>
-        </button>
       </div>
     </div>
 
