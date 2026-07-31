@@ -7,7 +7,7 @@ import AppearanceSettings from './components/AppearanceSettings.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
 import LayoutSettings from './components/LayoutSettings.vue'
 import SettingsTabs from './components/SettingsTabs.vue'
-import type { SettingsTab } from './components/types'
+import type { SettingsTab } from '@/types'
 
 defineOptions({ name: 'SystemConfigView' })
 

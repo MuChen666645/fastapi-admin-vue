@@ -2,7 +2,7 @@
 import { ColorPaletteOutline, GridOutline, SettingsOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 
-import type { SettingsTab } from './types'
+import type { SettingsTab } from '@/types'
 
 defineOptions({ name: 'SystemSettingsTabs' })
 

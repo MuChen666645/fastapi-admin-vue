@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { CheckmarkOutline, InformationCircleOutline, SettingsOutline } from '@vicons/ionicons5'
+import { InformationCircleOutline, SettingsOutline } from '@vicons/ionicons5'
 import { NIcon, NSelect, NSwitch } from 'naive-ui'
 
 defineOptions({ name: 'GeneralSettings' })
@@ -103,7 +103,7 @@ watch(() => props.resetKey, resetGeneral)
           </div>
           <NSwitch v-model:value="pageTransition" aria-label="页面切换过渡条" />
         </div>
-         <div class="setting-row">
+        <div class="setting-row">
           <div class="setting-copy">
             <h3>页面切换 Loading</h3>
             <p>路由切换时显示全屏或内容区加载反馈</p>

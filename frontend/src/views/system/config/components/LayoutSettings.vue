@@ -3,12 +3,11 @@ import { ref, watch } from 'vue'
 import { GridOutline } from '@vicons/ionicons5'
 import { NIcon, NSwitch } from 'naive-ui'
 
-import type { ContentWidth } from './types'
+import type { ContentWidth } from '@/types'
 
 defineOptions({ name: 'LayoutSettings' })
 
 const props = defineProps<{ resetKey: number }>()
-
 
 const contentWidth = ref<ContentWidth>('full')
 const showSidebar = ref(true)

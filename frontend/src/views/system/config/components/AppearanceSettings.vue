@@ -11,7 +11,7 @@ import { NIcon, NInputNumber, NSwitch } from 'naive-ui'
 
 import { useTheme } from '@/hooks/useTheme'
 
-import type { ThemeMode } from './types'
+import type { ThemeMode } from '@/types'
 
 defineOptions({ name: 'AppearanceSettings' })
 

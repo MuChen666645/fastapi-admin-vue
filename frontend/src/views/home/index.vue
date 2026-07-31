@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, type Component, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   BarChartOutline,
   CashOutline,
@@ -17,36 +17,14 @@ import { NIcon } from 'naive-ui'
 import { useECharts } from '@/hooks/useECharts'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuthStore } from '@/stores'
+import type {
+  DashboardActivity,
+  DashboardAnnouncement,
+  DashboardQuickAction,
+  DashboardSummaryCard,
+} from '@/types'
 
 defineOptions({ name: 'HomeView' })
-
-type CardTone = 'positive' | 'negative' | 'warning'
-
-interface SummaryCard {
-  label: string
-  value: string
-  change: string
-  context: string
-  tone: CardTone
-  icon: Component
-}
-
-interface QuickAction {
-  label: string
-  icon: Component
-  tone: string
-}
-
-interface Announcement {
-  title: string
-  date: string
-}
-
-interface Activity {
-  user: string
-  action: string
-  time: string
-}
 
 const auth = useAuthStore()
 const { isDarkMode } = useTheme()
@@ -55,7 +33,7 @@ const channelChart = ref<HTMLElement | null>(null)
 
 const displayName = computed(() => auth.displayName || '超级管理员')
 
-const summaryCards: SummaryCard[] = [
+const summaryCards: DashboardSummaryCard[] = [
   {
     label: '今日订单',
     value: '1,482',
@@ -90,7 +68,7 @@ const summaryCards: SummaryCard[] = [
   },
 ]
 
-const quickActions: QuickAction[] = [
+const quickActions: DashboardQuickAction[] = [
   { label: '添加用户', icon: PeopleOutline, tone: 'blue' },
   { label: '角色授权', icon: KeyOutline, tone: 'purple' },
   { label: '配置中心', icon: SettingsOutline, tone: 'pink' },
@@ -99,13 +77,13 @@ const quickActions: QuickAction[] = [
   { label: '操作指南', icon: HelpCircleOutline, tone: 'gray' },
 ]
 
-const announcements: Announcement[] = [
+const announcements: DashboardAnnouncement[] = [
   { title: '系统计划于本周日进行停机维护通知', date: '09-30' },
   { title: '安全审计中心功能全面升级正式上线', date: '09-28' },
   { title: '关于节假日业务备份及值班安排', date: '09-25' },
 ]
 
-const activities: Activity[] = [
+const activities: DashboardActivity[] = [
   { user: '管理员A', action: '修改了用户角色权限', time: '10分钟前' },
   { user: '运营B', action: '导出了今日订单数据', time: '30分钟前' },
   { user: '系统', action: '完成系统全量安全备份', time: '1小时前' },

@@ -3,19 +3,9 @@ import { computed } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
-import type { UserRouteMenuType } from '@/types'
+import type { BreadcrumbItem, UserRouteMenuType } from '@/types'
 
 defineOptions({ name: 'AppBreadcrumb' })
-
-interface BreadcrumbItem {
-  key: string
-  name: string | symbol | null | undefined
-  path: string
-  title: string
-  menuType: UserRouteMenuType
-  link: string | null
-  isCurrent: boolean
-}
 
 const readMenuType = (value: unknown): UserRouteMenuType => {
   if (value === 'L' || value === 'I' || value === 'W') {
