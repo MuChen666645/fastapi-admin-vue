@@ -156,7 +156,7 @@ export const createViteConfig = ({ command, mode, isPreview = false }: ConfigEnv
       minify: 'oxc',
       sourcemap,
       reportCompressedSize: false,
-      chunkSizeWarningLimit: 800,
+      chunkSizeWarningLimit: 2048,
       rolldownOptions: {
         output: {
           manualChunks,

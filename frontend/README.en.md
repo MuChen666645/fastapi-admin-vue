@@ -44,7 +44,8 @@ The frontend does not use `VITE_ROUTE_MODE`. Authenticated business routes alway
 - `/change-password` is the authenticated password-change page.
 - `/` mounts `BasicLayout`.
 - `/system/settings` is the static system preferences entry, named `system-settings` and hidden from the server menu.
-- `/403` and the not-found route handle errors.
+- `/demo/default-pages` is an authenticated static menu tree: `Demo / Default pages / 403, 404, 500, Offline`. It is shown in the frontend sidebar.
+- `/403`, `/500`, `/offline`, and the not-found route provide default error pages with refresh and home actions.
 
 After login, the frontend loads `GET /api/v1/user/routes` and registers validated business routes under the `app` layout. Server `component` values are resolved through the local `src/views/**/*.vue` allowlist. Frontend menus and route guards improve the experience but never replace backend authorization.
 
@@ -53,7 +54,7 @@ After login, the frontend loads `GET /api/v1/user/routes` and registers validate
 ```text
 src/
 ├── api/                 # Domain API functions and response parsers
-├── components/          # Global loading, breadcrumbs, and shared overlays
+├── components/          # Global loading, request Message bridge, breadcrumbs, and overlays
 ├── hooks/               # Theme, locale, title, Lottie, icons, and route cache
 ├── layouts/BasicLayout/ # Sidebar, header, tabs, content, and footer
 ├── router/              # Static routes, guards, and dynamic route conversion
@@ -65,6 +66,8 @@ src/
 ```
 
 Page-specific areas belong under the page directory, such as `src/views/system/config/components/`. Shared components belong under `src/components/`. Keep all TypeScript declarations in `src/types/` and import them through `@/types`.
+
+The default-pages demo is a nested route tree in `src/router/modules/protected.ts`; its four leaf routes reuse the 403, 404, 500, and offline views under `src/views/error/`.
 
 ## Preferences and bilingual mode
 
@@ -78,6 +81,9 @@ The content scroll modes are:
 
 - `content`: header, tabs, and sidebar stay fixed while the content area scrolls internally.
 - `workspace`: the entire right workspace scrolls with the page.
+
+The app header and login-page toolbar include a language toggle, so users can switch between `zh-CN` and `en-US` without opening system settings. Dashboard cards, charts, and activity copy follow the selected preference.
+
 - `sticky`: only the header and tabs stay fixed while the remaining right-side content scrolls.
 
 Language changes apply immediately to the settings page and shared shell. Static route titles use the local dictionary; unknown server-provided titles remain unchanged. The update-check switch currently stores user intent only. A real update manifest URL, version format, and error contract must be supplied before update requests are added. Copying preferences exports UI settings only and never session credentials.
@@ -97,7 +103,7 @@ GET  /user/info
 GET  /user/routes
 ```
 
-The transport validates the common `{ code, error_code?, message, data }` response, handles authorization, and performs one shared refresh attempt for 401 responses. Parsers validate unknown response data before it reaches a Store or page.
+The transport validates the common `{ code, error_code?, message, data }` response, handles authorization, and performs one shared refresh attempt for 401 responses with session-version protection. General request failures are shown through Naive UI Message, while login and sign-out use Notification. Parsers validate unknown response data before it reaches a Store or page.
 
 ## Loading, tabs, and cache
 

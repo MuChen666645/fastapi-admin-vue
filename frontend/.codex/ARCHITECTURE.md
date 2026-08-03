@@ -35,6 +35,7 @@ main.ts
 | `src/api/<domain>/index.ts`           | 领域请求函数和请求参数编码                                         |
 | `src/api/<domain>/parsers.ts`         | 对 `unknown` 响应进行运行时校验和转换                              |
 | `src/utils/request.ts`                | Alova 实例、基地址、Authorization、响应解包、错误归一化、401 刷新  |
+| `src/utils/request-feedback.ts`       | 注册并触发全局请求 Message 回调                                  |
 | `src/utils/guards/api.ts`             | 基础值和统一响应结构守卫                                           |
 | `src/router/modules`                  | 静态路由记录：public、protected、error                             |
 | `src/router/guards/auth.ts`           | 会话初始化、密码变更重定向、动态路由注册和 not-found 恢复          |
@@ -46,7 +47,7 @@ main.ts
 | `src/stores/modules/preferences.ts` | 外观、布局、通用偏好和 `localStorage` 持久化                   |
 | `src/stores/modules/layout-settings.ts` | 统一偏好 Store 的旧布局兼容导出                               |
 | `src/hooks`                           | Lottie、主题、图标、ECharts 和路由缓存等可复用行为                 |
-| `src/components`                      | 全局 Loading、路由进度条、面包屑等跨页面组件                       |
+| `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑等跨页面组件       |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
 | `src/views`                           | 语义化路由级页面；页面私有业务组件放在对应页面的 `components/`     |
 | `src/types`                           | API DTO、路由、Store、传输、页面和测试类型；所有类型声明的唯一归属 |
@@ -59,7 +60,7 @@ main.ts
 2. 领域函数调用 `requestJson(path, options, parser)`。
 3. `request.ts` 添加访问令牌，发送请求并验证统一响应包装。
 4. 非 2xx 或业务 `code` 非 2xx 转换为 `ApiError`。
-5. 401 在允许刷新时通过共享 `refreshPromise` 单飞刷新令牌并重试一次。
+5. 401 在允许刷新时通过共享 `refreshPromise` 单飞刷新令牌并重试一次；刷新结果会校验会话版本和当前刷新令牌，避免旧会话回写。
 6. parser 校验 `payload.data`，失败时转成安全的 `ApiError`。
 7. Store 或页面只接收已验证的领域类型。
 
@@ -90,8 +91,8 @@ main.ts
 `src/router/modules/index.ts` 汇总：
 
 - `public.ts`：`/login`。
-- `protected.ts`：`/change-password` 和 `app` 布局；`app` 下包含认证后的 `/system/settings` 系统设置入口。
-- `error.ts`：`/403` 和通配 not-found。
+- `protected.ts`：`/change-password` 和 `app` 布局；`app` 下包含认证后的 `/system/settings` 系统设置入口，以及“演示 / 缺省页 / 403、404、500、网络离线”静态菜单树。
+- `error.ts`：`/403`、`/500`、`/offline` 和通配 not-found。
 
 项目不再有 `VITE_ROUTE_MODE`。认证后业务菜单和页面始终来自后端 `/user/routes`。
 

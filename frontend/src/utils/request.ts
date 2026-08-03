@@ -3,6 +3,7 @@ import adapterFetch from 'alova/fetch'
 
 import type { AuthTransportHandlers, RequestOptions, TokenResponse } from '@/types'
 import { parseApiResponse } from '@/utils/guards/api'
+import { showRequestMessage } from '@/utils/request-feedback'
 
 const requestTimeout = 15_000
 
@@ -34,10 +35,13 @@ const authHandlers: AuthTransportHandlers = {
 }
 
 let refreshPromise: Promise<boolean> | null = null
+let authSessionVersion = 0
 
 export const configureAuthTransport = (
   handlers: Omit<AuthTransportHandlers, 'refreshTokens'>,
 ): void => {
+  authSessionVersion += 1
+  refreshPromise = null
   authHandlers.getAccessToken = handlers.getAccessToken
   authHandlers.getRefreshToken = handlers.getRefreshToken
   authHandlers.setTokens = handlers.setTokens
@@ -48,6 +52,11 @@ export const registerRefreshTokenRequest = (
   refreshTokens: (refreshToken: string) => Promise<TokenResponse>,
 ): void => {
   authHandlers.refreshTokens = refreshTokens
+}
+
+export const invalidateAuthSession = (): void => {
+  authSessionVersion += 1
+  refreshPromise = null
 }
 
 const alova = createAlova({
@@ -71,10 +80,37 @@ const sendRequest = async (path: string, options: RequestOptions): Promise<Respo
     data: options.data,
     headers: options.headers,
     timeout: requestTimeout,
+    cacheFor: 0,
   })
 
   return method.send()
 }
+
+const getHttpErrorMessage = (status: number): string => {
+  if (status === 401) {
+    return '登录状态已失效，请重新登录'
+  }
+
+  if (status === 403) {
+    return '没有权限访问此资源'
+  }
+
+  if (status === 404) {
+    return '请求资源不存在'
+  }
+
+  if (status >= 500) {
+    return '服务暂时不可用，请稍后重试'
+  }
+
+  return '请求失败，请稍后重试'
+}
+
+const createHttpErrorPayload = (status: number) => ({
+  code: status,
+  message: getHttpErrorMessage(status),
+  data: null,
+})
 
 const readResponse = async (response: Response) => {
   if (response.status === 204) {
@@ -85,12 +121,20 @@ const readResponse = async (response: Response) => {
   try {
     body = await response.json()
   } catch {
+    if (!response.ok) {
+      return { response, payload: createHttpErrorPayload(response.status) }
+    }
+
     throw new ApiError('服务响应无法解析', response.status)
   }
 
   try {
     return { response, payload: parseApiResponse(body) }
   } catch {
+    if (!response.ok) {
+      return { response, payload: createHttpErrorPayload(response.status) }
+    }
+
     throw new ApiError('服务响应格式无效', response.status)
   }
 }
@@ -109,27 +153,42 @@ const refreshAccessToken = async (): Promise<boolean> => {
     return false
   }
 
-  refreshPromise = (async () => {
+  const sessionVersion = authSessionVersion
+  let pendingRefresh: Promise<boolean> | null = null
+  pendingRefresh = (async () => {
     try {
       const tokens = await authHandlers.refreshTokens?.(refreshToken)
       if (!tokens) {
         throw new ApiError('会话刷新失败', 401)
       }
 
+      if (
+        sessionVersion !== authSessionVersion ||
+        authHandlers.getRefreshToken() !== refreshToken
+      ) {
+        return false
+      }
+
       authHandlers.setTokens(tokens)
       return true
     } catch {
-      authHandlers.clearSession()
+      if (sessionVersion === authSessionVersion) {
+        authHandlers.clearSession()
+      }
+
       return false
     } finally {
-      refreshPromise = null
+      if (refreshPromise === pendingRefresh) {
+        refreshPromise = null
+      }
     }
   })()
+  refreshPromise = pendingRefresh
 
   return refreshPromise
 }
 
-export const requestJson = async <T>(
+const executeRequest = async <T>(
   path: string,
   options: RequestOptions,
   parseData: (value: unknown) => T,
@@ -143,7 +202,7 @@ export const requestJson = async <T>(
     options.skipAuthRefresh !== true &&
     (await refreshAccessToken())
   ) {
-    return requestJson(path, { ...options, skipAuthRefresh: true }, parseData)
+    return executeRequest(path, { ...options, skipAuthRefresh: true }, parseData)
   }
 
   if (!responseData.ok || payload.code < 200 || payload.code >= 300) {
@@ -160,5 +219,30 @@ export const requestJson = async <T>(
   } catch (error) {
     const message = error instanceof Error ? error.message : '服务数据格式无效'
     throw new ApiError(message, responseData.status, payload.code)
+  }
+}
+
+const normalizeRequestError = (error: unknown): ApiError => {
+  if (error instanceof ApiError) {
+    return error
+  }
+
+  return new ApiError('网络请求失败，请检查网络连接', 0)
+}
+
+export const requestJson = async <T>(
+  path: string,
+  options: RequestOptions,
+  parseData: (value: unknown) => T,
+): Promise<T> => {
+  try {
+    return await executeRequest(path, options, parseData)
+  } catch (error) {
+    const normalizedError = normalizeRequestError(error)
+    if (options.showMessage !== false) {
+      showRequestMessage(normalizedError.message)
+    }
+
+    throw normalizedError
   }
 }

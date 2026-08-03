@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ContractOutline,
   ExpandOutline,
+  LanguageOutline,
   MenuOutline,
   MoonOutline,
   NotificationsOutline,
@@ -10,14 +11,14 @@ import {
   ShieldCheckmarkOutline,
   SunnyOutline,
 } from '@vicons/ionicons5'
-import { NAvatar, NDropdown, NIcon, NLayoutHeader, useMessage } from 'naive-ui'
+import { NAvatar, NDropdown, NIcon, NLayoutHeader, useMessage, useNotification } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb/index.vue'
 import { useLocale } from '@/hooks'
 import { useTheme } from '@/hooks/useTheme'
 import { clearAuthenticatedRoutes } from '@/router'
-import { useAuthStore, useTabsStore } from '@/stores'
+import { useAuthStore, usePreferencesStore, useTabsStore } from '@/stores'
 
 defineOptions({ name: 'AppHeader' })
 
@@ -31,8 +32,10 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const auth = useAuthStore()
+const preferences = usePreferencesStore()
 const tabsStore = useTabsStore()
 const message = useMessage()
+const notification = useNotification()
 const { isDarkMode, toggleTheme } = useTheme()
 const { t } = useLocale()
 
@@ -40,6 +43,9 @@ const isFullscreen = ref(false)
 const userInitial = computed(() => auth.displayName.slice(0, 1).toUpperCase())
 const userAvatar = computed(() => auth.currentUser?.user.avatar ?? undefined)
 const userRole = computed(() => auth.currentUser?.roles[0]?.name || t('app.user.role.admin'))
+const languageToggleLabel = computed(() =>
+  preferences.language === 'zh-CN' ? t('app.language.toEnglish') : t('app.language.toChinese'),
+)
 const userMenuOptions = computed(() => [
   { label: t('app.user.profile'), key: 'profile' },
   { label: t('app.user.settings'), key: 'settings' },
@@ -53,6 +59,10 @@ const updateFullscreenState = (): void => {
 
 const toggleSidebar = (): void => {
   emit('update:sidebarCollapsed', !props.sidebarCollapsed)
+}
+
+const toggleLanguage = (): void => {
+  preferences.language = preferences.language === 'zh-CN' ? 'en-US' : 'zh-CN'
 }
 
 const toggleFullscreen = async (): Promise<void> => {
@@ -100,6 +110,17 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
 
   try {
     await auth.signOut()
+    notification.success({
+      title: t('app.notification.logoutSuccess'),
+      content: t('app.notification.logoutSuccessContent'),
+      duration: 3000,
+    })
+  } catch {
+    notification.error({
+      title: t('app.notification.logoutFailed'),
+      content: t('app.notification.logoutFailedContent'),
+      duration: 5000,
+    })
   } finally {
     tabsStore.reset()
     clearAuthenticatedRoutes()
@@ -179,6 +200,15 @@ onBeforeUnmount(() => {
           <SunnyOutline v-if="isDarkMode" />
           <MoonOutline v-else />
         </NIcon>
+      </button>
+      <button
+        type="button"
+        class="header-icon-button language-toggle"
+        :aria-label="languageToggleLabel"
+        :title="languageToggleLabel"
+        @click="toggleLanguage"
+      >
+        <NIcon :size="18" aria-hidden="true"><LanguageOutline /></NIcon>
       </button>
 
       <NDropdown

@@ -15,9 +15,11 @@ declare module 'vue' {
     AppBreadcrumb: typeof import('./src/components/AppBreadcrumb/index.vue')['default']
     ContentLoading: typeof import('./src/components/ContentLoading/index.vue')['default']
     GlobalLoading: typeof import('./src/components/GlobalLoading/index.vue')['default']
+    RequestMessageBridge: typeof import('./src/components/RequestMessageBridge/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterLoadingBar: typeof import('./src/components/RouterLoadingBar/index.vue')['default']
     RouterView: typeof import('vue-router')['RouterView']
+    WatermarkOverlay: typeof import('./src/components/WatermarkOverlay/index.vue')['default']
   }
 }
 
@@ -26,7 +28,9 @@ declare global {
   const AppBreadcrumb: typeof import('./src/components/AppBreadcrumb/index.vue')['default']
   const ContentLoading: typeof import('./src/components/ContentLoading/index.vue')['default']
   const GlobalLoading: typeof import('./src/components/GlobalLoading/index.vue')['default']
+  const RequestMessageBridge: typeof import('./src/components/RequestMessageBridge/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterLoadingBar: typeof import('./src/components/RouterLoadingBar/index.vue')['default']
   const RouterView: typeof import('vue-router')['RouterView']
+  const WatermarkOverlay: typeof import('./src/components/WatermarkOverlay/index.vue')['default']
 }

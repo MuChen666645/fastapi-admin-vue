@@ -9,6 +9,7 @@ export type {
   UserRouteMeta,
 } from './api'
 export type { BreadcrumbItem } from './breadcrumb'
+export type { ErrorPageProps } from './error'
 export type {
   DashboardActivity,
   DashboardAnnouncement,
@@ -38,5 +39,5 @@ export type {
   ThemeMode,
   TranslationKey,
 } from './system-config'
-export type { AuthTransportHandlers, RequestOptions } from './transport'
+export type { AuthTransportHandlers, RequestMessageHandler, RequestOptions } from './transport'
 export type { LottieAnimationHandle, LottieAnimationOptions } from './lottie'

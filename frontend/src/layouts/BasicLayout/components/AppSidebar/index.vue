@@ -4,6 +4,7 @@ import type { Component } from 'vue'
 import { NEmpty, NIcon, NLayoutSider, NMenu } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 
 import { useLocale } from '@/hooks'
 import { resolveIconComponent } from '@/hooks/useIcon'
@@ -39,7 +40,48 @@ const toMenuOptions = (routes: UserRoute[], locale: typeof language.value): Menu
     })
 }
 
-const menuOptions = computed(() => toMenuOptions(auth.routes, language.value))
+const toStaticMenuOptions = (
+  routes: RouteRecordRaw[],
+  locale: typeof language.value,
+): MenuOption[] =>
+  routes
+    .filter((item) => {
+      const meta = item.meta ?? {}
+      return (
+        meta.requiresAuth === true &&
+        meta.menu === true &&
+        meta.dynamic !== true &&
+        typeof item.name === 'string'
+      )
+    })
+    .map((item) => {
+      const meta = item.meta ?? {}
+      const children = toStaticMenuOptions(item.children ?? [], locale)
+      const iconName = typeof meta.icon === 'string' ? meta.icon : null
+      const icon = resolveIconComponent(iconName)
+
+      return {
+        key: String(item.name),
+        label: translateMenuTitle(String(meta.title ?? item.name), locale),
+        ...(icon ? { icon: () => renderMenuIcon(icon) } : {}),
+        ...(children.length > 0 ? { children } : {}),
+      }
+    })
+
+const staticMenuOptions = computed<MenuOption[]>(() => {
+  const appRoute = router.getRoutes().find((item) => item.name === 'app')
+  return appRoute ? toStaticMenuOptions(appRoute.children ?? [], language.value) : []
+})
+
+const menuOptions = computed(() => {
+  const serverMenuOptions = toMenuOptions(auth.routes, language.value)
+  const serverMenuKeys = new Set(serverMenuOptions.map((item) => String(item.key)))
+
+  return [
+    ...serverMenuOptions,
+    ...staticMenuOptions.value.filter((item) => !serverMenuKeys.has(String(item.key))),
+  ]
+})
 const activeMenuKey = computed(() => (route.name ? String(route.name) : null))
 const dropdownProps = {
   class: 'sidebar-submenu-dropdown',

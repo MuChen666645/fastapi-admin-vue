@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/layouts/BasicLayout/index.vue', () => ({ default: {} }))
 vi.mock('@/views/error/403.vue', () => ({ default: {} }))
 vi.mock('@/views/error/404.vue', () => ({ default: {} }))
+vi.mock('@/views/error/500.vue', () => ({ default: {} }))
+vi.mock('@/views/error/offline.vue', () => ({ default: {} }))
 vi.mock('@/views/change-password/index.vue', () => ({ default: {} }))
 vi.mock('@/views/login/index.vue', () => ({ default: {} }))
 
@@ -19,6 +21,8 @@ describe('dynamic routes', () => {
       '修改密码',
       '管理后台',
       '无权限访问',
+      '服务异常',
+      '网络离线',
       '页面不存在',
     ])
   })
@@ -30,6 +34,30 @@ describe('dynamic routes', () => {
     expect(settingsRoute?.path).toBe('system/settings')
     expect(settingsRoute?.meta?.requiresAuth).toBe(true)
     expect(settingsRoute?.meta?.menu).toBe(false)
+  })
+
+  it('registers the default pages demo as a nested static menu tree', () => {
+    const appRoute = protectedRoutes.find((route) => route.name === 'app')
+    const demoRoute = appRoute?.children?.find((route) => route.name === 'demo')
+    const defaultPagesRoute = demoRoute?.children?.find((route) => route.name === 'default-pages')
+    const leafNames = defaultPagesRoute?.children?.map((route) => route.name)
+
+    expect(demoRoute?.path).toBe('demo')
+    expect(demoRoute?.meta?.title).toBe('演示')
+    expect(demoRoute?.meta?.requiresAuth).toBe(true)
+    expect(demoRoute?.meta?.menu).toBe(true)
+    expect(demoRoute?.redirect).toEqual({ name: 'default-pages' })
+    expect(defaultPagesRoute?.path).toBe('default-pages')
+    expect(defaultPagesRoute?.meta?.title).toBe('缺省页')
+    expect(defaultPagesRoute?.meta?.requiresAuth).toBe(true)
+    expect(defaultPagesRoute?.meta?.menu).toBe(true)
+    expect(defaultPagesRoute?.redirect).toEqual({ name: 'default-page-forbidden' })
+    expect(leafNames).toEqual([
+      'default-page-forbidden',
+      'default-page-not-found',
+      'default-page-server-error',
+      'default-page-offline',
+    ])
   })
 
   it('filters unknown backend components and warns once', () => {

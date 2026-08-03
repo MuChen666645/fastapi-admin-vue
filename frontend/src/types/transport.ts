@@ -16,4 +16,7 @@ export interface RequestOptions {
   headers?: Record<string, string>
   auth?: boolean
   skipAuthRefresh?: boolean
+  showMessage?: boolean
 }
+
+export type RequestMessageHandler = (message: string) => void

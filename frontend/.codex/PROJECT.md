@@ -26,6 +26,7 @@ src/
 │   ├── AppBreadcrumb/
 │   ├── ContentLoading/
 │   ├── GlobalLoading/
+│   ├── RequestMessageBridge/
 │   └── RouterLoadingBar/
 ├── hooks/
 │   ├── useECharts.ts、useIcon.ts、useLottie.ts
@@ -96,7 +97,7 @@ src/
 
 ## API 事实
 
-请求基于 `VITE_API_BASE_URL`，通常使用 `/api/v1` 前缀。`src/utils/request.ts` 使用 Alova fetch adapter，默认超时 15 秒，解析 `{ code, error_code?, message, data }` 响应，并对 401 使用单飞刷新令牌逻辑。
+请求基于 `VITE_API_BASE_URL`，通常使用 `/api/v1` 前缀。`src/utils/request.ts` 使用 Alova fetch adapter，默认超时 15 秒，解析 `{ code, error_code?, message, data }` 响应，关闭请求缓存，并对 401 使用单飞刷新令牌逻辑。请求异常通过 `RequestMessageBridge` 使用 Naive UI Message 提示；登录和退出请求由页面使用 Notification 提示，避免重复弹窗。
 
 当前领域 API：
 
@@ -119,6 +120,8 @@ src/
 - `/change-password` 需要认证，并允许密码变更状态访问。
 - `/` 对应 `app` 和 `BasicLayout`，认证后会注册后端业务路由。
 - `/system/settings` 的路由名为 `system-settings`，是认证后的静态系统设置入口，不显示在后端菜单中。
+- `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。
+- `/403`、`/404`、`/500` 和 `/offline` 是公开缺省页面，统一提供刷新页面和返回首页操作，并使用 `src/assets/lottie/error/` 下的静态动画。
 - 后端 `component` 会被标准化为 `src/views/<component>.vue`，支持 `home/index`、`@/views/home/index.vue`、`../views/home/index.vue` 等形式。
 - 不安全路径、未知本地组件和没有可导航子节点的容器路由会被过滤；未知组件会在控制台打印一次警告。
 

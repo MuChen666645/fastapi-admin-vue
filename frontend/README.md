@@ -48,7 +48,8 @@ pnpm dev
 - `/change-password`：认证后的密码修改页。
 - `/`：`BasicLayout` 应用布局。
 - `/system/settings`：统一系统设置入口，路由名为 `system-settings`，不作为后端菜单显示。
-- `/403` 和 not-found：错误页。
+- `/demo/default-pages`：认证后的静态菜单，层级为“演示 / 缺省页 / 403、404、500、网络离线”，显示在前端侧边栏中。
+- `/403`、`/500`、`/offline` 和 not-found：缺省页，统一提供刷新页面和返回首页操作。
 
 登录后，前端调用 `GET /api/v1/user/routes`，将服务端返回的业务路由注册到 `app` 布局下。后端 `component` 会映射到本地 `src/views/**/*.vue`，支持以下形式：
 
@@ -67,7 +68,7 @@ home/index
 ```text
 src/
 ├── api/                 # 领域 API 和响应解析
-├── components/          # 全局 Loading、面包屑、路由进度条
+├── components/          # 全局 Loading、请求 Message 桥、面包屑、路由进度条
 ├── hooks/               # 主题、语言、标题、Lottie、图标、路由缓存等可复用行为
 ├── layouts/BasicLayout/ # 侧边栏、头部、标签页、内容区和页脚
 ├── router/              # 静态路由、认证守卫、动态路由转换
@@ -77,6 +78,8 @@ src/
 ├── views/               # 路由级页面
 └── __tests__/           # Vitest 单元与组件测试
 ```
+
+缺省页演示使用 `src/router/modules/protected.ts` 中的嵌套路由，四个叶子节点直接复用 `src/views/error/` 下的 403、404、500 和离线页面。
 
 大页面的业务区域放在页面目录的 `components/` 中，例如 `src/views/system/config/components/`。公共组件才放入 `src/components/`。所有 `type`、`interface`、`enum` 声明统一放在 `src/types/`，通过 `@/types` 导入；新增普通样式优先使用 UnoCSS utility class。`src/views/` 下目录使用能表达业务域和页面职责的语义化名称。
 
@@ -90,7 +93,11 @@ src/
 
 内容区固定方式有三种：`content` 让顶部栏、标签栏和侧边栏固定、仅内容区内部滚动；`workspace` 让右侧工作区整体滚动；`sticky` 仅固定顶部栏和标签栏，其余右侧内容滚动。语言切换即时影响设置页和公共壳层，动态后端菜单标题在没有词典映射时保留服务端原文。
 
+顶部栏和登录页顶部工具区提供语言切换按钮，可在不进入系统设置的情况下直接切换 `zh-CN` / `en-US`；首页统计、图表和活动文案会随偏好语言同步更新。
+
 The `/system/settings` page is backed by one `usePreferencesStore` and persists preferences in `localStorage`. It covers appearance, layout, language, timezone, dynamic titles, watermark, update checking, and loading feedback. The three scroll modes are `content`, `workspace`, and `sticky`, matching the behavior described above. The bilingual UI supports `zh-CN` and `en-US`; static shell titles are translated and unknown backend titles are preserved.
+
+The app header and login-page toolbar include a language toggle, so users can switch between `zh-CN` and `en-US` without opening system settings. Dashboard cards, charts, and activity copy follow the selected preference.
 
 “定时检查更新”当前只保存用户意图，不会伪造更新请求；接入前必须提供真实的 update manifest URL、版本格式和错误处理契约。复制偏好设置只包含本地 UI 配置，不包含 Token、密码或用户会话凭据。
 
@@ -111,7 +118,7 @@ GET  /user/info
 GET  /user/routes
 ```
 
-统一响应通常为 `{ code, error_code?, message, data }`。API parser 从 `unknown` 校验字段后才交给 Store 或页面。401 会由传输层使用共享刷新请求重试一次，失败后清理会话。
+统一响应通常为 `{ code, error_code?, message, data }`。API parser 从 `unknown` 校验字段后才交给 Store 或页面。401 会由传输层使用共享刷新请求重试一次，失败后清理会话；普通请求异常通过 Naive UI Message 提示，登录和退出使用 Notification 提示。
 
 ## Loading、标签页和缓存
 

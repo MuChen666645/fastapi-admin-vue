@@ -10,7 +10,7 @@ import type {
   TokenResponse,
   UserRoute,
 } from '@/types'
-import { ApiError, configureAuthTransport } from '@/utils/request'
+import { ApiError, configureAuthTransport, invalidateAuthSession } from '@/utils/request'
 import { loadApplicationRoutes } from '@/router/route-source'
 import { useTabsStore } from './tabs'
 
@@ -46,6 +46,7 @@ export const useAuthStore = defineStore(
     }
 
     const clearSession = (): void => {
+      invalidateAuthSession()
       useTabsStore().reset()
       accessToken.value = null
       refreshToken.value = null

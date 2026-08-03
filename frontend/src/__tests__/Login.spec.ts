@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { NNotificationProvider } from 'naive-ui'
 
 const authApi = vi.hoisted(() => ({
   fetchCaptcha: vi.fn(),
@@ -12,10 +13,15 @@ const authApi = vi.hoisted(() => ({
 vi.mock('../api', () => authApi)
 
 import LoginView from '../views/login/index.vue'
-import { useAuthStore } from '../stores'
+import { useAuthStore, usePreferencesStore } from '../stores'
 
 const HomeView = defineComponent({
   template: '<div data-testid="home-page">Home page</div>',
+})
+
+const LoginTestHost = defineComponent({
+  components: { LoginView, NNotificationProvider },
+  template: '<NNotificationProvider><LoginView /></NNotificationProvider>',
 })
 
 const createLoginRouter = () =>
@@ -55,7 +61,7 @@ describe('LoginView', () => {
     await router.push('/login')
     await router.isReady()
 
-    const wrapper = mount(LoginView, {
+    const wrapper = mount(LoginTestHost, {
       global: {
         plugins: [router, createPinia()],
       },
@@ -75,7 +81,7 @@ describe('LoginView', () => {
     await router.push('/login')
     await router.isReady()
 
-    const wrapper = mount(LoginView, {
+    const wrapper = mount(LoginTestHost, {
       global: {
         plugins: [router, createPinia()],
       },
@@ -95,6 +101,36 @@ describe('LoginView', () => {
     wrapper.unmount()
   })
 
+  it('updates login labels and actions when the language changes', async () => {
+    const router = createLoginRouter()
+    const pinia = createPinia()
+    const preferences = usePreferencesStore(pinia)
+
+    await router.push('/login')
+    await router.isReady()
+
+    const wrapper = mount(LoginTestHost, {
+      global: {
+        plugins: [router, pinia],
+      },
+    })
+
+    expect(wrapper.get('.login-submit').text()).toContain('登录')
+    expect(wrapper.get('.theme-toggle').attributes('title')).toBe('切换暗色模式')
+    expect(wrapper.get('.language-toggle').attributes('title')).toBe('切换到 English')
+
+    preferences.language = 'en-US'
+    await nextTick()
+
+    expect(wrapper.get('.login-submit').text()).toContain('Sign in')
+    expect(wrapper.get('.brand-title').text()).toContain('A ready-to-use administration system')
+    expect(wrapper.get('.theme-toggle').attributes('title')).toBe('Switch to dark mode')
+    expect(wrapper.get('.language-toggle').attributes('title')).toBe('Switch to Simplified Chinese')
+    expect(wrapper.find('input[placeholder="Enter your username"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
   it('navigates through the application route after a successful login', async () => {
     const router = createLoginRouter()
     const pinia = createPinia()
@@ -104,7 +140,7 @@ describe('LoginView', () => {
     const auth = useAuthStore(pinia)
     vi.spyOn(auth, 'signIn').mockResolvedValue(undefined)
 
-    const wrapper = mount(LoginView, {
+    const wrapper = mount(LoginTestHost, {
       global: {
         plugins: [router, pinia],
       },
@@ -145,7 +181,7 @@ describe('LoginView', () => {
     await router.push('/login')
     await router.isReady()
 
-    const wrapper = mount(LoginView, {
+    const wrapper = mount(LoginTestHost, {
       global: {
         plugins: [router, createPinia()],
       },

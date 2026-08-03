@@ -27,6 +27,7 @@ export const login = (credentials: LoginCredentials): Promise<TokenResponse> =>
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       auth: false,
       skipAuthRefresh: true,
+      showMessage: false,
     },
     parseTokenResponse,
   )
@@ -39,6 +40,7 @@ export const refreshTokens = (refreshToken: string): Promise<TokenResponse> =>
       data: { refresh_token: refreshToken },
       auth: false,
       skipAuthRefresh: true,
+      showMessage: false,
     },
     parseTokenResponse,
   )
@@ -56,4 +58,4 @@ export const changeCurrentPassword = (oldPassword: string, newPassword: string):
   )
 
 export const logout = (): Promise<null> =>
-  requestJson('/user/logout', { method: 'POST' }, () => null)
+  requestJson('/user/logout', { method: 'POST', showMessage: false }, () => null)

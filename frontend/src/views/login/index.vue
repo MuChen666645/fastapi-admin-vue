@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   LockClosedOutline,
+  LanguageOutline,
   MoonOutline,
   PersonOutline,
   RefreshOutline,
   ShieldCheckmarkOutline,
   SunnyOutline,
 } from '@vicons/ionicons5'
-import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NText } from 'naive-ui'
+import { NAlert, NButton, NForm, NFormItem, NIcon, NInput, NText, useNotification } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchCaptcha } from '@/api'
+import { useLocale } from '@/hooks'
 import { useTheme } from '@/hooks/useTheme'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, usePreferencesStore } from '@/stores'
 import type { LoginCredentials } from '@/types'
 import { ApiError } from '@/utils/request'
 import {
@@ -31,6 +33,7 @@ defineOptions({ name: 'LoginView' })
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const preferences = usePreferencesStore()
 const formRef = ref<FormInst | null>(null)
 const rememberedLogin = getRememberedLogin()
 const form = ref({
@@ -46,12 +49,33 @@ const captchaLoading = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
 const { isDarkMode, toggleTheme } = useTheme()
+const { t } = useLocale()
+const notification = useNotification()
+const languageToggleLabel = computed(() =>
+  preferences.language === 'zh-CN' ? t('app.language.toEnglish') : t('app.language.toChinese'),
+)
 
-const rules: FormRules = {
-  identifier: { required: true, message: '请输入用户名或手机号', trigger: ['input', 'blur'] },
-  password: { required: true, message: '请输入密码', trigger: ['input', 'blur'] },
-  captcha: { required: true, message: '请输入图形验证码', trigger: ['input', 'blur'] },
+const toggleLanguage = (): void => {
+  preferences.language = preferences.language === 'zh-CN' ? 'en-US' : 'zh-CN'
 }
+
+const rules = computed<FormRules>(() => ({
+  identifier: {
+    required: true,
+    message: t('login.identifierPlaceholder'),
+    trigger: ['input', 'blur'],
+  },
+  password: {
+    required: true,
+    message: t('login.passwordPlaceholder'),
+    trigger: ['input', 'blur'],
+  },
+  captcha: {
+    required: true,
+    message: t('login.captchaPlaceholder'),
+    trigger: ['input', 'blur'],
+  },
+}))
 
 const loadCaptcha = async (): Promise<void> => {
   captchaLoading.value = true
@@ -86,7 +110,7 @@ const handleLogin = async (): Promise<void> => {
   }
 
   if (!captchaId.value) {
-    errorMessage.value = '验证码加载失败，请刷新后重试'
+    errorMessage.value = t('login.captchaLoadFailed')
     return
   }
 
@@ -113,12 +137,18 @@ const handleLogin = async (): Promise<void> => {
       clearRememberedLogin()
     }
   } catch (error) {
-    errorMessage.value =
+    const loginError =
       error instanceof ApiError
         ? error.message
         : error instanceof Error
           ? error.message
-          : '登录失败，请稍后重试'
+          : t('login.fallbackError')
+    errorMessage.value = loginError
+    notification.error({
+      title: t('app.notification.loginFailed'),
+      content: t('app.notification.loginFailedContent'),
+      duration: 5000,
+    })
     await loadCaptcha()
     submitting.value = false
     return
@@ -135,8 +165,18 @@ const handleLogin = async (): Promise<void> => {
     if (safeRedirect !== '/') {
       await router.replace(safeRedirect)
     }
+    notification.success({
+      title: t('app.notification.loginSuccess'),
+      content: t('app.notification.loginSuccessContent'),
+      duration: 3000,
+    })
   } catch {
-    errorMessage.value = '登录成功，但页面跳转失败，请刷新后重试'
+    errorMessage.value = t('login.redirectFailed')
+    notification.error({
+      title: t('app.notification.loginFailed'),
+      content: t('app.notification.loginRedirectFailedContent'),
+      duration: 5000,
+    })
   } finally {
     submitting.value = false
   }
@@ -175,12 +215,12 @@ onMounted(() => {
       <!-- 标语 -->
       <div class="brand-copy">
         <NText id="brand-title" tag="h1" class="brand-title" strong>
-          一款开箱即用的后台管理系统
+          {{ t('login.brandTitle') }}
         </NText>
-        <NText class="brand-subtitle">基于 Vue3 + Naive UI + Vite</NText>
+        <NText class="brand-subtitle">{{ t('login.brandSubtitle') }}</NText>
       </div>
 
-      <NText class="brand-copyright">© 2026 FastApi-Admin</NText>
+      <NText class="brand-copyright">{{ t('login.copyright') }}</NText>
     </section>
 
     <!-- 右侧登录表单区 -->
@@ -191,9 +231,22 @@ onMounted(() => {
           quaternary
           circle
           size="small"
+          class="language-toggle"
+          :aria-label="languageToggleLabel"
+          :title="languageToggleLabel"
+          @click="toggleLanguage"
+        >
+          <template #icon>
+            <NIcon :size="18"><LanguageOutline /></NIcon>
+          </template>
+        </NButton>
+        <NButton
+          quaternary
+          circle
+          size="small"
           class="theme-toggle"
-          :aria-label="isDarkMode ? '切换浅色主题' : '切换深色主题'"
-          :title="isDarkMode ? '切换浅色主题' : '切换深色主题'"
+          :aria-label="isDarkMode ? t('app.theme.light') : t('app.theme.dark')"
+          :title="isDarkMode ? t('app.theme.light') : t('app.theme.dark')"
           @click="toggleTheme"
         >
           <template #icon>
@@ -209,7 +262,7 @@ onMounted(() => {
       <div class="login-card">
         <div class="login-heading">
           <NText id="login-title" tag="h2" class="login-title" strong>
-            欢迎使用 FastApi-Admin
+            {{ t('login.welcome') }}
           </NText>
         </div>
 
@@ -225,10 +278,10 @@ onMounted(() => {
           size="large"
           class="login-form"
         >
-          <NFormItem label="用户名" path="identifier">
+          <NFormItem :label="t('login.identifier')" path="identifier">
             <NInput
               v-model:value="form.identifier"
-              placeholder="请输入用户名"
+              :placeholder="t('login.identifierPlaceholder')"
               autocomplete="username"
             >
               <template #prefix>
@@ -237,11 +290,11 @@ onMounted(() => {
             </NInput>
           </NFormItem>
 
-          <NFormItem label="密码" path="password">
+          <NFormItem :label="t('login.password')" path="password">
             <NInput
               v-model:value="form.password"
               type="password"
-              placeholder="请输入密码"
+              :placeholder="t('login.passwordPlaceholder')"
               show-password-on="click"
               autocomplete="current-password"
             >
@@ -251,30 +304,34 @@ onMounted(() => {
             </NInput>
           </NFormItem>
 
-          <NFormItem label="图形验证码" path="captcha">
+          <NFormItem :label="t('login.captcha')" path="captcha">
             <div class="captcha-field">
-              <NInput v-model:value="form.captcha" placeholder="请输入验证码" autocomplete="off" />
+              <NInput
+                v-model:value="form.captcha"
+                :placeholder="t('login.captchaPlaceholder')"
+                autocomplete="off"
+              />
               <button
                 type="button"
                 class="captcha-image"
                 :disabled="captchaLoading"
-                aria-label="刷新图形验证码"
-                title="刷新图形验证码"
+                :aria-label="t('login.captchaRefresh')"
+                :title="t('login.captchaRefresh')"
                 @click="handleCaptchaRefresh"
               >
-                <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" />
+                <img v-if="captchaImage" :src="captchaImage" :alt="t('login.captchaAlt')" />
                 <span v-else>
                   <NIcon :size="18"><RefreshOutline /></NIcon>
-                  {{ captchaLoading ? '加载中' : '点击刷新' }}
+                  {{ captchaLoading ? t('login.captchaLoading') : t('login.captchaRefreshAction') }}
                 </span>
               </button>
             </div>
           </NFormItem>
 
-          <NFormItem label="MFA 验证码（可选）" path="mfaCode">
+          <NFormItem :label="t('login.mfa')" path="mfaCode">
             <NInput
               v-model:value="form.mfaCode"
-              placeholder="启用 MFA 时填写"
+              :placeholder="t('login.mfaPlaceholder')"
               autocomplete="one-time-code"
             />
           </NFormItem>
@@ -282,7 +339,7 @@ onMounted(() => {
           <div class="login-actions">
             <label class="remember-option">
               <input v-model="form.remember" type="checkbox" />
-              <span>记住我</span>
+              <span>{{ t('login.remember') }}</span>
             </label>
           </div>
 
@@ -294,7 +351,7 @@ onMounted(() => {
             :loading="submitting"
             @click="handleLogin"
           >
-            登录
+            {{ t('login.submit') }}
           </NButton>
         </NForm>
       </div>
@@ -474,14 +531,17 @@ onMounted(() => {
   gap: 14px;
 }
 
-.theme-toggle {
+.theme-toggle,
+.language-toggle {
   width: 36px;
   height: 36px;
   color: var(--login-muted);
 }
 
 .theme-toggle:hover,
-.theme-toggle:focus-visible {
+.theme-toggle:focus-visible,
+.language-toggle:hover,
+.language-toggle:focus-visible {
   color: var(--login-primary);
 }
 
