@@ -3,8 +3,9 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter, type RouteLocationNormalized } from 'vue-router'
 
 import carLoadingAnimation from '@/assets/lottie/car-loading3-data.json'
-import { useLottie } from '@/hooks'
+import { useLocale, useLottie } from '@/hooks'
 import { getRouteCacheName, isRouteCacheable } from '@/router/route-cache'
+import { usePreferencesStore } from '@/stores'
 import { useRouteLoadingStore } from '@/stores/modules/route-loading'
 import { useTabsStore } from '@/stores/modules/tabs'
 
@@ -13,9 +14,13 @@ defineOptions({ name: 'GlobalLoading' })
 const router = useRouter()
 const routeLoading = useRouteLoadingStore()
 const tabsStore = useTabsStore()
+const preferences = usePreferencesStore()
+const { t } = useLocale()
 const animationContainer = ref<HTMLElement | null>(null)
 const { pause, play } = useLottie(animationContainer, carLoadingAnimation)
-const isVisible = computed(() => routeLoading.visible && routeLoading.scope === 'screen')
+const isVisible = computed(
+  () => preferences.loadingAnimation && routeLoading.visible && routeLoading.scope === 'screen',
+)
 
 watch(isVisible, (visible) => {
   if (visible) {
@@ -93,7 +98,7 @@ onBeforeUnmount(() => {
     class="global-loading"
     data-testid="global-loading"
     role="status"
-    aria-label="页面加载中"
+    :aria-label="t('app.loading.screen')"
     aria-live="polite"
     :aria-hidden="!isVisible"
   >

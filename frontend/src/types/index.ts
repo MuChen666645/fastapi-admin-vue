@@ -26,11 +26,17 @@ export type {
 } from './router'
 export type { AuthStatus, RouteLoadingScope } from './store'
 export type {
+  AccentColorKey,
   ContentWidth,
   LayoutScrollMode,
   LayoutSettings,
+  PreferenceLanguage,
+  PreferenceTimezone,
+  PreferencesSettings,
+  RadiusScale,
   SettingsTab,
   ThemeMode,
+  TranslationKey,
 } from './system-config'
 export type { AuthTransportHandlers, RequestOptions } from './transport'
 export type { LottieAnimationHandle, LottieAnimationOptions } from './lottie'

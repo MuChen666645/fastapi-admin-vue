@@ -2,17 +2,24 @@
 import { ColorPaletteOutline, GridOutline, SettingsOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 
-import type { SettingsTab } from '@/types'
+import { useLocale } from '@/hooks'
+
+import type { SettingsTab, TranslationKey } from '@/types'
 
 defineOptions({ name: 'SystemSettingsTabs' })
 
 const props = defineProps<{ modelValue: SettingsTab }>()
 const emit = defineEmits<{ 'update:modelValue': [value: SettingsTab] }>()
+const { t } = useLocale()
 
-const tabs = [
-  { value: 'appearance' as const, label: '外观', icon: ColorPaletteOutline },
-  { value: 'layout' as const, label: '布局', icon: GridOutline },
-  { value: 'general' as const, label: '通用', icon: SettingsOutline },
+const tabs: ReadonlyArray<{
+  value: SettingsTab
+  labelKey: Extract<TranslationKey, `settings.tab.${string}`>
+  icon: typeof ColorPaletteOutline
+}> = [
+  { value: 'appearance', labelKey: 'settings.tab.appearance', icon: ColorPaletteOutline },
+  { value: 'layout', labelKey: 'settings.tab.layout', icon: GridOutline },
+  { value: 'general', labelKey: 'settings.tab.general', icon: SettingsOutline },
 ]
 
 const selectTab = (tab: SettingsTab): void => {
@@ -21,7 +28,7 @@ const selectTab = (tab: SettingsTab): void => {
 </script>
 
 <template>
-  <nav class="settings-tabs" aria-label="偏好设置分类" role="tablist">
+  <nav class="settings-tabs" :aria-label="t('settings.title')" role="tablist">
     <button
       v-for="tab in tabs"
       :key="tab.value"
@@ -33,7 +40,7 @@ const selectTab = (tab: SettingsTab): void => {
       @click="selectTab(tab.value)"
     >
       <NIcon :size="17" aria-hidden="true"><component :is="tab.icon" /></NIcon>
-      <span>{{ tab.label }}</span>
+      <span>{{ t(tab.labelKey) }}</span>
     </button>
   </nav>
 </template>
@@ -45,7 +52,7 @@ const selectTab = (tab: SettingsTab): void => {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--app-color-border);
-  border-radius: 10px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-color-surface-muted);
 }
 
@@ -59,15 +66,11 @@ const selectTab = (tab: SettingsTab): void => {
   padding: 0 16px;
   color: var(--app-color-text-muted);
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--app-radius-sm);
   background: transparent;
   cursor: pointer;
   font: inherit;
   font-size: 14px;
-  transition:
-    color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
 }
 
 .settings-tab:hover,

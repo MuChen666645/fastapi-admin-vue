@@ -3,38 +3,47 @@ import { watch } from 'vue'
 import { GridOutline } from '@vicons/ionicons5'
 import { NIcon, NSwitch } from 'naive-ui'
 
-import { useLayoutSettingsStore } from '@/stores'
+import { useLocale } from '@/hooks'
+import { usePreferencesStore } from '@/stores'
+
 import type { LayoutScrollMode } from '@/types'
 
 defineOptions({ name: 'LayoutSettings' })
 
 const props = defineProps<{ resetKey: number }>()
+const preferences = usePreferencesStore()
+const { t } = useLocale()
 
-const layoutSettings = useLayoutSettingsStore()
 const scrollModes: ReadonlyArray<{
   value: LayoutScrollMode
-  label: string
-  description: string
+  labelKey:
+    | 'settings.layout.scrollMode.content'
+    | 'settings.layout.scrollMode.workspace'
+    | 'settings.layout.scrollMode.sticky'
+  descriptionKey:
+    | 'settings.layout.scrollMode.contentDescription'
+    | 'settings.layout.scrollMode.workspaceDescription'
+    | 'settings.layout.scrollMode.stickyDescription'
 }> = [
   {
     value: 'content',
-    label: '固定布局',
-    description: '顶部栏、标签栏和侧边栏固定，仅内容区内部滚动',
+    labelKey: 'settings.layout.scrollMode.content',
+    descriptionKey: 'settings.layout.scrollMode.contentDescription',
   },
   {
     value: 'workspace',
-    label: '右侧滚动',
-    description: '右侧工作区整体滚动，顶部栏和标签栏随内容移动',
+    labelKey: 'settings.layout.scrollMode.workspace',
+    descriptionKey: 'settings.layout.scrollMode.workspaceDescription',
   },
   {
     value: 'sticky',
-    label: '固定顶部',
-    description: '仅固定顶部栏和标签栏，其余右侧内容可以滚动',
+    labelKey: 'settings.layout.scrollMode.sticky',
+    descriptionKey: 'settings.layout.scrollMode.stickyDescription',
   },
 ]
 
 const resetLayout = (): void => {
-  layoutSettings.reset()
+  preferences.reset()
 }
 
 watch(() => props.resetKey, resetLayout)
@@ -47,87 +56,99 @@ watch(() => props.resetKey, resetLayout)
         <NIcon :size="20" aria-hidden="true"><GridOutline /></NIcon>
       </div>
       <div>
-        <h2>布局设置</h2>
-        <p>选择导航布局和内容区的显示方式</p>
+        <h2>{{ t('settings.layout.title') }}</h2>
+        <p>{{ t('settings.layout.description') }}</p>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="section-heading">
-        <h3>内容区</h3>
-        <p>调整工作区的宽度和辅助导航</p>
+        <h3>{{ t('settings.layout.content') }}</h3>
+        <p>{{ t('settings.layout.contentDescription') }}</p>
       </div>
-      <div class="segmented-control" role="radiogroup" aria-label="内容区宽度">
+      <div class="segmented-control" role="radiogroup" :aria-label="t('settings.layout.content')">
         <button
           type="button"
-          :class="{ 'segmented-control__option--active': layoutSettings.contentWidth === 'full' }"
           class="segmented-control__option"
+          :class="{ 'segmented-control__option--active': preferences.contentWidth === 'full' }"
           role="radio"
-          :aria-checked="layoutSettings.contentWidth === 'full'"
-          @click="layoutSettings.contentWidth = 'full'"
+          :aria-checked="preferences.contentWidth === 'full'"
+          @click="preferences.contentWidth = 'full'"
         >
-          全屏内容
+          {{ t('settings.layout.fullWidth') }}
         </button>
         <button
           type="button"
-          :class="{
-            'segmented-control__option--active': layoutSettings.contentWidth === 'centered',
-          }"
           class="segmented-control__option"
+          :class="{ 'segmented-control__option--active': preferences.contentWidth === 'centered' }"
           role="radio"
-          :aria-checked="layoutSettings.contentWidth === 'centered'"
-          @click="layoutSettings.contentWidth = 'centered'"
+          :aria-checked="preferences.contentWidth === 'centered'"
+          @click="preferences.contentWidth = 'centered'"
         >
-          居中内容
+          {{ t('settings.layout.centered') }}
         </button>
       </div>
+
       <div class="section-heading section-heading--scroll-mode">
-        <h3>内容区固定</h3>
-        <p>选择内容区和右侧工作区的滚动方式</p>
+        <h3>{{ t('settings.layout.scrollMode') }}</h3>
+        <p>{{ t('settings.layout.scrollModeDescription') }}</p>
       </div>
-      <div class="scroll-mode-grid" role="radiogroup" aria-label="内容区固定方式">
+      <div class="scroll-mode-grid" role="radiogroup" :aria-label="t('settings.layout.scrollMode')">
         <button
           v-for="mode in scrollModes"
           :key="mode.value"
           type="button"
           class="scroll-mode-choice"
-          :class="{ 'scroll-mode-choice--active': layoutSettings.scrollMode === mode.value }"
+          :class="{ 'scroll-mode-choice--active': preferences.scrollMode === mode.value }"
           role="radio"
-          :aria-checked="layoutSettings.scrollMode === mode.value"
-          @click="layoutSettings.scrollMode = mode.value"
+          :aria-checked="preferences.scrollMode === mode.value"
+          @click="preferences.scrollMode = mode.value"
         >
-          <span class="scroll-mode-choice__title">{{ mode.label }}</span>
-          <span class="scroll-mode-choice__description">{{ mode.description }}</span>
+          <span class="scroll-mode-choice__title">{{ t(mode.labelKey) }}</span>
+          <span class="scroll-mode-choice__description">{{ t(mode.descriptionKey) }}</span>
         </button>
       </div>
+
       <div class="setting-list">
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>显示侧边栏</h3>
-            <p>保留主导航入口，方便快速切换模块</p>
+            <h3>{{ t('settings.layout.showSidebar') }}</h3>
+            <p>{{ t('settings.layout.showSidebarDescription') }}</p>
           </div>
-          <NSwitch v-model:value="layoutSettings.showSidebar" aria-label="显示侧边栏" />
+          <NSwitch
+            v-model:value="preferences.showSidebar"
+            :aria-label="t('settings.layout.showSidebar')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>显示标签页</h3>
-            <p>在内容区上方保留多页面标签导航</p>
+            <h3>{{ t('settings.layout.showTabs') }}</h3>
+            <p>{{ t('settings.layout.showTabsDescription') }}</p>
           </div>
-          <NSwitch v-model:value="layoutSettings.showTabs" aria-label="显示标签页" />
+          <NSwitch
+            v-model:value="preferences.showTabs"
+            :aria-label="t('settings.layout.showTabs')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>显示面包屑</h3>
-            <p>在页面标题附近显示当前访问路径</p>
+            <h3>{{ t('settings.layout.showBreadcrumb') }}</h3>
+            <p>{{ t('settings.layout.showBreadcrumbDescription') }}</p>
           </div>
-          <NSwitch v-model:value="layoutSettings.showBreadcrumb" aria-label="显示面包屑" />
+          <NSwitch
+            v-model:value="preferences.showBreadcrumb"
+            :aria-label="t('settings.layout.showBreadcrumb')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>显示底部信息</h3>
-            <p>在内容区底部保留版本和版权信息</p>
+            <h3>{{ t('settings.layout.showFooter') }}</h3>
+            <p>{{ t('settings.layout.showFooterDescription') }}</p>
           </div>
-          <NSwitch v-model:value="layoutSettings.showFooter" aria-label="显示底部信息" />
+          <NSwitch
+            v-model:value="preferences.showFooter"
+            :aria-label="t('settings.layout.showFooter')"
+          />
         </div>
       </div>
     </div>
@@ -152,7 +173,7 @@ watch(() => props.resetKey, resetLayout)
   height: 42px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--app-radius-lg);
 }
 
 .panel-icon--blue {
@@ -202,121 +223,9 @@ watch(() => props.resetKey, resetLayout)
   font-weight: 700;
 }
 
-.layout-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.layout-choice {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  padding: 12px;
-  color: var(--app-color-text);
-  border: 1px solid var(--app-color-border);
-  border-radius: 10px;
-  background: var(--app-color-surface);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.layout-choice:hover,
-.layout-choice:focus-visible {
-  border-color: var(--app-color-primary);
-  outline: none;
-  transform: translateY(-1px);
-}
-
-.layout-choice--active {
-  border-color: var(--app-color-primary);
-  box-shadow: 0 0 0 2px rgb(108 124 229 / 14%);
-}
-
-.layout-preview {
-  display: flex;
-  height: 92px;
-  overflow: hidden;
-  border: 1px solid var(--app-color-border);
-  border-radius: 7px;
-}
-
-.layout-preview__nav {
-  width: 24%;
-  flex: 0 0 24%;
-  background: #cfd6ff;
-}
-
-.layout-preview__content {
-  display: grid;
-  flex: 1;
-  gap: 6px;
-  padding: 8px;
-  background: #f7f8fb;
-}
-
-.layout-preview__line {
-  display: block;
-  height: 8px;
-  border-radius: 3px;
-  background: #d8dcf0;
-}
-
-.layout-preview__block {
-  display: block;
-  height: 34px;
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgb(35 43 86 / 5%);
-}
-
-.layout-preview--top {
-  flex-direction: column;
-}
-
-.layout-preview--top .layout-preview__nav {
-  width: 100%;
-  height: 18%;
-  flex-basis: 18%;
-}
-
-.layout-preview--mix .layout-preview__nav {
-  width: 30%;
-  flex-basis: 30%;
-  border-right: 5px solid #eef0ff;
-}
-
-.layout-choice__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.choice-check {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  color: #fff;
-  border-radius: 50%;
-  background: var(--app-color-primary);
-}
-
 .segmented-control {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -327,7 +236,7 @@ watch(() => props.resetKey, resetLayout)
   padding: 0 12px;
   color: var(--app-color-text-muted);
   border: 1px solid var(--app-color-border);
-  border-radius: 6px;
+  border-radius: var(--app-radius-sm);
   background: var(--app-color-surface);
   cursor: pointer;
   font: inherit;
@@ -347,6 +256,7 @@ watch(() => props.resetKey, resetLayout)
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .scroll-mode-choice {
@@ -356,7 +266,7 @@ watch(() => props.resetKey, resetLayout)
   padding: 14px;
   color: var(--app-color-text);
   border: 1px solid var(--app-color-border);
-  border-radius: 8px;
+  border-radius: var(--app-radius-md);
   background: var(--app-color-surface);
   cursor: pointer;
   font: inherit;
@@ -408,17 +318,7 @@ watch(() => props.resetKey, resetLayout)
 }
 
 @media (width <= 900px) {
-  .layout-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .scroll-mode-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (width <= 600px) {
-  .layout-grid {
     grid-template-columns: 1fr;
   }
 }

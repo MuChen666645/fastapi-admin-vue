@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 import { darkTheme } from 'naive-ui'
 
+import { usePreferencesStore } from '@/stores'
+
 const THEME_STORAGE_KEY = 'fastapi-admin:theme'
 const THEME_TRANSITION_CLASS = 'app-theme-changing'
 
@@ -30,6 +32,11 @@ const persistTheme = (isDark: boolean): void => {
   }
 }
 
+const readSystemTheme = (): boolean =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-color-scheme: dark)').matches
+
 const startThemeTransition = (): void => {
   if (typeof window === 'undefined') {
     return
@@ -47,16 +54,56 @@ const startThemeTransition = (): void => {
   }, 0)
 }
 
-const darkMode = ref(readStoredTheme())
+const systemDarkMode = ref(readSystemTheme())
+let systemThemeListenerRegistered = false
+
+const registerSystemThemeListener = (): void => {
+  if (
+    systemThemeListenerRegistered ||
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function'
+  ) {
+    return
+  }
+
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handleChange = (event: MediaQueryListEvent): void => {
+    systemDarkMode.value = event.matches
+  }
+
+  mediaQuery.addEventListener?.('change', handleChange)
+  systemThemeListenerRegistered = true
+}
 
 export const useTheme = () => {
-  const isDarkMode = computed(() => darkMode.value)
-  const naiveTheme = computed(() => (darkMode.value ? darkTheme : null))
+  const preferences = usePreferencesStore()
+  registerSystemThemeListener()
+
+  if (
+    typeof window !== 'undefined' &&
+    !window.localStorage.getItem('preferences') &&
+    readStoredTheme()
+  ) {
+    preferences.themeMode = 'dark'
+  }
+
+  const isDarkMode = computed(() => {
+    if (preferences.themeMode === 'dark') {
+      return true
+    }
+
+    if (preferences.themeMode === 'system') {
+      return systemDarkMode.value
+    }
+
+    return false
+  })
+  const naiveTheme = computed(() => (isDarkMode.value ? darkTheme : null))
 
   const toggleTheme = (): void => {
     startThemeTransition()
-    darkMode.value = !darkMode.value
-    persistTheme(darkMode.value)
+    preferences.themeMode = isDarkMode.value ? 'light' : 'dark'
+    persistTheme(isDarkMode.value)
   }
 
   return {

@@ -38,7 +38,7 @@ src/
 │   ├── route-cache.ts、route-source.ts、route-utils.ts
 │   └── index.ts
 ├── stores/modules/
-│   ├── auth.ts、tabs.ts、route-loading.ts、layout-settings.ts
+│   ├── auth.ts、tabs.ts、route-loading.ts、preferences.ts、layout-settings.ts
 │   └── index.ts
 ├── types/
 ├── utils/
@@ -47,6 +47,16 @@ src/
 ```
 
 `src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；类型声明统一位于 `src/types/system-config.ts`。
+
+## 偏好配置与双语模式 / Preferences and bilingual mode
+
+`usePreferencesStore` 是偏好配置的唯一运行时来源，使用 `localStorage` 持久化外观、布局和通用配置。`useLayoutSettingsStore` 只是兼容旧调用方的导出别名，不再拥有第二份布局状态。偏好字段包含主题模式、强调色、圆角、字体大小、色弱/灰度、语言、时区、动态标题、水印、更新检查、页面反馈，以及内容宽度、导航可见性和滚动模式。
+
+`zh-CN` 和 `en-US` 由 `src/utils/i18n.ts` 提供词典，`useLocale` 暴露给设置页和公共壳层。静态路由标题由 `translateRouteTitle` 翻译；未收录的后端动态标题保持服务端原文。`dynamicTitle` 控制浏览器标题，`watermark` 只在已认证用户的工作区显示姓名水印。
+
+`content`、`workspace`、`sticky` 分别表示内容区内部滚动、右侧工作区整体滚动、仅顶部栏和标签栏固定。`pageTransition` 控制顶部进度条，`loadingAnimation` 控制全屏和内容区 Lottie。`autoUpdate` 当前只持久化配置，不调用不存在的更新接口；真正接入前必须核对更新清单地址和版本契约。
+
+`usePreferencesStore` is the single runtime source for appearance, layout, and general preferences. `useLayoutSettingsStore` remains only as a compatibility alias. The UI dictionary supports `zh-CN` and `en-US`; static shell titles are translated, while unknown backend titles are preserved. Scroll modes are `content`, `workspace`, and `sticky`. The update-check option stores intent only until a real update manifest contract is verified.
 
 ## 构建与测试脚本
 
@@ -124,7 +134,7 @@ src/
 - `useAuthStore` 管理访问令牌、刷新令牌、当前用户、权限、后端路由和 `AuthStatus`。
 - auth Store 仅用 Pinia persisted state 的 `sessionStorage` 持久化 `refreshToken` 和 `rememberedUsername`。
 - `useTabsStore` 用 `sessionStorage` 持久化 `tabs`，负责增加、关闭当前/其他/全部标签页。
-- `useLayoutSettingsStore` 用 `localStorage` 持久化内容宽度、布局可见项和滚动模式；默认固定布局并仅允许内容区内部滚动。
+- `usePreferencesStore` 用 `localStorage` 持久化外观、通用和布局偏好；`useLayoutSettingsStore` 是兼容旧调用方的别名，默认固定布局并仅允许内容区内部滚动。
 - `meta.noCache === false` 表示页面可缓存。`useRouteCache` 使用 `RouteTab_<route-key>` 包装组件，避免不同路由实例共享 KeepAlive 名称。
 - `BasicLayout` 通过 `KeepAlive :include="cachedComponentNames"` 管理缓存；刷新当前标签会增加视图 key，保持标签列表但重新创建页面实例。
 

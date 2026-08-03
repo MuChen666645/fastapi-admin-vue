@@ -2,6 +2,8 @@
 
 这是 FastAPI Admin 的 Vue 3 管理前端，负责登录态、后端菜单路由、管理页面、标签页、主题和路由 Loading 交互。认证、授权、租户、数据范围和业务状态由 FastAPI 服务端最终决定。
 
+English documentation: [README.en.md](./README.en.md).
+
 ## 技术栈
 
 - Vue 3 + `<script setup lang="ts">` + TypeScript strict
@@ -66,10 +68,10 @@ home/index
 src/
 ├── api/                 # 领域 API 和响应解析
 ├── components/          # 全局 Loading、面包屑、路由进度条
-├── hooks/               # 主题、Lottie、图标、路由缓存等可复用行为
+├── hooks/               # 主题、语言、标题、Lottie、图标、路由缓存等可复用行为
 ├── layouts/BasicLayout/ # 侧边栏、头部、标签页、内容区和页脚
 ├── router/              # 静态路由、认证守卫、动态路由转换
-├── stores/modules/      # auth、tabs、route-loading
+├── stores/modules/      # auth、tabs、route-loading、preferences
 ├── types/               # API、路由、Store、传输和 Lottie 类型
 ├── utils/               # 传输边界、运行时守卫和 Lottie 封装
 ├── views/               # 路由级页面
@@ -77,6 +79,22 @@ src/
 ```
 
 大页面的业务区域放在页面目录的 `components/` 中，例如 `src/views/system/config/components/`。公共组件才放入 `src/components/`。所有 `type`、`interface`、`enum` 声明统一放在 `src/types/`，通过 `@/types` 导入；新增普通样式优先使用 UnoCSS utility class。`src/views/` 下目录使用能表达业务域和页面职责的语义化名称。
+
+## 偏好配置与双语模式 / Preferences and bilingual mode
+
+系统设置入口为 `/system/settings`，配置由 `usePreferencesStore` 统一管理，并通过 `localStorage` 持久化。设置包括：
+
+- 外观：浅色、深色或跟随系统主题，主题色，圆角，字体大小，色弱和灰度模式。
+- 布局：全屏或居中内容，侧边栏、标签页、面包屑、页脚，以及内容区固定方式。
+- 通用：`zh-CN` / `en-US`、时区、动态标题、水印、更新检查开关和页面 Loading 开关。
+
+内容区固定方式有三种：`content` 让顶部栏、标签栏和侧边栏固定、仅内容区内部滚动；`workspace` 让右侧工作区整体滚动；`sticky` 仅固定顶部栏和标签栏，其余右侧内容滚动。语言切换即时影响设置页和公共壳层，动态后端菜单标题在没有词典映射时保留服务端原文。
+
+The `/system/settings` page is backed by one `usePreferencesStore` and persists preferences in `localStorage`. It covers appearance, layout, language, timezone, dynamic titles, watermark, update checking, and loading feedback. The three scroll modes are `content`, `workspace`, and `sticky`, matching the behavior described above. The bilingual UI supports `zh-CN` and `en-US`; static shell titles are translated and unknown backend titles are preserved.
+
+“定时检查更新”当前只保存用户意图，不会伪造更新请求；接入前必须提供真实的 update manifest URL、版本格式和错误处理契约。复制偏好设置只包含本地 UI 配置，不包含 Token、密码或用户会话凭据。
+
+The update-check switch currently persists user intent only. It does not invent an update API; a real update manifest URL, version format, and error contract are required before runtime checks are enabled. Copying preferences exports UI settings only and never session credentials.
 
 ## 认证与 API
 
@@ -100,6 +118,7 @@ GET  /user/routes
 - 初始导航和布局外页面使用 `GlobalLoading` 全屏 Lottie 动画。
 - `BasicLayout` 内部页面切换使用 `ContentLoading`，只覆盖内容区，不遮挡侧边栏、顶部栏和标签页。
 - `RouterLoadingBar` 使用 Naive UI 顶部进度条。
+- 通用设置中的 `pageTransition` 控制顶部进度条，`loadingAnimation` 控制全屏和内容区 Lottie；关闭后导航状态仍正常完成，只隐藏对应反馈。
 - `meta.noCache === false` 的页面允许 KeepAlive 缓存，缓存名为 `RouteTab_<route-key>`。
 - tabs 列表由 `useTabsStore` 使用 `sessionStorage` 持久化；组件缓存和标签列表是两个独立状态。
 

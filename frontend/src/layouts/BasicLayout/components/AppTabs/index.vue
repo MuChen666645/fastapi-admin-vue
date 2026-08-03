@@ -11,10 +11,12 @@ import {
 import { NDropdown, NIcon } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useLocale } from '@/hooks'
 import { resolveIconComponent } from '@/hooks/useIcon'
 import { getRouteCacheName } from '@/router/route-cache'
 import { useTabsStore } from '@/stores'
 import type { AppTab } from '@/types'
+import { translateMenuTitle } from '@/utils/i18n'
 
 defineOptions({ name: 'AppTabs' })
 
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 const route = useRoute()
 const router = useRouter()
 const tabsStore = useTabsStore()
+const { language, t } = useLocale()
 const tabsContainer = ref<HTMLDivElement | null>(null)
 const contextMenu = reactive({
   visible: false,
@@ -37,20 +40,25 @@ const activeTabKey = computed(() => String(route.name ?? route.path))
 const contextTab = computed(() => tabsStore.tabs.find((tab) => tab.key === contextMenu.tabKey))
 
 const getTabIcon = (tab: AppTab) => resolveIconComponent(tab.icon)
+const getTabTitle = (tab: AppTab): string => translateMenuTitle(tab.title, language.value)
 
 const contextMenuOptions = computed(() => [
-  { label: '刷新当前', key: 'refresh' },
-  { label: '关闭当前', key: 'close', disabled: !contextTab.value?.closable },
+  { label: t('tabs.refreshCurrent'), key: 'refresh' },
+  {
+    label: t('tabs.close').replace('{title}', contextTab.value?.title ?? ''),
+    key: 'close',
+    disabled: !contextTab.value?.closable,
+  },
   { type: 'divider', key: 'divider' },
-  { label: '关闭其他', key: 'close-others' },
-  { label: '关闭全部', key: 'close-all' },
+  { label: t('tabs.closeOther'), key: 'close-others' },
+  { label: t('tabs.closeAll'), key: 'close-all' },
 ])
 
-const topMenuOptions = [
-  { label: '刷新当前', key: 'refresh' },
-  { label: '关闭其他', key: 'close-others' },
-  { label: '关闭全部', key: 'close-all' },
-]
+const topMenuOptions = computed(() => [
+  { label: t('tabs.refreshCurrent'), key: 'refresh' },
+  { label: t('tabs.closeOther'), key: 'close-others' },
+  { label: t('tabs.closeAll'), key: 'close-all' },
+])
 
 const syncCurrentTab = (): void => {
   const title = String(route.meta.title ?? route.name ?? route.path)
@@ -173,12 +181,12 @@ const handleTopMenuSelect = async (key: string | number): Promise<void> => {
 </script>
 
 <template>
-  <section class="app-tabs" aria-label="页面标签页">
+  <section class="app-tabs" :aria-label="t('tabs.page')">
     <button
       type="button"
       class="tabs-scroll-button"
-      aria-label="向左滚动标签页"
-      title="向左滚动标签页"
+      :aria-label="t('tabs.scrollLeft')"
+      :title="t('tabs.scrollLeft')"
       @click="scrollTabs(-180)"
     >
       <NIcon :size="16"><ChevronBackOutline /></NIcon>
@@ -204,13 +212,13 @@ const handleTopMenuSelect = async (key: string | number): Promise<void> => {
           <HomeOutline />
         </NIcon>
         <span v-else class="tab-dot" aria-hidden="true" />
-        <span class="app-tab-title">{{ tab.title }}</span>
+        <span class="app-tab-title">{{ getTabTitle(tab) }}</span>
         <button
           v-if="tab.closable"
           type="button"
           class="tab-close-button"
-          :aria-label="`关闭${tab.title}`"
-          :title="`关闭${tab.title}`"
+          :aria-label="t('tabs.close').replace('{title}', getTabTitle(tab))"
+          :title="t('tabs.close').replace('{title}', getTabTitle(tab))"
           @click.stop="closeTab(tab.key)"
         >
           <NIcon :size="13"><CloseOutline /></NIcon>
@@ -221,8 +229,8 @@ const handleTopMenuSelect = async (key: string | number): Promise<void> => {
     <button
       type="button"
       class="tabs-scroll-button"
-      aria-label="向右滚动标签页"
-      title="向右滚动标签页"
+      :aria-label="t('tabs.scrollRight')"
+      :title="t('tabs.scrollRight')"
       @click="scrollTabs(180)"
     >
       <NIcon :size="16"><ChevronForwardOutline /></NIcon>
@@ -232,14 +240,19 @@ const handleTopMenuSelect = async (key: string | number): Promise<void> => {
     <button
       type="button"
       class="tabs-action-button"
-      aria-label="刷新当前页面"
-      title="刷新当前页面"
+      :aria-label="t('tabs.refresh')"
+      :title="t('tabs.refresh')"
       @click="refreshCurrentTab()"
     >
       <NIcon :size="16"><RefreshOutline /></NIcon>
     </button>
     <NDropdown :options="topMenuOptions" trigger="click" @select="handleTopMenuSelect">
-      <button type="button" class="tabs-action-button" aria-label="标签页操作" title="标签页操作">
+      <button
+        type="button"
+        class="tabs-action-button"
+        :aria-label="t('tabs.operations')"
+        :title="t('tabs.operations')"
+      >
         <NIcon :size="17"><EllipsisHorizontalOutline /></NIcon>
       </button>
     </NDropdown>

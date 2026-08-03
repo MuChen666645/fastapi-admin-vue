@@ -43,7 +43,8 @@ main.ts
 | `src/stores/modules/auth.ts`          | Token、用户、权限、路由和会话状态                                  |
 | `src/stores/modules/tabs.ts`          | 标签页列表和缓存标签名                                             |
 | `src/stores/modules/route-loading.ts` | 全屏/内容区 Loading 状态和最短显示时间                             |
-| `src/stores/modules/layout-settings.ts` | 内容宽度、布局可见项和右侧滚动模式，使用 `localStorage` 持久化       |
+| `src/stores/modules/preferences.ts` | 外观、布局、通用偏好和 `localStorage` 持久化                   |
+| `src/stores/modules/layout-settings.ts` | 统一偏好 Store 的旧布局兼容导出                               |
 | `src/hooks`                           | Lottie、主题、图标、ECharts 和路由缓存等可复用行为                 |
 | `src/components`                      | 全局 Loading、路由进度条、面包屑等跨页面组件                       |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
@@ -80,7 +81,7 @@ main.ts
 - `must_change_password` 为真时不调用当前用户和路由接口，守卫只允许进入修改密码页。
 - 初始化请求通过 `initializationPromise` 去重；失败后允许后续重新初始化。
 - 退出登录始终清理 Token、用户、权限、动态路由依赖的 Store 状态和标签页。
-- Pinia 持久化只保存 auth Store 的刷新令牌/记住的用户名和 tabs Store 的标签页。登录偏好工具另有浏览器存储行为，见 `PROJECT.md` 的已知风险。
+- Pinia 持久化保存 auth Store 的刷新令牌/记住的用户名和 tabs Store 的标签页；`preferences` Store 使用 `localStorage` 保存非敏感 UI 偏好。登录偏好工具另有浏览器存储行为，见 `PROJECT.md` 的已知风险。
 
 ## 路由架构
 
@@ -138,7 +139,7 @@ NLayout
 └── AppFooter
 ```
 
-布局偏好由 `useLayoutSettingsStore` 驱动：`content` 模式固定右侧布局并让内容区内部滚动，`workspace` 模式让右侧工作区整体滚动，`sticky` 模式只固定头部和标签栏并让其余右侧内容滚动。侧边栏、标签栏、面包屑、页脚和内容宽度开关也由该 Store 统一控制。
+布局偏好由 `usePreferencesStore` 驱动，`useLayoutSettingsStore` 只是兼容别名：`content` 模式固定右侧布局并让内容区内部滚动，`workspace` 模式让右侧工作区整体滚动，`sticky` 模式只固定头部和标签栏并让其余右侧内容滚动。侧边栏、标签栏、面包屑、页脚和内容宽度开关也由该 Store 统一控制。
 
 - 页面路由的 `meta.noCache === false` 才允许缓存。
 - `useRouteCache` 为可缓存页面创建 `RouteTab_<route-key>` 包装组件，避免直接使用同一个页面组件名造成 KeepAlive 串缓存。
@@ -172,3 +173,15 @@ Router afterEach / onError
 
 - `useTheme` 使用 `localStorage` 保存 `fastapi-admin:theme`，App.vue 将暗色状态同步到 Naive UI 和根节点 class。
 - `useIcon` 只从已静态导入的 Ionicons5 对象中按后端图标名查找，未知名称返回 `null`，不猜测别名或动态导入。
+
+## 偏好与本地化依赖 / Preference and locale dependency
+
+```text
+App.vue
+  -> usePreferencesStore
+      -> useTheme / useDocumentTitle / useLocale
+      -> root CSS variables and shell behavior
+  -> BasicLayout and system settings
+```
+
+`useLocale` 只负责前端界面文案；它不翻译或修改后端业务数据、权限码、菜单契约和错误字段。`useDocumentTitle` 只对已知静态路由标题使用词典，动态标题保持原文。`autoUpdate` 没有隐藏网络请求，避免在没有后端契约时制造假接口。

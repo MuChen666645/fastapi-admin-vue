@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import {
   CheckmarkOutline,
   ColorPaletteOutline,
@@ -9,87 +9,56 @@ import {
 } from '@vicons/ionicons5'
 import { NIcon, NInputNumber, NSwitch } from 'naive-ui'
 
-import { useTheme } from '@/hooks/useTheme'
+import { useLocale } from '@/hooks'
+import { usePreferencesStore } from '@/stores'
+import { accentColorOptions, radiusOptions } from '@/utils/preferences'
 
 import type { ThemeMode } from '@/types'
 
 defineOptions({ name: 'AppearanceSettings' })
 
 const props = defineProps<{ resetKey: number }>()
+const preferences = usePreferencesStore()
+const { t } = useLocale()
 
-const themeModes = [
+const themeModes: ReadonlyArray<{
+  value: ThemeMode
+  labelKey: 'settings.appearance.light' | 'settings.appearance.dark' | 'settings.appearance.system'
+  descriptionKey:
+    | 'settings.appearance.lightDescription'
+    | 'settings.appearance.darkDescription'
+    | 'settings.appearance.systemDescription'
+  icon: typeof SunnyOutline
+}> = [
   {
-    value: 'light' as const,
-    label: '浅色',
-    description: '明亮清晰的工作环境',
+    value: 'light',
+    labelKey: 'settings.appearance.light',
+    descriptionKey: 'settings.appearance.lightDescription',
     icon: SunnyOutline,
   },
   {
-    value: 'dark' as const,
-    label: '深色',
-    description: '适合低光环境使用',
+    value: 'dark',
+    labelKey: 'settings.appearance.dark',
+    descriptionKey: 'settings.appearance.darkDescription',
     icon: MoonOutline,
   },
   {
-    value: 'system' as const,
-    label: '跟随系统',
-    description: '根据系统设置自动切换',
+    value: 'system',
+    labelKey: 'settings.appearance.system',
+    descriptionKey: 'settings.appearance.systemDescription',
     icon: ContrastOutline,
   },
-] as const
+]
 
-const accentColors = [
-  { key: 'blue', value: '#6c7ce5', name: '默认蓝' },
-  { key: 'violet', value: '#7367f0', name: '紫罗兰' },
-  { key: 'rose', value: '#e94b78', name: '樱花粉' },
-  { key: 'amber', value: '#e7ad38', name: '柠檬黄' },
-  { key: 'green', value: '#18b887', name: '浅绿色' },
-  { key: 'slate', value: '#34445d', name: '石板灰' },
-] as const
-
-const radiusOptions = [0, 0.25, 0.5, 0.75, 1]
-const { isDarkMode, toggleTheme } = useTheme()
-const selectedTheme = ref<ThemeMode>(isDarkMode.value ? 'dark' : 'light')
-const selectedAccent = ref('#6c7ce5')
-const selectedRadius = ref(0.5)
-const fontSize = ref<number | null>(16)
-const colorWeakMode = ref(false)
-const grayscaleMode = ref(false)
-
-const selectTheme = (mode: ThemeMode): void => {
-  selectedTheme.value = mode
-  const shouldUseDark =
-    mode === 'dark' ||
-    (mode === 'system' &&
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches)
-
-  if (shouldUseDark !== isDarkMode.value) {
-    toggleTheme()
-  }
-}
-
-const selectAccent = (color: string): void => {
-  selectedAccent.value = color
-  if (typeof document === 'undefined') {
-    return
-  }
-
-  document.documentElement.style.setProperty('--app-color-primary', color)
-  document.documentElement.style.setProperty('--app-color-primary-dark', color)
-}
+const selectedTheme = computed({
+  get: () => preferences.themeMode,
+  set: (value: ThemeMode) => {
+    preferences.themeMode = value
+  },
+})
 
 const resetAppearance = (): void => {
-  selectedTheme.value = 'light'
-  selectedRadius.value = 0.5
-  fontSize.value = 16
-  colorWeakMode.value = false
-  grayscaleMode.value = false
-  selectAccent('#6c7ce5')
-
-  if (isDarkMode.value) {
-    toggleTheme()
-  }
+  preferences.reset()
 }
 
 watch(() => props.resetKey, resetAppearance)
@@ -102,15 +71,15 @@ watch(() => props.resetKey, resetAppearance)
         <NIcon :size="20" aria-hidden="true"><ColorPaletteOutline /></NIcon>
       </div>
       <div>
-        <h2>外观设置</h2>
-        <p>调整界面的主题、颜色和文字显示方式</p>
+        <h2>{{ t('settings.appearance.title') }}</h2>
+        <p>{{ t('settings.appearance.description') }}</p>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="section-heading">
-        <h3>主题</h3>
-        <p>选择你喜欢的界面主题</p>
+        <h3>{{ t('settings.appearance.theme') }}</h3>
+        <p>{{ t('settings.appearance.themeDescription') }}</p>
       </div>
       <div class="theme-grid">
         <button
@@ -120,7 +89,7 @@ watch(() => props.resetKey, resetAppearance)
           class="theme-choice"
           :class="{ 'theme-choice--active': selectedTheme === mode.value }"
           :aria-pressed="selectedTheme === mode.value"
-          @click="selectTheme(mode.value)"
+          @click="selectedTheme = mode.value"
         >
           <span class="theme-preview" :class="`theme-preview--${mode.value}`">
             <span class="theme-preview__sidebar" />
@@ -133,9 +102,9 @@ watch(() => props.resetKey, resetAppearance)
           <span class="theme-choice__meta">
             <span class="theme-choice__title">
               <NIcon :size="16" aria-hidden="true"><component :is="mode.icon" /></NIcon>
-              {{ mode.label }}
+              {{ t(mode.labelKey) }}
             </span>
-            <span class="theme-choice__description">{{ mode.description }}</span>
+            <span class="theme-choice__description">{{ t(mode.descriptionKey) }}</span>
           </span>
           <span v-if="selectedTheme === mode.value" class="choice-check" aria-hidden="true">
             <NIcon :size="13"><CheckmarkOutline /></NIcon>
@@ -146,26 +115,26 @@ watch(() => props.resetKey, resetAppearance)
 
     <div class="settings-section">
       <div class="section-heading">
-        <h3>主题色</h3>
-        <p>选择应用的主要强调色</p>
+        <h3>{{ t('settings.appearance.accent') }}</h3>
+        <p>{{ t('settings.appearance.accentDescription') }}</p>
       </div>
       <div class="accent-grid">
         <button
-          v-for="color in accentColors"
+          v-for="color in accentColorOptions"
           :key="color.key"
           type="button"
           class="accent-choice"
-          :class="{ 'accent-choice--active': selectedAccent === color.value }"
-          :aria-label="color.name"
-          :title="color.name"
-          @click="selectAccent(color.value)"
+          :class="{ 'accent-choice--active': preferences.accentColor === color.key }"
+          :aria-label="t(color.nameKey)"
+          :title="t(color.nameKey)"
+          @click="preferences.accentColor = color.key"
         >
-          <span class="accent-swatch" :class="`accent-swatch--${color.key}`">
-            <NIcon v-if="selectedAccent === color.value" :size="17" aria-hidden="true">
+          <span class="accent-swatch" :style="{ backgroundColor: color.light }">
+            <NIcon v-if="preferences.accentColor === color.key" :size="17" aria-hidden="true">
               <CheckmarkOutline />
             </NIcon>
           </span>
-          <span>{{ color.name }}</span>
+          <span>{{ t(color.nameKey) }}</span>
         </button>
       </div>
     </div>
@@ -173,31 +142,37 @@ watch(() => props.resetKey, resetAppearance)
     <div class="settings-section settings-section--split">
       <div class="setting-row setting-row--stacked">
         <div class="setting-copy">
-          <h3>圆角</h3>
-          <p>调整卡片、按钮和输入框的圆角大小</p>
+          <h3>{{ t('settings.appearance.radius') }}</h3>
+          <p>{{ t('settings.appearance.radiusDescription') }}</p>
         </div>
-        <div class="radius-options" role="radiogroup" aria-label="圆角大小">
+        <div class="radius-options" role="radiogroup" :aria-label="t('settings.appearance.radius')">
           <button
             v-for="radius in radiusOptions"
-            :key="radius"
+            :key="radius.value"
             type="button"
             class="radius-option"
-            :class="{ 'radius-option--active': selectedRadius === radius }"
-            :aria-checked="selectedRadius === radius"
+            :class="{ 'radius-option--active': preferences.radiusScale === radius.value }"
+            :aria-checked="preferences.radiusScale === radius.value"
             role="radio"
-            @click="selectedRadius = radius"
+            @click="preferences.radiusScale = radius.value"
           >
-            {{ radius }}
+            {{ t(radius.labelKey) }}
           </button>
         </div>
       </div>
       <div class="setting-row setting-row--stacked">
         <div class="setting-copy">
-          <h3>字体大小</h3>
-          <p>调整全局界面的基础字体大小</p>
+          <h3>{{ t('settings.appearance.fontSize') }}</h3>
+          <p>{{ t('settings.appearance.fontSizeDescription') }}</p>
         </div>
         <div class="font-size-control">
-          <NInputNumber v-model:value="fontSize" :min="12" :max="20" :step="1" size="small">
+          <NInputNumber
+            v-model:value="preferences.fontSize"
+            :min="12"
+            :max="20"
+            :step="1"
+            size="small"
+          >
             <template #suffix>px</template>
           </NInputNumber>
         </div>
@@ -206,23 +181,29 @@ watch(() => props.resetKey, resetAppearance)
 
     <div class="settings-section">
       <div class="section-heading">
-        <h3>其它</h3>
-        <p>辅助显示选项</p>
+        <h3>{{ t('settings.appearance.other') }}</h3>
+        <p>{{ t('settings.appearance.otherDescription') }}</p>
       </div>
       <div class="setting-list">
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>色弱模式</h3>
-            <p>优化颜色对比，提升信息辨识度</p>
+            <h3>{{ t('settings.appearance.colorWeak') }}</h3>
+            <p>{{ t('settings.appearance.colorWeakDescription') }}</p>
           </div>
-          <NSwitch v-model:value="colorWeakMode" aria-label="色弱模式" />
+          <NSwitch
+            v-model:value="preferences.colorWeakMode"
+            :aria-label="t('settings.appearance.colorWeak')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>灰色模式</h3>
-            <p>将页面调整为低饱和度灰色显示</p>
+            <h3>{{ t('settings.appearance.grayscale') }}</h3>
+            <p>{{ t('settings.appearance.grayscaleDescription') }}</p>
           </div>
-          <NSwitch v-model:value="grayscaleMode" aria-label="灰色模式" />
+          <NSwitch
+            v-model:value="preferences.grayscaleMode"
+            :aria-label="t('settings.appearance.grayscale')"
+          />
         </div>
       </div>
     </div>
@@ -247,7 +228,7 @@ watch(() => props.resetKey, resetAppearance)
   height: 42px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--app-radius-lg);
 }
 
 .panel-icon--purple {
@@ -304,31 +285,25 @@ watch(() => props.resetKey, resetAppearance)
   display: flex;
   min-width: 0;
   flex-direction: column;
-  align-items: stretch;
   gap: 12px;
   padding: 12px;
   color: var(--app-color-text);
   border: 1px solid var(--app-color-border);
-  border-radius: 10px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-color-surface);
   cursor: pointer;
   font: inherit;
   text-align: left;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
 }
 
 .theme-choice:hover,
-.theme-choice:focus-visible {
+.theme-choice:focus-visible,
+.theme-choice--active {
   border-color: var(--app-color-primary);
   outline: none;
-  transform: translateY(-1px);
 }
 
 .theme-choice--active {
-  border-color: var(--app-color-primary);
   box-shadow: 0 0 0 2px rgb(108 124 229 / 14%);
 }
 
@@ -337,7 +312,7 @@ watch(() => props.resetKey, resetAppearance)
   height: 92px;
   overflow: hidden;
   border: 1px solid var(--app-color-border);
-  border-radius: 7px;
+  border-radius: var(--app-radius-sm);
 }
 
 .theme-preview__sidebar {
@@ -357,16 +332,15 @@ watch(() => props.resetKey, resetAppearance)
 .theme-preview__topbar {
   display: block;
   height: 8px;
-  border-radius: 3px;
+  border-radius: var(--app-radius-xs);
   background: #d8dcf0;
 }
 
 .theme-preview__card {
   display: block;
   height: 34px;
-  border-radius: 4px;
+  border-radius: var(--app-radius-xs);
   background: #fff;
-  box-shadow: 0 1px 3px rgb(35 43 86 / 5%);
 }
 
 .theme-preview__card--short {
@@ -440,7 +414,7 @@ watch(() => props.resetKey, resetAppearance)
   padding: 8px;
   color: var(--app-color-text-muted);
   border: 1px solid var(--app-color-border);
-  border-radius: 8px;
+  border-radius: var(--app-radius-md);
   background: var(--app-color-surface);
   cursor: pointer;
   font: inherit;
@@ -461,31 +435,7 @@ watch(() => props.resetKey, resetAppearance)
   height: 26px;
   place-items: center;
   color: #fff;
-  border-radius: 7px;
-}
-
-.accent-swatch--blue {
-  background: #6c7ce5;
-}
-
-.accent-swatch--violet {
-  background: #7367f0;
-}
-
-.accent-swatch--rose {
-  background: #e94b78;
-}
-
-.accent-swatch--amber {
-  background: #e7ad38;
-}
-
-.accent-swatch--green {
-  background: #18b887;
-}
-
-.accent-swatch--slate {
-  background: #34445d;
+  border-radius: var(--app-radius-sm);
 }
 
 .settings-section--split {
@@ -524,6 +474,7 @@ watch(() => props.resetKey, resetAppearance)
 
 .radius-options {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -533,7 +484,7 @@ watch(() => props.resetKey, resetAppearance)
   padding: 0 12px;
   color: var(--app-color-text-muted);
   border: 1px solid var(--app-color-border);
-  border-radius: 6px;
+  border-radius: var(--app-radius-sm);
   background: var(--app-color-surface);
   cursor: pointer;
   font: inherit;

@@ -5,9 +5,11 @@ import { NEmpty, NIcon, NLayoutSider, NMenu } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useLocale } from '@/hooks'
 import { resolveIconComponent } from '@/hooks/useIcon'
 import { useAuthStore } from '@/stores'
 import type { UserRoute } from '@/types'
+import { translateMenuTitle } from '@/utils/i18n'
 
 defineOptions({ name: 'AppSidebar' })
 
@@ -16,27 +18,28 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const { language, t } = useLocale()
 
 const renderMenuIcon = (icon: Component) =>
   h(NIcon, { class: 'menu-item-icon', component: icon, 'aria-hidden': 'true' })
 
-const toMenuOptions = (routes: UserRoute[]): MenuOption[] => {
+const toMenuOptions = (routes: UserRoute[], locale: typeof language.value): MenuOption[] => {
   return routes
     .filter((item) => !item.hidden)
     .map((item) => {
-      const children = toMenuOptions(item.children)
+      const children = toMenuOptions(item.children, locale)
       const icon = resolveIconComponent(item.meta.icon)
 
       return {
         key: item.name,
-        label: item.meta.title,
+        label: translateMenuTitle(item.meta.title, locale),
         ...(icon ? { icon: () => renderMenuIcon(icon) } : {}),
         ...(children.length > 0 ? { children } : {}),
       }
     })
 }
 
-const menuOptions = computed(() => toMenuOptions(auth.routes))
+const menuOptions = computed(() => toMenuOptions(auth.routes, language.value))
 const activeMenuKey = computed(() => (route.name ? String(route.name) : null))
 const dropdownProps = {
   class: 'sidebar-submenu-dropdown',
@@ -46,7 +49,7 @@ const dropdownProps = {
 const menuThemeOverrides = {
   peers: {
     Dropdown: {
-      borderRadius: '10px',
+      borderRadius: 'var(--app-radius-lg)',
       color: 'var(--app-color-surface)',
       optionColorHover: 'var(--app-color-primary)',
       optionColorActive: 'var(--app-color-primary)',
@@ -86,7 +89,7 @@ const handleMenuSelect = (key: string | number): void => {
     class="app-sidebar"
   >
     <div class="sidebar-content">
-      <div class="menu-caption">控制台导航</div>
+      <div class="menu-caption">{{ t('sidebar.caption') }}</div>
       <NMenu
         :value="activeMenuKey"
         :options="menuOptions"
@@ -99,17 +102,27 @@ const handleMenuSelect = (key: string | number): void => {
         :dropdown-props="dropdownProps"
         @update:value="handleMenuSelect"
       />
-      <NEmpty v-if="menuOptions.length === 0" class="empty-menu" description="暂无授权菜单" />
+      <NEmpty
+        v-if="menuOptions.length === 0"
+        class="empty-menu"
+        :description="t('sidebar.empty')"
+      />
     </div>
 
     <div class="server-status">
-      <strong class="server-status-title">服务器状态</strong>
+      <strong class="server-status-title">{{ t('sidebar.serverStatus') }}</strong>
       <div class="status-item">
-        <div class="status-label"><span>CPU 使用率</span><strong>24%</strong></div>
+        <div class="status-label">
+          <span>{{ t('sidebar.cpu') }}</span
+          ><strong>24%</strong>
+        </div>
         <div class="status-track"><span class="status-fill status-fill--green" /></div>
       </div>
       <div class="status-item">
-        <div class="status-label"><span>内存 8GB / 16GB</span><strong>50%</strong></div>
+        <div class="status-label">
+          <span>{{ t('sidebar.memory') }}</span
+          ><strong>50%</strong>
+        </div>
         <div class="status-track"><span class="status-fill status-fill--yellow" /></div>
       </div>
     </div>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
+  ContractOutline,
+  ExpandOutline,
   MenuOutline,
   MoonOutline,
   NotificationsOutline,
@@ -12,6 +14,7 @@ import { NAvatar, NDropdown, NIcon, NLayoutHeader, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb/index.vue'
+import { useLocale } from '@/hooks'
 import { useTheme } from '@/hooks/useTheme'
 import { clearAuthenticatedRoutes } from '@/router'
 import { useAuthStore, useTabsStore } from '@/stores'
@@ -31,17 +34,18 @@ const auth = useAuthStore()
 const tabsStore = useTabsStore()
 const message = useMessage()
 const { isDarkMode, toggleTheme } = useTheme()
+const { t } = useLocale()
 
 const isFullscreen = ref(false)
 const userInitial = computed(() => auth.displayName.slice(0, 1).toUpperCase())
 const userAvatar = computed(() => auth.currentUser?.user.avatar ?? undefined)
-const userRole = computed(() => auth.currentUser?.roles[0]?.name || '系统管理员')
-const userMenuOptions = [
-  { label: '个人中心', key: 'profile' },
-  { label: '系统设置', key: 'settings' },
+const userRole = computed(() => auth.currentUser?.roles[0]?.name || t('app.user.role.admin'))
+const userMenuOptions = computed(() => [
+  { label: t('app.user.profile'), key: 'profile' },
+  { label: t('app.user.settings'), key: 'settings' },
   { type: 'divider', key: 'divider' },
-  { label: '退出登录', key: 'logout' },
-]
+  { label: t('app.user.logout'), key: 'logout' },
+])
 
 const updateFullscreenState = (): void => {
   isFullscreen.value = Boolean(document.fullscreenElement)
@@ -53,7 +57,7 @@ const toggleSidebar = (): void => {
 
 const toggleFullscreen = async (): Promise<void> => {
   if (!document.fullscreenEnabled) {
-    message.warning('当前浏览器不支持全屏')
+    message.warning(t('app.message.fullscreenUnsupported'))
     return
   }
 
@@ -64,7 +68,7 @@ const toggleFullscreen = async (): Promise<void> => {
       await document.documentElement.requestFullscreen()
     }
   } catch {
-    message.error('全屏切换失败，请检查浏览器权限')
+    message.error(t('app.message.fullscreenFailed'))
   }
 }
 
@@ -76,7 +80,7 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
       return
     }
 
-    message.info('个人中心页面暂未配置')
+    message.info(t('app.message.profileUnavailable'))
     return
   }
 
@@ -86,7 +90,7 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
       return
     }
 
-    message.info('系统设置页面暂未配置')
+    message.info(t('app.message.settingsUnavailable'))
     return
   }
 
@@ -96,8 +100,6 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
 
   try {
     await auth.signOut()
-  } catch {
-    // 退出接口失败时，Store 仍会清理本地会话并回到登录页。
   } finally {
     tabsStore.reset()
     clearAuthenticatedRoutes()
@@ -120,8 +122,8 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="header-icon-button sidebar-toggle"
-        :aria-label="props.sidebarCollapsed ? '展开菜单' : '收起菜单'"
-        :title="props.sidebarCollapsed ? '展开菜单' : '收起菜单'"
+        :aria-label="props.sidebarCollapsed ? t('app.sidebar.open') : t('app.sidebar.collapse')"
+        :title="props.sidebarCollapsed ? t('app.sidebar.open') : t('app.sidebar.collapse')"
         @click="toggleSidebar"
       >
         <NIcon :size="19"><MenuOutline /></NIcon>
@@ -135,7 +137,7 @@ onBeforeUnmount(() => {
       </div>
       <label class="header-search">
         <NIcon :size="15" aria-hidden="true"><SearchOutline /></NIcon>
-        <input type="search" placeholder="搜索功能..." aria-label="搜索功能" />
+        <input type="search" :placeholder="t('app.search')" :aria-label="t('app.search')" />
       </label>
     </div>
 
@@ -147,8 +149,8 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="header-icon-button notification-button"
-        aria-label="通知"
-        title="通知"
+        :aria-label="t('app.notifications')"
+        :title="t('app.notifications')"
       >
         <NIcon :size="18"><NotificationsOutline /></NIcon>
         <span class="notification-dot" aria-hidden="true" />
@@ -157,17 +159,20 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="header-icon-button fullscreen-toggle"
-        :aria-label="isFullscreen ? '退出全屏' : '进入全屏'"
-        :title="isFullscreen ? '退出全屏' : '进入全屏'"
+        :aria-label="isFullscreen ? t('app.fullscreen.exit') : t('app.fullscreen.enter')"
+        :title="isFullscreen ? t('app.fullscreen.exit') : t('app.fullscreen.enter')"
         @click="toggleFullscreen"
       >
-        <span aria-hidden="true">{{ isFullscreen ? '⤢' : '⛶' }}</span>
+        <NIcon :size="18" aria-hidden="true">
+          <ContractOutline v-if="isFullscreen" />
+          <ExpandOutline v-else />
+        </NIcon>
       </button>
       <button
         type="button"
         class="header-icon-button theme-toggle"
-        :aria-label="isDarkMode ? '切换亮色模式' : '切换暗色模式'"
-        :title="isDarkMode ? '切换亮色模式' : '切换暗色模式'"
+        :aria-label="isDarkMode ? t('app.theme.light') : t('app.theme.dark')"
+        :title="isDarkMode ? t('app.theme.light') : t('app.theme.dark')"
         @click="toggleTheme"
       >
         <NIcon :size="18" aria-hidden="true">
@@ -182,7 +187,7 @@ onBeforeUnmount(() => {
         placement="bottom-end"
         @select="handleUserMenu"
       >
-        <button type="button" class="user-trigger" aria-haspopup="menu" title="打开用户菜单">
+        <button type="button" class="user-trigger" aria-haspopup="menu" :title="t('app.user.menu')">
           <NAvatar round :size="32" :src="userAvatar" class="user-avatar">
             {{ userInitial }}
           </NAvatar>

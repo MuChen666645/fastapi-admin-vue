@@ -1,5 +1,7 @@
 export { resolveIconComponent } from './useIcon'
+export { useDocumentTitle } from './useDocumentTitle'
 export { useECharts } from './useECharts'
 export { useLottie } from './useLottie'
+export { useLocale } from './useLocale'
 export { useRouteCache } from './useRouteCache'
 export { useTheme } from './useTheme'

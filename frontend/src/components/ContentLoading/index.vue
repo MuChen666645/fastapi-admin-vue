@@ -2,14 +2,19 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import carLoadingAnimation from '@/assets/lottie/car-loading3-data.json'
-import { useLottie } from '@/hooks'
+import { useLocale, useLottie } from '@/hooks'
 import { useRouteLoadingStore } from '@/stores/modules/route-loading'
+import { usePreferencesStore } from '@/stores'
 
 defineOptions({ name: 'ContentLoading' })
 
 const routeLoading = useRouteLoadingStore()
+const preferences = usePreferencesStore()
+const { t } = useLocale()
 const animationContainer = ref<HTMLElement | null>(null)
-const isVisible = computed(() => routeLoading.visible && routeLoading.scope === 'content')
+const isVisible = computed(
+  () => preferences.loadingAnimation && routeLoading.visible && routeLoading.scope === 'content',
+)
 const { pause, play } = useLottie(animationContainer, carLoadingAnimation)
 
 watch(isVisible, (visible) => {
@@ -38,7 +43,7 @@ onBeforeUnmount(() => {
     class="content-loading"
     data-testid="content-loading"
     role="status"
-    aria-label="内容加载中"
+    :aria-label="t('app.loading.content')"
     aria-live="polite"
     :aria-hidden="!isVisible"
   >

@@ -15,8 +15,10 @@ import type { EChartsOption } from 'echarts'
 import { NIcon } from 'naive-ui'
 
 import { useECharts } from '@/hooks/useECharts'
+import { useLocale } from '@/hooks/useLocale'
 import { useTheme } from '@/hooks/useTheme'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, usePreferencesStore } from '@/stores'
+import { findAccentColor } from '@/utils/preferences'
 import type {
   DashboardActivity,
   DashboardAnnouncement,
@@ -27,73 +29,88 @@ import type {
 defineOptions({ name: 'HomeView' })
 
 const auth = useAuthStore()
+const preferences = usePreferencesStore()
 const { isDarkMode } = useTheme()
+const { language, t } = useLocale()
 const trendChart = ref<HTMLElement | null>(null)
 const channelChart = ref<HTMLElement | null>(null)
 
-const displayName = computed(() => auth.displayName || '超级管理员')
+const displayName = computed(() => auth.displayName || t('app.user.role.admin'))
 
-const summaryCards: DashboardSummaryCard[] = [
+const summaryCards = computed<DashboardSummaryCard[]>(() => [
   {
-    label: '今日订单',
+    label: t('home.summary.orders'),
     value: '1,482',
     change: '+12.4%',
-    context: '较昨日同期',
+    context: t('home.context.vsYesterday'),
     tone: 'positive',
     icon: CartOutline,
   },
   {
-    label: '销售额 (元)',
+    label: t('home.summary.sales'),
     value: '¥ 128,450',
     change: '+8.2%',
-    context: '较昨日同期',
+    context: t('home.context.vsYesterday'),
     tone: 'positive',
     icon: CashOutline,
   },
   {
-    label: '新增用户',
+    label: t('home.summary.newUsers'),
     value: '328',
     change: '-2.4%',
-    context: '较昨日同期',
+    context: t('home.context.vsYesterday'),
     tone: 'negative',
     icon: PersonAddOutline,
   },
   {
-    label: '待处理事项',
+    label: t('home.summary.pending'),
     value: '14',
-    change: '需尽快处理',
-    context: '较昨日同期',
+    change: t('home.pendingAction'),
+    context: t('home.context.vsYesterday'),
     tone: 'warning',
     icon: TimeOutline,
   },
-]
+])
 
-const quickActions: DashboardQuickAction[] = [
-  { label: '添加用户', icon: PeopleOutline, tone: 'blue' },
-  { label: '角色授权', icon: KeyOutline, tone: 'purple' },
-  { label: '配置中心', icon: SettingsOutline, tone: 'pink' },
-  { label: '订单中心', icon: CartOutline, tone: 'green' },
-  { label: '数据监控', icon: BarChartOutline, tone: 'yellow' },
-  { label: '操作指南', icon: HelpCircleOutline, tone: 'gray' },
-]
+const quickActions = computed<DashboardQuickAction[]>(() => [
+  { label: t('home.action.addUser'), icon: PeopleOutline, tone: 'blue' },
+  { label: t('home.action.roleAuth'), icon: KeyOutline, tone: 'purple' },
+  { label: t('home.action.config'), icon: SettingsOutline, tone: 'pink' },
+  { label: t('home.action.orders'), icon: CartOutline, tone: 'green' },
+  { label: t('home.action.monitor'), icon: BarChartOutline, tone: 'yellow' },
+  { label: t('home.action.guide'), icon: HelpCircleOutline, tone: 'gray' },
+])
 
-const announcements: DashboardAnnouncement[] = [
-  { title: '系统计划于本周日进行停机维护通知', date: '09-30' },
-  { title: '安全审计中心功能全面升级正式上线', date: '09-28' },
-  { title: '关于节假日业务备份及值班安排', date: '09-25' },
-]
+const announcements = computed<DashboardAnnouncement[]>(() => [
+  { title: t('home.announcement.maintenance'), date: '09-30' },
+  { title: t('home.announcement.security'), date: '09-28' },
+  { title: t('home.announcement.backup'), date: '09-25' },
+])
 
-const activities: DashboardActivity[] = [
-  { user: '管理员A', action: '修改了用户角色权限', time: '10分钟前' },
-  { user: '运营B', action: '导出了今日订单数据', time: '30分钟前' },
-  { user: '系统', action: '完成系统全量安全备份', time: '1小时前' },
-]
+const activities = computed<DashboardActivity[]>(() => [
+  {
+    user: t('home.activity.admin'),
+    action: t('home.activity.changeRole'),
+    time: t('home.time.minutes10'),
+  },
+  {
+    user: t('home.activity.operator'),
+    action: t('home.activity.exportOrders'),
+    time: t('home.time.minutes30'),
+  },
+  {
+    user: t('home.activity.system'),
+    action: t('home.activity.backup'),
+    time: t('home.time.hour1'),
+  },
+])
 
+const activeAccent = computed(() => findAccentColor(preferences.accentColor))
 const chartColors = computed(() => ({
   axis: isDarkMode.value ? '#b7bdd8' : '#999',
   border: isDarkMode.value ? '#3c4260' : '#e5e7eb',
   grid: isDarkMode.value ? '#303650' : '#f0f2f5',
-  line: isDarkMode.value ? '#aeb8f3' : '#6c7ce5',
+  line: isDarkMode.value ? activeAccent.value.dark : activeAccent.value.light,
   bar: isDarkMode.value ? '#6fd1a0' : '#18a058',
 }))
 
@@ -103,12 +120,15 @@ const trendOption = computed<EChartsOption>(() => ({
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'line' },
-    valueFormatter: (value) => `${value} 单`,
+    valueFormatter: (value) => `${value} ${t('home.ordersUnit')}`,
   },
   xAxis: {
     type: 'category',
     boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    data:
+      language.value === 'zh-CN'
+        ? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     axisLine: { lineStyle: { color: chartColors.value.border } },
     axisTick: { show: false },
     axisLabel: { color: chartColors.value.axis, fontSize: 11 },
@@ -138,11 +158,19 @@ const channelOption = computed<EChartsOption>(() => ({
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'shadow' },
-    valueFormatter: (value) => `${value} 万元`,
+    valueFormatter: (value) => `${value} ${t('home.amountUnit')}`,
   },
   xAxis: {
     type: 'category',
-    data: ['官网', '小程序', '代理商', '线下门店', '合作渠道', '其他', '分销'],
+    data: [
+      t('home.channel.official'),
+      t('home.channel.miniProgram'),
+      t('home.channel.agent'),
+      t('home.channel.store'),
+      t('home.channel.partner'),
+      t('home.channel.other'),
+      t('home.channel.distribution'),
+    ],
     axisLine: { lineStyle: { color: chartColors.value.border } },
     axisTick: { show: false },
     axisLabel: { color: chartColors.value.axis, fontSize: 11 },
@@ -168,16 +196,19 @@ const channelOption = computed<EChartsOption>(() => ({
 const { renderChart: renderTrendChart } = useECharts(trendChart, () => trendOption.value)
 const { renderChart: renderChannelChart } = useECharts(channelChart, () => channelOption.value)
 
-watch(isDarkMode, () => {
-  renderTrendChart()
-  renderChannelChart()
-})
+watch(
+  () => [isDarkMode.value, language.value, preferences.accentColor] as const,
+  () => {
+    renderTrendChart()
+    renderChannelChart()
+  },
+)
 </script>
 
 <template>
   <section class="home-page">
     <div class="page-heading">
-      <h1>数据概览</h1>
+      <h1>{{ t('home.title') }}</h1>
     </div>
 
     <div class="summary-grid">
@@ -201,23 +232,27 @@ watch(isDarkMode, () => {
     <div class="chart-grid">
       <article class="content-card chart-card">
         <div class="card-heading">
-          <h2>近七天趋势</h2>
-          <span>单位: 单</span>
+          <h2>{{ t('home.trend') }}</h2>
+          <span>{{ t('home.ordersUnit') }}</span>
         </div>
-        <div ref="trendChart" class="chart-container" aria-label="近七天订单趋势图" />
+        <div ref="trendChart" class="chart-container" :aria-label="t('home.chart.ordersTrend')" />
       </article>
       <article class="content-card chart-card">
         <div class="card-heading">
-          <h2>渠道订单统计</h2>
-          <span>单位: 万元</span>
+          <h2>{{ t('home.channel') }}</h2>
+          <span>{{ t('home.amountUnit') }}</span>
         </div>
-        <div ref="channelChart" class="chart-container" aria-label="渠道订单统计图" />
+        <div
+          ref="channelChart"
+          class="chart-container"
+          :aria-label="t('home.chart.channelStats')"
+        />
       </article>
     </div>
 
     <div class="lower-grid">
       <article class="content-card quick-card">
-        <h2>快捷入口</h2>
+        <h2>{{ t('home.quickActions') }}</h2>
         <div class="quick-actions">
           <button
             v-for="action in quickActions"
@@ -234,7 +269,7 @@ watch(isDarkMode, () => {
       </article>
 
       <article class="content-card list-card">
-        <h2>系统公告</h2>
+        <h2>{{ t('home.announcements') }}</h2>
         <ul class="announcement-list">
           <li v-for="item in announcements" :key="item.date">
             <span>{{ item.title }}</span>
@@ -244,7 +279,7 @@ watch(isDarkMode, () => {
       </article>
 
       <article class="content-card list-card">
-        <h2>最近操作记录</h2>
+        <h2>{{ t('home.activities') }}</h2>
         <ul class="activity-list">
           <li v-for="item in activities" :key="`${item.user}-${item.time}`">
             <span class="activity-dot" aria-hidden="true" />
@@ -260,7 +295,7 @@ watch(isDarkMode, () => {
       </article>
     </div>
 
-    <p class="dashboard-greeting">欢迎回来，{{ displayName }}</p>
+    <p class="dashboard-greeting">{{ t('home.welcome').replace('{name}', displayName) }}</p>
   </section>
 </template>
 

@@ -3,7 +3,9 @@ import { computed } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useLocale } from '@/hooks'
 import type { BreadcrumbItem, UserRouteMenuType } from '@/types'
+import { translateMenuTitle } from '@/utils/i18n'
 
 defineOptions({ name: 'AppBreadcrumb' })
 
@@ -20,6 +22,7 @@ const readLink = (value: unknown): string | null =>
 
 const route = useRoute()
 const router = useRouter()
+const { language } = useLocale()
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() =>
   route.matched
@@ -28,7 +31,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() =>
       key: String(name ?? path),
       name,
       path,
-      title: String(meta.title),
+      title: translateMenuTitle(String(meta.title), language.value),
       menuType: readMenuType(meta.menuType),
       link: readLink(meta.link),
       isCurrent: path === route.path,

@@ -2,6 +2,8 @@
 
 `frontend/.codex/` 保存前端专属的规则、事实、架构、边界、工作流和任务模板。文档只服务于当前前端项目，不处理后端实现；需要确认接口时可以只读核对后端 Controller、DTO、配置和测试。
 
+User-facing documentation is bilingual: see [`../README.md`](../README.md) and [`../README.en.md`](../README.en.md). Preference and locale changes must keep those two guides aligned with the verified source behavior.
+
 ## 阅读顺序
 
 修改 `frontend/` 前按以下顺序阅读：

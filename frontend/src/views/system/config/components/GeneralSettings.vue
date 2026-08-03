@@ -1,38 +1,30 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { InformationCircleOutline, SettingsOutline } from '@vicons/ionicons5'
 import { NIcon, NSelect, NSwitch } from 'naive-ui'
+
+import { useLocale } from '@/hooks'
+import { usePreferencesStore } from '@/stores'
 
 defineOptions({ name: 'GeneralSettings' })
 
 const props = defineProps<{ resetKey: number }>()
+const preferences = usePreferencesStore()
+const { t } = useLocale()
 
-const languageOptions = [
-  { label: '简体中文', value: 'zh-CN' },
-  { label: 'English', value: 'en-US' },
-]
+const languageOptions = computed(() => [
+  { label: t('settings.general.language.zhCN'), value: 'zh-CN' },
+  { label: t('settings.general.language.enUS'), value: 'en-US' },
+])
+
 const timezoneOptions = [
   { label: 'Asia/Shanghai (GMT+8)', value: 'Asia/Shanghai' },
   { label: 'UTC (GMT+0)', value: 'UTC' },
   { label: 'America/Los_Angeles (GMT-8)', value: 'America/Los_Angeles' },
 ]
 
-const language = ref('zh-CN')
-const timezone = ref('Asia/Shanghai')
-const dynamicTitle = ref(true)
-const watermark = ref(false)
-const autoUpdate = ref(true)
-const pageTransition = ref(true)
-const loadingAnimation = ref(true)
-
 const resetGeneral = (): void => {
-  language.value = 'zh-CN'
-  timezone.value = 'Asia/Shanghai'
-  dynamicTitle.value = true
-  watermark.value = false
-  autoUpdate.value = true
-  pageTransition.value = true
-  loadingAnimation.value = true
+  preferences.reset()
 }
 
 watch(() => props.resetKey, resetGeneral)
@@ -45,77 +37,92 @@ watch(() => props.resetKey, resetGeneral)
         <NIcon :size="20" aria-hidden="true"><SettingsOutline /></NIcon>
       </div>
       <div>
-        <h2>通用设置</h2>
-        <p>配置语言、时区和页面交互偏好</p>
+        <h2>{{ t('settings.general.title') }}</h2>
+        <p>{{ t('settings.general.description') }}</p>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="section-heading">
-        <h3>基础设置</h3>
-        <p>这些设置会影响整个管理后台</p>
+        <h3>{{ t('settings.general.basic') }}</h3>
+        <p>{{ t('settings.general.basicDescription') }}</p>
       </div>
       <div class="form-grid">
         <label class="form-field">
-          <span>语言</span>
-          <NSelect v-model:value="language" :options="languageOptions" />
+          <span>{{ t('settings.general.language') }}</span>
+          <NSelect v-model:value="preferences.language" :options="languageOptions" />
         </label>
         <label class="form-field">
-          <span>时区</span>
-          <NSelect v-model:value="timezone" :options="timezoneOptions" />
+          <span>{{ t('settings.general.timezone') }}</span>
+          <NSelect v-model:value="preferences.timezone" :options="timezoneOptions" />
         </label>
       </div>
       <div class="setting-list">
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>动态标题</h3>
-            <p>根据当前页面自动更新浏览器标签标题</p>
+            <h3>{{ t('settings.general.dynamicTitle') }}</h3>
+            <p>{{ t('settings.general.dynamicTitleDescription') }}</p>
           </div>
-          <NSwitch v-model:value="dynamicTitle" aria-label="动态标题" />
+          <NSwitch
+            v-model:value="preferences.dynamicTitle"
+            :aria-label="t('settings.general.dynamicTitle')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>水印</h3>
-            <p>在工作区显示当前用户的身份水印</p>
+            <h3>{{ t('settings.general.watermark') }}</h3>
+            <p>{{ t('settings.general.watermarkDescription') }}</p>
           </div>
-          <NSwitch v-model:value="watermark" aria-label="水印" />
+          <NSwitch
+            v-model:value="preferences.watermark"
+            :aria-label="t('settings.general.watermark')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>定时检查更新</h3>
-            <p>定期检查前端版本并提示可用更新</p>
+            <h3>{{ t('settings.general.autoUpdate') }}</h3>
+            <p>{{ t('settings.general.autoUpdateDescription') }}</p>
           </div>
-          <NSwitch v-model:value="autoUpdate" aria-label="定时检查更新" />
+          <NSwitch
+            v-model:value="preferences.autoUpdate"
+            :aria-label="t('settings.general.autoUpdate')"
+          />
         </div>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="section-heading">
-        <h3>动画</h3>
-        <p>控制页面切换和加载反馈</p>
+        <h3>{{ t('settings.general.animation') }}</h3>
+        <p>{{ t('settings.general.animationDescription') }}</p>
       </div>
       <div class="setting-list">
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>页面切换过渡条</h3>
-            <p>路由切换时在顶部显示加载进度</p>
+            <h3>{{ t('settings.general.pageTransition') }}</h3>
+            <p>{{ t('settings.general.pageTransitionDescription') }}</p>
           </div>
-          <NSwitch v-model:value="pageTransition" aria-label="页面切换过渡条" />
+          <NSwitch
+            v-model:value="preferences.pageTransition"
+            :aria-label="t('settings.general.pageTransition')"
+          />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
-            <h3>页面切换 Loading</h3>
-            <p>路由切换时显示全屏或内容区加载反馈</p>
+            <h3>{{ t('settings.general.loadingAnimation') }}</h3>
+            <p>{{ t('settings.general.loadingAnimationDescription') }}</p>
           </div>
-          <NSwitch v-model:value="loadingAnimation" aria-label="页面切换过渡条" />
+          <NSwitch
+            v-model:value="preferences.loadingAnimation"
+            :aria-label="t('settings.general.loadingAnimation')"
+          />
         </div>
       </div>
     </div>
 
     <div class="settings-note">
       <NIcon :size="17" aria-hidden="true"><InformationCircleOutline /></NIcon>
-      <span>当前设置会立即应用，布局和主题设置会保留到下次访问。</span>
+      <span>{{ t('settings.general.note') }}</span>
     </div>
   </section>
 </template>
@@ -138,7 +145,7 @@ watch(() => props.resetKey, resetGeneral)
   height: 42px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--app-radius-lg);
 }
 
 .panel-icon--green {
@@ -221,53 +228,6 @@ watch(() => props.resetKey, resetGeneral)
   border-top: 1px solid var(--app-color-border);
 }
 
-.motion-previews {
-  display: flex;
-  gap: 16px;
-  padding-top: 16px;
-}
-
-.motion-choice {
-  position: relative;
-  display: grid;
-  width: 88px;
-  height: 68px;
-  place-items: center;
-  border: 1px solid var(--app-color-border);
-  border-radius: 8px;
-  background: var(--app-color-surface);
-  cursor: pointer;
-}
-
-.motion-choice--active {
-  border: 2px solid var(--app-color-primary);
-}
-
-.motion-choice--active > .n-icon {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  color: var(--app-color-primary);
-}
-
-.motion-preview {
-  display: block;
-  width: 40px;
-  height: 40px;
-  border-radius: 7px;
-  background: var(--app-color-primary);
-}
-
-.motion-preview--slide {
-  width: 50px;
-  transform: translateX(5px);
-}
-
-.motion-preview--scale {
-  width: 34px;
-  height: 34px;
-}
-
 .settings-note {
   display: flex;
   align-items: flex-start;
@@ -275,7 +235,7 @@ watch(() => props.resetKey, resetGeneral)
   margin-top: 8px;
   padding: 12px 14px;
   color: var(--app-color-text-muted);
-  border-radius: 8px;
+  border-radius: var(--app-radius-md);
   background: var(--app-color-surface-muted);
   font-size: 12px;
   line-height: 1.5;

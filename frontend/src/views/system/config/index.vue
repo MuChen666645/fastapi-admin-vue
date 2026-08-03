@@ -3,10 +3,14 @@ import { computed, ref } from 'vue'
 import { CopyOutline, RefreshOutline, SettingsOutline } from '@vicons/ionicons5'
 import { NButton, NIcon, useMessage } from 'naive-ui'
 
+import { useLocale } from '@/hooks'
+import { usePreferencesStore } from '@/stores'
+
 import AppearanceSettings from './components/AppearanceSettings.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
 import LayoutSettings from './components/LayoutSettings.vue'
 import SettingsTabs from './components/SettingsTabs.vue'
+
 import type { SettingsTab } from '@/types'
 
 defineOptions({ name: 'SystemConfigView' })
@@ -14,17 +18,29 @@ defineOptions({ name: 'SystemConfigView' })
 const activeTab = ref<SettingsTab>('appearance')
 const resetKey = ref(0)
 const message = useMessage()
-const tabLabels: Record<SettingsTab, string> = {
-  appearance: '外观',
-  layout: '布局',
-  general: '通用',
-}
+const preferences = usePreferencesStore()
+const { t } = useLocale()
 
-const activeTabLabel = computed(() => tabLabels[activeTab.value])
+const activeTabLabel = computed(() => t(`settings.tab.${activeTab.value}` as const))
 
 const resetPreferences = (): void => {
+  preferences.reset()
   resetKey.value += 1
-  message.success('已恢复默认偏好设置')
+  message.success(t('app.message.preferencesReset'))
+}
+
+const copyPreferences = async (): Promise<void> => {
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    message.error(t('app.message.preferencesCopyFailed'))
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(JSON.stringify({ ...preferences.$state }, null, 2))
+    message.success(t('app.message.preferencesCopied'))
+  } catch {
+    message.error(t('app.message.preferencesCopyFailed'))
+  }
 }
 </script>
 
@@ -34,16 +50,16 @@ const resetPreferences = (): void => {
       <div class="preferences-heading">
         <div class="preferences-eyebrow">
           <NIcon :size="16" aria-hidden="true"><SettingsOutline /></NIcon>
-          <span>系统偏好</span>
+          <span>{{ t('settings.eyebrow') }}</span>
         </div>
-        <h1>偏好设置</h1>
-        <p>自定义偏好设置与实时预览</p>
+        <h1>{{ t('settings.title') }}</h1>
+        <p>{{ t('settings.description') }}</p>
       </div>
       <NButton quaternary class="reset-button" @click="resetPreferences">
         <template #icon>
           <NIcon><RefreshOutline /></NIcon>
         </template>
-        恢复默认
+        {{ t('settings.reset') }}
       </NButton>
     </header>
 
@@ -56,15 +72,15 @@ const resetPreferences = (): void => {
     </div>
 
     <footer class="preferences-footer">
-      <span>当前分类：{{ activeTabLabel }}</span>
+      <span>{{ t('settings.currentCategory').replace('{category}', activeTabLabel) }}</span>
       <div class="preferences-footer__actions">
-        <NButton quaternary>
+        <NButton quaternary @click="copyPreferences">
           <template #icon>
             <NIcon><CopyOutline /></NIcon>
           </template>
-          复制偏好设置
+          {{ t('settings.copy') }}
         </NButton>
-        <NButton tertiary @click="resetPreferences">恢复默认</NButton>
+        <NButton tertiary @click="resetPreferences">{{ t('settings.reset') }}</NButton>
       </div>
     </footer>
   </main>

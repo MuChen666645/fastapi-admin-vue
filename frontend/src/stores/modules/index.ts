@@ -1,4 +1,5 @@
 export { useAuthStore } from './auth'
 export { useLayoutSettingsStore } from './layout-settings'
+export { usePreferencesStore } from './preferences'
 export { useRouteLoadingStore } from './route-loading'
 export { useTabsStore } from './tabs'

@@ -3,13 +3,18 @@ import { onBeforeUnmount } from 'vue'
 import { useLoadingBar } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
+import { usePreferencesStore } from '@/stores'
+
 defineOptions({ name: 'RouterLoadingBar' })
 
 const loadingBar = useLoadingBar()
 const router = useRouter()
+const preferences = usePreferencesStore()
 
 const removeBeforeEach = router.beforeEach(() => {
-  loadingBar.start()
+  if (preferences.pageTransition) {
+    loadingBar.start()
+  }
 })
 
 const removeAfterEach = router.afterEach(() => {
@@ -21,7 +26,9 @@ const removeOnError = router.onError(() => {
 })
 
 const waitForInitialNavigation = async (): Promise<void> => {
-  loadingBar.start()
+  if (preferences.pageTransition) {
+    loadingBar.start()
+  }
 
   try {
     await router.isReady()
