@@ -125,10 +125,17 @@ body {
   background: var(--app-color-workspace);
 }
 
+.main-layout > .n-layout-scroll-container {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
 .layout-content {
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  height: calc(100% - 40px);
+  height: auto;
   overflow: auto;
   background: transparent;
 }
@@ -140,6 +147,55 @@ body {
   min-height: 100%;
   padding: 24px;
   overflow-x: hidden;
+}
+
+.content-container--centered {
+  max-width: 1440px;
+}
+
+.basic-layout--workspace-scroll .main-layout,
+.basic-layout--sticky-nav .main-layout {
+  overflow-y: auto;
+}
+
+.basic-layout--workspace-scroll .main-layout > .n-layout-scroll-container,
+.basic-layout--sticky-nav .main-layout > .n-layout-scroll-container {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.basic-layout--workspace-scroll .layout-content,
+.basic-layout--sticky-nav .layout-content {
+  flex: 0 0 auto;
+  height: auto;
+  overflow: visible;
+}
+
+.basic-layout--workspace-scroll .layout-content .n-layout-scroll-container,
+.basic-layout--sticky-nav .layout-content .n-layout-scroll-container {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.basic-layout--workspace-scroll .content-container,
+.basic-layout--sticky-nav .content-container {
+  min-height: auto;
+}
+
+.basic-layout--sticky-nav .app-header,
+.basic-layout--sticky-nav .app-tabs {
+  position: sticky;
+  z-index: 2;
+}
+
+.basic-layout--sticky-nav .app-header {
+  top: 0;
+}
+
+.basic-layout--sticky-nav .app-tabs {
+  top: 64px;
 }
 
 .app-header {

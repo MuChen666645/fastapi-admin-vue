@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { mount } from '@vue/test-utils'
 import { NMessageProvider } from 'naive-ui'
+import { createPinia } from 'pinia'
 import { defineComponent } from 'vue'
 
 import SystemConfigView from '../views/system/config/index.vue'
@@ -16,7 +17,11 @@ const TestHost = defineComponent({
 
 describe('SystemConfigView', () => {
   it('renders full-content preferences and switches between setting groups', async () => {
-    const wrapper = mount(TestHost)
+    const wrapper = mount(TestHost, {
+      global: {
+        plugins: [createPinia()],
+      },
+    })
 
     expect(wrapper.find('main.preferences-page').exists()).toBe(true)
     expect(wrapper.findAll('[role="tab"]')).toHaveLength(3)
@@ -30,6 +35,14 @@ describe('SystemConfigView', () => {
     expect(panels[1]?.isVisible()).toBe(true)
     expect(panels[1]?.get('h2').text()).toBe('布局设置')
     expect(wrapper.find('[aria-label="显示标签页"]').exists()).toBe(true)
+    expect(wrapper.findAll('[aria-label="内容区固定方式"] [role="radio"]')).toHaveLength(3)
+
+    await wrapper.find('[aria-label="内容区固定方式"] [role="radio"]:nth-child(3)').trigger('click')
+    expect(
+      wrapper
+        .find('[aria-label="内容区固定方式"] [role="radio"]:nth-child(3)')
+        .attributes('aria-checked'),
+    ).toBe('true')
 
     await wrapper.findAll('[role="tab"]')[2]?.trigger('click')
     expect(panels[2]?.isVisible()).toBe(true)

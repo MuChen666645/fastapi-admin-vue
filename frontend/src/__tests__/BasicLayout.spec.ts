@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { NMessageProvider } from 'naive-ui'
 
 import BasicLayout from '../layouts/BasicLayout/index.vue'
+import { useLayoutSettingsStore } from '../stores'
 
 const LayoutPage = defineComponent({
   template: '<div data-testid="layout-page">Layout page content</div>',
@@ -67,6 +68,38 @@ describe('BasicLayout', () => {
 
     await wrapper.get('.sidebar-toggle').trigger('click')
     expect(wrapper.find('.app-sidebar').classes()).toContain('n-layout-sider--collapsed')
+
+    wrapper.unmount()
+  })
+
+  it('applies layout visibility, width and sticky navigation preferences', async () => {
+    const router = createLayoutRouter()
+    const pinia = createPinia()
+
+    await router.push('/home')
+    await router.isReady()
+
+    const wrapper = mount(LayoutTestHost, {
+      global: {
+        plugins: [router, pinia],
+      },
+    })
+    const layoutSettings = useLayoutSettingsStore(pinia)
+
+    layoutSettings.showSidebar = false
+    layoutSettings.showTabs = false
+    layoutSettings.showBreadcrumb = false
+    layoutSettings.showFooter = false
+    layoutSettings.contentWidth = 'centered'
+    layoutSettings.scrollMode = 'sticky'
+    await nextTick()
+
+    expect(wrapper.find('.basic-layout--sticky-nav').exists()).toBe(true)
+    expect(wrapper.find('.app-sidebar').exists()).toBe(false)
+    expect(wrapper.find('.app-tabs').exists()).toBe(false)
+    expect(wrapper.find('.header-breadcrumb').exists()).toBe(false)
+    expect(wrapper.find('.app-footer').exists()).toBe(false)
+    expect(wrapper.find('.content-container--centered').exists()).toBe(true)
 
     wrapper.unmount()
   })

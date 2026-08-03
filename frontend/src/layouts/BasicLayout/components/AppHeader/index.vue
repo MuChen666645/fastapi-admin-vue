@@ -18,7 +18,10 @@ import { useAuthStore, useTabsStore } from '@/stores'
 
 defineOptions({ name: 'AppHeader' })
 
-const props = defineProps<{ sidebarCollapsed: boolean }>()
+const props = defineProps<{
+  sidebarCollapsed: boolean
+  showBreadcrumb: boolean
+}>()
 const emit = defineEmits<{
   'update:sidebarCollapsed': [value: boolean]
 }>()
@@ -136,7 +139,7 @@ onBeforeUnmount(() => {
       </label>
     </div>
 
-    <div class="header-breadcrumb">
+    <div v-if="props.showBreadcrumb" class="header-breadcrumb">
       <AppBreadcrumb />
     </div>
 

@@ -1,26 +1,40 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { watch } from 'vue'
 import { GridOutline } from '@vicons/ionicons5'
 import { NIcon, NSwitch } from 'naive-ui'
 
-import type { ContentWidth } from '@/types'
+import { useLayoutSettingsStore } from '@/stores'
+import type { LayoutScrollMode } from '@/types'
 
 defineOptions({ name: 'LayoutSettings' })
 
 const props = defineProps<{ resetKey: number }>()
 
-const contentWidth = ref<ContentWidth>('full')
-const showSidebar = ref(true)
-const showTabs = ref(true)
-const showBreadcrumb = ref(true)
-const showFooter = ref(true)
+const layoutSettings = useLayoutSettingsStore()
+const scrollModes: ReadonlyArray<{
+  value: LayoutScrollMode
+  label: string
+  description: string
+}> = [
+  {
+    value: 'content',
+    label: '固定布局',
+    description: '顶部栏、标签栏和侧边栏固定，仅内容区内部滚动',
+  },
+  {
+    value: 'workspace',
+    label: '右侧滚动',
+    description: '右侧工作区整体滚动，顶部栏和标签栏随内容移动',
+  },
+  {
+    value: 'sticky',
+    label: '固定顶部',
+    description: '仅固定顶部栏和标签栏，其余右侧内容可以滚动',
+  },
+]
 
 const resetLayout = (): void => {
-  contentWidth.value = 'full'
-  showSidebar.value = true
-  showTabs.value = true
-  showBreadcrumb.value = true
-  showFooter.value = true
+  layoutSettings.reset()
 }
 
 watch(() => props.resetKey, resetLayout)
@@ -46,23 +60,44 @@ watch(() => props.resetKey, resetLayout)
       <div class="segmented-control" role="radiogroup" aria-label="内容区宽度">
         <button
           type="button"
-          :class="{ 'segmented-control__option--active': contentWidth === 'full' }"
+          :class="{ 'segmented-control__option--active': layoutSettings.contentWidth === 'full' }"
           class="segmented-control__option"
           role="radio"
-          :aria-checked="contentWidth === 'full'"
-          @click="contentWidth = 'full'"
+          :aria-checked="layoutSettings.contentWidth === 'full'"
+          @click="layoutSettings.contentWidth = 'full'"
         >
           全屏内容
         </button>
         <button
           type="button"
-          :class="{ 'segmented-control__option--active': contentWidth === 'centered' }"
+          :class="{
+            'segmented-control__option--active': layoutSettings.contentWidth === 'centered',
+          }"
           class="segmented-control__option"
           role="radio"
-          :aria-checked="contentWidth === 'centered'"
-          @click="contentWidth = 'centered'"
+          :aria-checked="layoutSettings.contentWidth === 'centered'"
+          @click="layoutSettings.contentWidth = 'centered'"
         >
           居中内容
+        </button>
+      </div>
+      <div class="section-heading section-heading--scroll-mode">
+        <h3>内容区固定</h3>
+        <p>选择内容区和右侧工作区的滚动方式</p>
+      </div>
+      <div class="scroll-mode-grid" role="radiogroup" aria-label="内容区固定方式">
+        <button
+          v-for="mode in scrollModes"
+          :key="mode.value"
+          type="button"
+          class="scroll-mode-choice"
+          :class="{ 'scroll-mode-choice--active': layoutSettings.scrollMode === mode.value }"
+          role="radio"
+          :aria-checked="layoutSettings.scrollMode === mode.value"
+          @click="layoutSettings.scrollMode = mode.value"
+        >
+          <span class="scroll-mode-choice__title">{{ mode.label }}</span>
+          <span class="scroll-mode-choice__description">{{ mode.description }}</span>
         </button>
       </div>
       <div class="setting-list">
@@ -71,28 +106,28 @@ watch(() => props.resetKey, resetLayout)
             <h3>显示侧边栏</h3>
             <p>保留主导航入口，方便快速切换模块</p>
           </div>
-          <NSwitch v-model:value="showSidebar" aria-label="显示侧边栏" />
+          <NSwitch v-model:value="layoutSettings.showSidebar" aria-label="显示侧边栏" />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
             <h3>显示标签页</h3>
             <p>在内容区上方保留多页面标签导航</p>
           </div>
-          <NSwitch v-model:value="showTabs" aria-label="显示标签页" />
+          <NSwitch v-model:value="layoutSettings.showTabs" aria-label="显示标签页" />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
             <h3>显示面包屑</h3>
             <p>在页面标题附近显示当前访问路径</p>
           </div>
-          <NSwitch v-model:value="showBreadcrumb" aria-label="显示面包屑" />
+          <NSwitch v-model:value="layoutSettings.showBreadcrumb" aria-label="显示面包屑" />
         </div>
         <div class="setting-row">
           <div class="setting-copy">
             <h3>显示底部信息</h3>
             <p>在内容区底部保留版本和版权信息</p>
           </div>
-          <NSwitch v-model:value="showFooter" aria-label="显示底部信息" />
+          <NSwitch v-model:value="layoutSettings.showFooter" aria-label="显示底部信息" />
         </div>
       </div>
     </div>
@@ -155,6 +190,10 @@ watch(() => props.resetKey, resetLayout)
 
 .section-heading {
   margin-bottom: 18px;
+}
+
+.section-heading--scroll-mode {
+  margin-top: 28px;
 }
 
 .section-heading h3,
@@ -304,6 +343,48 @@ watch(() => props.resetKey, resetLayout)
   outline: none;
 }
 
+.scroll-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scroll-mode-choice {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  padding: 14px;
+  color: var(--app-color-text);
+  border: 1px solid var(--app-color-border);
+  border-radius: 8px;
+  background: var(--app-color-surface);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.scroll-mode-choice:hover,
+.scroll-mode-choice:focus-visible,
+.scroll-mode-choice--active {
+  border-color: var(--app-color-primary);
+  outline: none;
+}
+
+.scroll-mode-choice--active {
+  box-shadow: 0 0 0 2px rgb(108 124 229 / 14%);
+}
+
+.scroll-mode-choice__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scroll-mode-choice__description {
+  color: var(--app-color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .setting-row {
   display: flex;
   min-height: 52px;
@@ -329,6 +410,10 @@ watch(() => props.resetKey, resetLayout)
 @media (width <= 900px) {
   .layout-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scroll-mode-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -115,7 +115,7 @@ watch(() => props.resetKey, resetGeneral)
 
     <div class="settings-note">
       <NIcon :size="17" aria-hidden="true"><InformationCircleOutline /></NIcon>
-      <span>当前设置会立即应用到本次会话，主题设置会保留到下次访问。</span>
+      <span>当前设置会立即应用，布局和主题设置会保留到下次访问。</span>
     </div>
   </section>
 </template>

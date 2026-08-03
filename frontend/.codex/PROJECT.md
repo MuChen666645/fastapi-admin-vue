@@ -38,7 +38,7 @@ src/
 │   ├── route-cache.ts、route-source.ts、route-utils.ts
 │   └── index.ts
 ├── stores/modules/
-│   ├── auth.ts、tabs.ts、route-loading.ts
+│   ├── auth.ts、tabs.ts、route-loading.ts、layout-settings.ts
 │   └── index.ts
 ├── types/
 ├── utils/
@@ -124,6 +124,7 @@ src/
 - `useAuthStore` 管理访问令牌、刷新令牌、当前用户、权限、后端路由和 `AuthStatus`。
 - auth Store 仅用 Pinia persisted state 的 `sessionStorage` 持久化 `refreshToken` 和 `rememberedUsername`。
 - `useTabsStore` 用 `sessionStorage` 持久化 `tabs`，负责增加、关闭当前/其他/全部标签页。
+- `useLayoutSettingsStore` 用 `localStorage` 持久化内容宽度、布局可见项和滚动模式；默认固定布局并仅允许内容区内部滚动。
 - `meta.noCache === false` 表示页面可缓存。`useRouteCache` 使用 `RouteTab_<route-key>` 包装组件，避免不同路由实例共享 KeepAlive 名称。
 - `BasicLayout` 通过 `KeepAlive :include="cachedComponentNames"` 管理缓存；刷新当前标签会增加视图 key，保持标签列表但重新创建页面实例。
 

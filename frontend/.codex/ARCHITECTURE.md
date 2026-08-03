@@ -43,6 +43,7 @@ main.ts
 | `src/stores/modules/auth.ts`          | Token、用户、权限、路由和会话状态                                  |
 | `src/stores/modules/tabs.ts`          | 标签页列表和缓存标签名                                             |
 | `src/stores/modules/route-loading.ts` | 全屏/内容区 Loading 状态和最短显示时间                             |
+| `src/stores/modules/layout-settings.ts` | 内容宽度、布局可见项和右侧滚动模式，使用 `localStorage` 持久化       |
 | `src/hooks`                           | Lottie、主题、图标、ECharts 和路由缓存等可复用行为                 |
 | `src/components`                      | 全局 Loading、路由进度条、面包屑等跨页面组件                       |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
@@ -136,6 +137,8 @@ NLayout
 │       └── RouterView -> KeepAlive -> 页面组件
 └── AppFooter
 ```
+
+布局偏好由 `useLayoutSettingsStore` 驱动：`content` 模式固定右侧布局并让内容区内部滚动，`workspace` 模式让右侧工作区整体滚动，`sticky` 模式只固定头部和标签栏并让其余右侧内容滚动。侧边栏、标签栏、面包屑、页脚和内容宽度开关也由该 Store 统一控制。
 
 - 页面路由的 `meta.noCache === false` 才允许缓存。
 - `useRouteCache` 为可缓存页面创建 `RouteTab_<route-key>` 包装组件，避免直接使用同一个页面组件名造成 KeepAlive 串缓存。

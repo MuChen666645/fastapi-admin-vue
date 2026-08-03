@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { NLayout, NLayoutContent } from 'naive-ui'
 import { RouterView } from 'vue-router'
 
 import ContentLoading from '@/components/ContentLoading/index.vue'
+import { useLayoutSettingsStore } from '@/stores'
 import AppFooter from './components/AppFooter/index.vue'
 import AppHeader from './components/AppHeader/index.vue'
 import AppSidebar from './components/AppSidebar/index.vue'
@@ -14,7 +15,13 @@ defineOptions({ name: 'BasicLayout' })
 
 const sidebarCollapsed = ref(false)
 const routeViewKey = ref(0)
+const layoutSettings = useLayoutSettingsStore()
 const { cachedComponentNames, getCachedRouteComponent, getRouteKey } = useRouteCache()
+const layoutClasses = computed(() => ({
+  'basic-layout--content-scroll': layoutSettings.scrollMode === 'content',
+  'basic-layout--workspace-scroll': layoutSettings.scrollMode === 'workspace',
+  'basic-layout--sticky-nav': layoutSettings.scrollMode === 'sticky',
+}))
 
 const syncSidebarForViewport = (): void => {
   if (typeof window.matchMedia !== 'function') {
@@ -39,15 +46,21 @@ const refreshRouteView = (): void => {
 </script>
 
 <template>
-  <NLayout has-sider class="basic-layout">
-    <AppSidebar v-model:collapsed="sidebarCollapsed" />
+  <NLayout has-sider class="basic-layout" :class="layoutClasses">
+    <AppSidebar v-if="layoutSettings.showSidebar" v-model:collapsed="sidebarCollapsed" />
     <NLayout class="main-layout">
-      <AppHeader v-model:sidebar-collapsed="sidebarCollapsed" />
-      <AppTabs @refresh="refreshRouteView" />
+      <AppHeader
+        v-model:sidebar-collapsed="sidebarCollapsed"
+        :show-breadcrumb="layoutSettings.showBreadcrumb"
+      />
+      <AppTabs v-if="layoutSettings.showTabs" @refresh="refreshRouteView" />
       <NLayoutContent class="layout-content" :native-scrollbar="false">
         <div class="layout-content__body">
           <ContentLoading />
-          <main class="content-container mx-auto w-full">
+          <main
+            class="content-container mx-auto w-full"
+            :class="{ 'content-container--centered': layoutSettings.contentWidth === 'centered' }"
+          >
             <RouterView v-slot="{ Component, route: viewRoute }">
               <KeepAlive :include="cachedComponentNames">
                 <component
@@ -59,7 +72,7 @@ const refreshRouteView = (): void => {
           </main>
         </div>
       </NLayoutContent>
-      <AppFooter />
+      <AppFooter v-if="layoutSettings.showFooter" />
     </NLayout>
   </NLayout>
 </template>
