@@ -17,6 +17,10 @@ const sidebarCollapsed = ref(false)
 const routeViewKey = ref(0)
 const layoutSettings = useLayoutSettingsStore()
 const { cachedComponentNames, getCachedRouteComponent, getRouteKey } = useRouteCache()
+const layoutTransitionDuration = {
+  enter: 180,
+  leave: 180,
+} as const
 const layoutClasses = computed(() => ({
   'basic-layout--content-scroll': layoutSettings.scrollMode === 'content',
   'basic-layout--workspace-scroll': layoutSettings.scrollMode === 'workspace',
@@ -62,12 +66,15 @@ const refreshRouteView = (): void => {
             :class="{ 'content-container--centered': layoutSettings.contentWidth === 'centered' }"
           >
             <RouterView v-slot="{ Component, route: viewRoute }">
-              <KeepAlive :include="cachedComponentNames">
-                <component
-                  :is="getCachedRouteComponent(Component, viewRoute)"
-                  :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
-                />
-              </KeepAlive>
+              <Transition name="layout-page" mode="out-in" :duration="layoutTransitionDuration">
+                <KeepAlive :include="cachedComponentNames">
+                  <component
+                    v-if="Component"
+                    :is="getCachedRouteComponent(Component, viewRoute)"
+                    :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
+                  />
+                </KeepAlive>
+              </Transition>
             </RouterView>
           </main>
         </div>

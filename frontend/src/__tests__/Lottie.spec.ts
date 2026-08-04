@@ -145,6 +145,87 @@ describe('GlobalLoading', () => {
     }
   })
 
+  it('keeps loading active when a pending navigation is cancelled by a newer one', async () => {
+    vi.useFakeTimers()
+
+    try {
+      lottieMock.loadAnimation.mockReturnValue(animationMock)
+      const pinia = createPinia()
+      let resolveSlowNavigation: (() => void) | undefined
+      let resolveFastNavigation: (() => void) | undefined
+      const slowNavigationGate = new Promise<void>((resolve) => {
+        resolveSlowNavigation = resolve
+      })
+      const fastNavigationGate = new Promise<void>((resolve) => {
+        resolveFastNavigation = resolve
+      })
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+          {
+            path: '/home',
+            name: 'home',
+            component: RoutePage,
+            meta: { noCache: true },
+          },
+          {
+            path: '/slow',
+            name: 'slow',
+            component: RoutePage,
+            meta: { noCache: true },
+            beforeEnter: async () => {
+              await slowNavigationGate
+            },
+          },
+          {
+            path: '/fast',
+            name: 'fast',
+            component: RoutePage,
+            meta: { noCache: true },
+            beforeEnter: async () => {
+              await fastNavigationGate
+            },
+          },
+        ],
+      })
+
+      await router.push('/home')
+      await router.isReady()
+
+      const wrapper = mount(GlobalLoading, {
+        global: {
+          plugins: [pinia, router],
+        },
+      })
+      const routeLoading = useRouteLoadingStore(pinia)
+
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(300)
+
+      const slowNavigation = router.push('/slow')
+      await flushPromises()
+      const fastNavigation = router.push('/fast')
+      resolveSlowNavigation?.()
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(300)
+
+      expect(routeLoading.visible).toBe(true)
+      expect(wrapper.get('[data-testid="global-loading"]').attributes('aria-hidden')).toBe('false')
+
+      resolveFastNavigation?.()
+      await Promise.all([slowNavigation, fastNavigation])
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(300)
+
+      expect(routeLoading.visible).toBe(false)
+      expect(wrapper.get('[data-testid="global-loading"]').attributes('aria-hidden')).toBe('true')
+
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('renders content loading only for layout content scope', async () => {
     const pinia = createPinia()
     const routeLoading = useRouteLoadingStore(pinia)

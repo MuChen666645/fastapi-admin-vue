@@ -22,6 +22,8 @@ export type {
   AppTab,
   AuthenticatedRouteRegistrar,
   RouteCacheTarget,
+  RouteComponent,
+  RouteViewComponent,
   RouteViewSlot,
   ViewLoader,
 } from './router'

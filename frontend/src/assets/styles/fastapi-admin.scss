@@ -169,6 +169,38 @@ body {
   max-width: 1440px;
 }
 
+.layout-page-enter-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.layout-page-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.layout-page-enter-from,
+.layout-page-leave-to {
+  opacity: 0;
+}
+
+.layout-page-enter-from {
+  transform: translateX(24px);
+}
+
+.layout-page-leave-to {
+  transform: translateX(-24px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layout-page-enter-active,
+  .layout-page-leave-active {
+    transition-duration: 0.01ms;
+  }
+}
+
 .basic-layout--workspace-scroll .main-layout,
 .basic-layout--sticky-nav .main-layout {
   overflow-y: auto;

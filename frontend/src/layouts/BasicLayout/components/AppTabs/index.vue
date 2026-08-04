@@ -77,7 +77,7 @@ const syncCurrentTab = (): void => {
 watch(
   () => [route.name, route.path, route.fullPath, route.meta.title, route.meta.icon] as const,
   syncCurrentTab,
-  { immediate: true },
+  { flush: 'post', immediate: true },
 )
 
 const hideContextMenu = (): void => {

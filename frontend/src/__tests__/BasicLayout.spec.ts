@@ -142,12 +142,49 @@ describe('BasicLayout', () => {
     ])
     expect(wrapper.find('.app-breadcrumb').text()).toContain('首页')
     expect(wrapper.find('[data-testid="layout-page"]').exists()).toBe(true)
+    const layoutTransition = wrapper
+      .findAllComponents({ name: 'Transition' })
+      .find((component) => component.props('name') === 'layout-page')
+    expect(layoutTransition?.props('mode')).toBe('out-in')
+    expect(layoutTransition?.props('duration')).toEqual({ enter: 180, leave: 180 })
 
     await wrapper.get('.language-toggle').trigger('click')
     expect(usePreferencesStore(pinia).language).toBe('en-US')
 
     await wrapper.get('.sidebar-toggle').trigger('click')
     expect(wrapper.find('.app-sidebar').classes()).toContain('n-layout-sider--collapsed')
+
+    wrapper.unmount()
+  })
+
+  it('keeps the final page mounted during rapid route updates', async () => {
+    const router = createLayoutRouter()
+    const pinia = createPinia()
+    const runtimeErrors: unknown[] = []
+
+    await router.push('/home')
+    await router.isReady()
+
+    const wrapper = mount(LayoutTestHost, {
+      global: {
+        plugins: [router, pinia],
+        config: {
+          errorHandler: (error) => runtimeErrors.push(error),
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const navigations = ['/demo', '/home', '/demo/default-pages/403', '/home'].map((path) =>
+      router.push(path),
+    )
+    await Promise.allSettled(navigations)
+    await flushPromises()
+    await nextTick()
+
+    expect(runtimeErrors).toEqual([])
+    expect(wrapper.find('[data-testid="layout-page"]').exists()).toBe(true)
 
     wrapper.unmount()
   })

@@ -1,19 +1,19 @@
 import type { UserRoute } from './api'
-import type { Component } from 'vue'
+import type { Component, VNode } from 'vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 export type AuthenticatedRouteRegistrar = (serverRoutes: UserRoute[]) => void
 
 export type ViewLoader = () => Promise<{ default: Component }>
 
-export interface RouteCacheTarget {
-  name: string | symbol | null | undefined
-  path: string
-  meta: RouteLocationNormalizedLoaded['meta']
-}
+export type RouteComponent = Component | ViewLoader
+
+export type RouteViewComponent = Component | VNode
+
+export type RouteCacheTarget = RouteLocationNormalizedLoaded
 
 export interface RouteViewSlot {
-  Component: Component | null
+  Component: VNode | null
   route: RouteLocationNormalizedLoaded
 }
 

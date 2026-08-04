@@ -1,9 +1,7 @@
-import { defineAsyncComponent } from 'vue'
-import type { Component } from 'vue'
 import { RouterView } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
-import type { UserRoute, ViewLoader } from '@/types'
+import type { RouteComponent, UserRoute, ViewLoader } from '@/types'
 
 const viewLoaders = import.meta.glob('../views/**/*.vue') as Record<string, ViewLoader>
 
@@ -16,7 +14,7 @@ const normalizeComponentName = (componentName: string): string =>
     .replace(/^\/?views\//, '')
     .replace(/^\.?\/+/, '')
 
-const resolvedComponents = new Map<string, Component>()
+const resolvedComponents = new Map<string, RouteComponent>()
 const warnedComponents = new Set<string>()
 
 const getViewLoader = (componentName: string): ViewLoader | null => {
@@ -38,7 +36,7 @@ const warnMissingComponent = (componentName: string, normalizedName: string): vo
   )
 }
 
-export const resolveRouteComponent = (componentName: string | null): Component | null => {
+export const resolveRouteComponent = (componentName: string | null): RouteComponent | null => {
   if (!componentName?.trim()) {
     return null
   }
@@ -66,9 +64,8 @@ export const resolveRouteComponent = (componentName: string | null): Component |
     return null
   }
 
-  const component = defineAsyncComponent(loader)
-  resolvedComponents.set(normalizedName, component)
-  return component
+  resolvedComponents.set(normalizedName, loader)
+  return loader
 }
 
 const normalizeRoutePath = (path: string): string => path.replace(/^\/+|\/+$/g, '')

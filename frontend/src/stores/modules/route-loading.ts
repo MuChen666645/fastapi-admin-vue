@@ -26,9 +26,7 @@ export const useRouteLoadingStore = defineStore('route-loading', () => {
 
   const start = (nextScope: RouteLoadingScope): void => {
     clearFinishTimer()
-    if (!visible.value) {
-      visibleAt = Date.now()
-    }
+    visibleAt = Date.now()
 
     scope.value = nextScope
     visible.value = true

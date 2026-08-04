@@ -1,5 +1,5 @@
 import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
@@ -70,6 +70,25 @@ const createTestRouter = () => {
   })
 }
 
+const createNestedTestRouter = () => {
+  const roleView = createCounterView('nested-role')
+  const userView = createCounterView('nested-user')
+
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      {
+        path: '/system',
+        component: RouterView,
+        children: [
+          { path: 'role', name: 'nested-role', component: roleView, meta: { noCache: false } },
+          { path: 'user', name: 'nested-user', component: userView, meta: { noCache: false } },
+        ],
+      },
+    ],
+  })
+}
+
 describe('route component cache', () => {
   it('preserves cached route state and recreates non-cached route state', async () => {
     setActivePinia(createPinia())
@@ -105,6 +124,59 @@ describe('route component cache', () => {
     await router.push('/non-cached')
     await nextTick()
     expect(wrapper.get('[data-test="non-cached"]').text()).toBe('0')
+
+    wrapper.unmount()
+  })
+
+  it('keeps cached nested router views bound to their original route', async () => {
+    setActivePinia(createPinia())
+    const router = createNestedTestRouter()
+    const tabsStore = useTabsStore()
+    const runtimeErrors: unknown[] = []
+    tabsStore.addTab({
+      key: 'nested-role',
+      title: 'Role',
+      fullPath: '/system/role',
+      icon: null,
+      cacheName: getRouteCacheName('nested-role'),
+      cacheable: true,
+      closable: false,
+    })
+    tabsStore.addTab({
+      key: 'nested-user',
+      title: 'User',
+      fullPath: '/system/user',
+      icon: null,
+      cacheName: getRouteCacheName('nested-user'),
+      cacheable: true,
+      closable: true,
+    })
+
+    await router.push('/system/role')
+    await router.isReady()
+
+    const wrapper = mount(createRouteCacheHost(), {
+      global: {
+        plugins: [router],
+        config: {
+          errorHandler: (error) => runtimeErrors.push(error),
+        },
+      },
+    })
+
+    await nextTick()
+    await wrapper.get('[data-test="nested-role"]').trigger('click')
+    expect(wrapper.get('[data-test="nested-role"]').text()).toBe('1')
+    await router.push('/system/user')
+    await flushPromises()
+    await nextTick()
+    expect(wrapper.get('[data-test="nested-user"]').text()).toBe('0')
+
+    await router.push('/system/role')
+    await flushPromises()
+    await nextTick()
+    expect(wrapper.get('[data-test="nested-role"]').text()).toBe('1')
+    expect(runtimeErrors).toEqual([])
 
     wrapper.unmount()
   })

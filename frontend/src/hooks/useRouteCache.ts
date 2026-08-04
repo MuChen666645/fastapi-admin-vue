@@ -1,12 +1,15 @@
-import { computed, defineComponent, h, onBeforeUnmount, type Component } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, defineComponent, h, onBeforeUnmount, type Component, type VNode } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 
 import { getRouteCacheName, isRouteCacheable } from '@/router/route-cache'
 import { useTabsStore } from '@/stores'
-import type { RouteCacheTarget } from '@/types'
+import type { RouteCacheTarget, RouteViewComponent } from '@/types'
 
 const getRouteKey = (targetRoute: RouteCacheTarget): string =>
   String(targetRoute.name ?? targetRoute.path)
+
+const isComponentType = (value: VNode['type']): value is Component =>
+  typeof value === 'object' || typeof value === 'function'
 
 export const useRouteCache = () => {
   const route = useRoute()
@@ -20,10 +23,15 @@ export const useRouteCache = () => {
   })
 
   const getCachedRouteComponent = (
-    component: Component | null | undefined,
+    component: VNode | null | undefined,
     targetRoute: RouteCacheTarget,
-  ): Component | null | undefined => {
+  ): RouteViewComponent | null | undefined => {
     if (!component || !isRouteCacheable(targetRoute)) {
+      return component
+    }
+
+    const componentType = component.type
+    if (!isComponentType(componentType)) {
       return component
     }
 
@@ -33,9 +41,20 @@ export const useRouteCache = () => {
       return cachedComponent
     }
 
+    const routeSnapshot: RouteCacheTarget = {
+      ...targetRoute,
+      matched: [...targetRoute.matched],
+      meta: { ...targetRoute.meta },
+      params: { ...targetRoute.params },
+      query: { ...targetRoute.query },
+    }
+    const componentProps = component.props ?? {}
     const routeComponent = defineComponent({
       name: cacheName,
-      setup: () => () => h(component),
+      setup: () => () =>
+        componentType === RouterView
+          ? h(RouterView, { ...componentProps, route: routeSnapshot })
+          : h(componentType, componentProps),
     })
     routeComponentCache.set(cacheName, routeComponent)
     return routeComponent

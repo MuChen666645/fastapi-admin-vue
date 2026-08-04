@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter, type RouteLocationNormalized } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+  type RouteLocationNormalized,
+} from 'vue-router'
 
 import carLoadingAnimation from '@/assets/lottie/car-loading3-data.json'
 import { useLocale, useLottie } from '@/hooks'
@@ -56,16 +61,21 @@ const removeBeforeEach = router.beforeEach((to) => {
   routeLoading.start(nextScope)
 })
 
-const removeAfterEach = router.afterEach((to) => {
-  void nextTick(() => {
-    routeLoading.setScope(isLayoutRoute(to) ? 'content' : 'screen')
-    routeLoading.finish()
-  })
+const finishRouteLoading = (targetRoute: Pick<RouteLocationNormalized, 'matched'>): void => {
+  routeLoading.setScope(isLayoutRoute(targetRoute) ? 'content' : 'screen')
+  routeLoading.finish()
+}
+
+const removeAfterEach = router.afterEach((to, _from, failure) => {
+  if (failure && isNavigationFailure(failure, NavigationFailureType.cancelled)) {
+    return
+  }
+
+  finishRouteLoading(to)
 })
 
 const removeOnError = router.onError(() => {
-  routeLoading.setScope(isLayoutRoute(router.currentRoute.value) ? 'content' : 'screen')
-  routeLoading.finish()
+  finishRouteLoading(router.currentRoute.value)
 })
 
 const waitForInitialNavigation = async (): Promise<void> => {
@@ -76,8 +86,7 @@ const waitForInitialNavigation = async (): Promise<void> => {
     await nextTick()
   } finally {
     const currentRoute = router.currentRoute.value
-    routeLoading.setScope(isLayoutRoute(currentRoute) ? 'content' : 'screen')
-    routeLoading.finish()
+    finishRouteLoading(currentRoute)
   }
 }
 

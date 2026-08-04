@@ -116,6 +116,8 @@ describe('dynamic routes', () => {
     const rootViewComponent = resolveRouteComponent('/views/home/index.vue')
 
     expect(directComponent).not.toBeNull()
+    expect(typeof directComponent).toBe('function')
+    expect(Object.prototype.hasOwnProperty.call(directComponent, '__asyncLoader')).toBe(false)
     expect(aliasComponent).toBe(directComponent)
     expect(relativeComponent).toBe(directComponent)
     expect(relativeViewComponent).toBe(directComponent)
