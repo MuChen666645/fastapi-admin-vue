@@ -12,11 +12,11 @@ import { NDropdown, NIcon } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useLocale } from '@/hooks'
-import { resolveIconComponent } from '@/hooks/useIcon'
+import { resolveIconComponent } from '@/utils'
 import { getRouteCacheName } from '@/router/route-cache'
 import { useTabsStore } from '@/stores'
 import type { AppTab } from '@/types'
-import { translateMenuTitle } from '@/utils/i18n'
+import { translateMenuTitle } from '@/utils'
 
 defineOptions({ name: 'AppTabs' })
 

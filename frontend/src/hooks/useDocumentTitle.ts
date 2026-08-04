@@ -2,7 +2,7 @@ import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { usePreferencesStore } from '@/stores'
-import { translateRouteTitle } from '@/utils/i18n'
+import { translateRouteTitle } from '@/utils'
 
 export const useDocumentTitle = (): void => {
   const route = useRoute()

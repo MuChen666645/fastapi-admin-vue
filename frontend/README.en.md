@@ -54,18 +54,20 @@ After login, the frontend loads `GET /api/v1/user/routes` and registers validate
 ```text
 src/
 ├── api/                 # Domain API functions and response parsers
-├── components/          # Global loading, request Message bridge, breadcrumbs, and overlays
-├── hooks/               # Theme, locale, title, Lottie, icons, and route cache
+├── components/          # Shared forms, loading, request Message bridge, breadcrumbs, and overlays
+├── hooks/               # Theme, locale, title, Lottie, ECharts, and route cache behavior
 ├── layouts/BasicLayout/ # Sidebar, header, tabs, content, and footer
 ├── router/              # Static routes, guards, and dynamic route conversion
 ├── stores/modules/      # Auth, tabs, route loading, and preferences
 ├── types/               # API, route, store, transport, and preference types
-├── utils/               # Request boundary, locale dictionary, and preference tokens
+├── utils/               # Public toolkit, request boundary, locale dictionary, and Lottie helpers
 ├── views/               # Route-level pages
 └── __tests__/           # Vitest component and unit tests
 ```
 
 Page-specific areas belong under the page directory, such as `src/views/system/config/components/`. Shared components belong under `src/components/`. Keep all TypeScript declarations in `src/types/` and import them through `@/types`.
+
+Component documentation is indexed in [`src/components/README.md`](./src/components/README.md). Hook usage is documented in [`src/hooks/README.md`](./src/hooks/README.md), and the public utility toolkit is documented in [`src/utils/README.md`](./src/utils/README.md).
 
 The default-pages demo is a nested route tree in `src/router/modules/protected.ts`; its four leaf routes reuse the 403, 404, 500, and offline views under `src/views/error/`.
 

@@ -6,7 +6,7 @@ import {
   loadLottieAnimation,
   pauseLottieAnimation,
   playLottieAnimation,
-} from '@/utils/lottie'
+} from '@/utils'
 import type { LottieAnimationOptions } from '@/types'
 
 export const useLottie = (

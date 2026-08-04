@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveIconComponent } from '../hooks'
+import { resolveIconComponent } from '../utils'
 
 describe('Ionicons5 动态组件解析', () => {
   it('按后端返回的组件名称解析 Ionicons5 组件', () => {

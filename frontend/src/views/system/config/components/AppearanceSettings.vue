@@ -11,7 +11,7 @@ import { NIcon, NInputNumber, NSwitch } from 'naive-ui'
 
 import { useLocale } from '@/hooks'
 import { usePreferencesStore } from '@/stores'
-import { accentColorOptions, radiusOptions } from '@/utils/preferences'
+import { accentColorOptions, radiusOptions } from '@/utils'
 
 import type { ThemeMode } from '@/types'
 

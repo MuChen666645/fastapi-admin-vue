@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useLocale } from '@/hooks'
 import type { BreadcrumbItem, UserRouteMenuType } from '@/types'
-import { translateMenuTitle } from '@/utils/i18n'
+import { translateMenuTitle } from '@/utils'
 
 defineOptions({ name: 'AppBreadcrumb' })
 

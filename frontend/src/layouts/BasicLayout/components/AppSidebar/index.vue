@@ -8,10 +8,9 @@ import { useRoute, useRouter } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 import { useLocale } from '@/hooks'
-import { resolveIconComponent } from '@/hooks/useIcon'
+import { resolveIconComponent, translateMenuTitle } from '@/utils'
 import { useAuthStore } from '@/stores'
 import type { UserRoute } from '@/types'
-import { translateMenuTitle } from '@/utils/i18n'
 
 defineOptions({ name: 'AppSidebar' })
 

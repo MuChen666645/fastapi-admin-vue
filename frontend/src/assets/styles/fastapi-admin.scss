@@ -681,11 +681,9 @@ body {
 }
 
 .sidebar-content {
-  // display: flex;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-  // flex-direction: column;
   gap: 4px;
   overflow-x: hidden;
   overflow-y: auto;

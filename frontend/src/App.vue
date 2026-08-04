@@ -17,7 +17,7 @@ import WatermarkOverlay from './components/WatermarkOverlay/index.vue'
 import { useDocumentTitle } from './hooks/useDocumentTitle'
 import { useTheme } from './hooks/useTheme'
 import { usePreferencesStore } from './stores'
-import { findAccentColor } from './utils/preferences'
+import { findAccentColor } from './utils'
 
 const { isDarkMode, naiveTheme } = useTheme()
 const preferences = usePreferencesStore()

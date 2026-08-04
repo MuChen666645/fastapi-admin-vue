@@ -46,7 +46,8 @@ main.ts
 | `src/stores/modules/route-loading.ts` | 全屏/内容区 Loading 状态和最短显示时间                             |
 | `src/stores/modules/preferences.ts` | 外观、布局、通用偏好和 `localStorage` 持久化                   |
 | `src/stores/modules/layout-settings.ts` | 统一偏好 Store 的旧布局兼容导出                               |
-| `src/hooks`                           | Lottie、主题、图标、ECharts 和路由缓存等可复用行为                 |
+| `src/hooks`                           | Lottie、主题、语言、ECharts 和路由缓存等依赖上下文的可复用行为     |
+| `src/utils/index.ts`                  | 无生命周期的公共工具包入口：图标、本地化、主题选项和 Lottie 基础函数 |
 | `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑等跨页面组件       |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
 | `src/views`                           | 语义化路由级页面；页面私有业务组件放在对应页面的 `components/`     |
@@ -173,7 +174,7 @@ Router afterEach / onError
 ## 主题与图标
 
 - `useTheme` 使用 `localStorage` 保存 `fastapi-admin:theme`，App.vue 将暗色状态同步到 Naive UI 和根节点 class。
-- `useIcon` 只从已静态导入的 Ionicons5 对象中按后端图标名查找，未知名称返回 `null`，不猜测别名或动态导入。
+- `utils/icon.ts` 只从已静态导入的 Ionicons5 对象中按后端图标名查找，未知名称返回 `null`，不猜测别名或动态导入；详情见 `src/utils/README.md`。
 
 ## 偏好与本地化依赖 / Preference and locale dependency
 

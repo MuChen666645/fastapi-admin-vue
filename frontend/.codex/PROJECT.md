@@ -29,7 +29,7 @@ src/
 │   ├── RequestMessageBridge/
 │   └── RouterLoadingBar/
 ├── hooks/
-│   ├── useECharts.ts、useIcon.ts、useLottie.ts
+│   ├── useECharts.ts、useLottie.ts
 │   ├── useRouteCache.ts、useTheme.ts
 │   └── index.ts
 ├── layouts/BasicLayout/
@@ -43,6 +43,9 @@ src/
 │   └── index.ts
 ├── types/
 ├── utils/
+│   ├── index.ts、icon.ts、i18n.ts、lottie.ts、preferences.ts
+│   ├── request.ts、request-feedback.ts、loginPreferences.ts
+│   └── guards/api.ts
 ├── views/
 └── __tests__/
 ```
@@ -53,7 +56,7 @@ src/
 
 `usePreferencesStore` 是偏好配置的唯一运行时来源，使用 `localStorage` 持久化外观、布局和通用配置。`useLayoutSettingsStore` 只是兼容旧调用方的导出别名，不再拥有第二份布局状态。偏好字段包含主题模式、强调色、圆角、字体大小、色弱/灰度、语言、时区、动态标题、水印、更新检查、页面反馈，以及内容宽度、导航可见性和滚动模式。
 
-`zh-CN` 和 `en-US` 由 `src/utils/i18n.ts` 提供词典，`useLocale` 暴露给设置页和公共壳层。静态路由标题由 `translateRouteTitle` 翻译；未收录的后端动态标题保持服务端原文。`dynamicTitle` 控制浏览器标题，`watermark` 只在已认证用户的工作区显示姓名水印。
+`zh-CN` 和 `en-US` 由 `src/utils/i18n.ts` 提供词典，纯工具通过 `src/utils/index.ts` 的 `@/utils` 入口复用；`useLocale` 暴露给设置页和公共壳层。静态路由标题由 `translateRouteTitle` 翻译；未收录的后端动态标题保持服务端原文。`dynamicTitle` 控制浏览器标题，`watermark` 只在已认证用户的工作区显示姓名水印。
 
 `content`、`workspace`、`sticky` 分别表示内容区内部滚动、右侧工作区整体滚动、仅顶部栏和标签栏固定。`pageTransition` 控制顶部进度条，`loadingAnimation` 控制全屏和内容区 Lottie。`autoUpdate` 当前只持久化配置，不调用不存在的更新接口；真正接入前必须核对更新清单地址和版本契约。
 
@@ -146,6 +149,7 @@ src/
 ## Loading 与动画事实
 
 - `src/utils/lottie.ts` 封装 `load/play/pause/destroy`，`src/hooks/useLottie.ts` 负责生命周期。
+- `src/utils/icon.ts` 提供静态 Ionicons5 图标解析，纯公共工具从 `@/utils` 导入；它不是 Vue Hook。
 - `GlobalLoading` 监听 Router 导航：初始导航和布局外导航使用全屏范围，布局内非缓存导航切换为内容范围。
 - `ContentLoading` 放在 `BasicLayout` 内容区，只有 `route-loading` Store 的 scope 为 `content` 时显示。
 - `RouterLoadingBar` 使用 Naive UI LoadingBarProvider 展示顶部进度。

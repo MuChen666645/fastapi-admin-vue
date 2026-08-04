@@ -33,3 +33,18 @@ const handleSubmit = async (model: FormModel): Promise<void> => {
 `AppForm` 的完整配置、动态分组和自定义字段用法见 [AppForm/README.md](./AppForm/README.md)。
 
 `AppSearchForm` 的搜索字段、折叠条件、回车策略和动作区用法见 [AppSearchForm/README.md](./AppSearchForm/README.md)。可访问 `/demo/features/form` 和 `/demo/features/search-form` 查看交互演示。
+
+## 公共组件索引
+
+| 组件                   | 用途                  | 说明                                                               |
+| ---------------------- | --------------------- | ------------------------------------------------------------------ |
+| `AppBreadcrumb`        | 路由面包屑            | [AppBreadcrumb/README.md](./AppBreadcrumb/README.md)               |
+| `AppForm`              | 标准提交表单          | [AppForm/README.md](./AppForm/README.md)                           |
+| `AppSearchForm`        | 标准搜索表单          | [AppSearchForm/README.md](./AppSearchForm/README.md)               |
+| `ContentLoading`       | 布局内容区 Loading    | [ContentLoading/README.md](./ContentLoading/README.md)             |
+| `GlobalLoading`        | 全屏导航 Loading      | [GlobalLoading/README.md](./GlobalLoading/README.md)               |
+| `RequestMessageBridge` | 请求错误 Message 桥接 | [RequestMessageBridge/README.md](./RequestMessageBridge/README.md) |
+| `RouterLoadingBar`     | 路由顶部进度条        | [RouterLoadingBar/README.md](./RouterLoadingBar/README.md)         |
+| `WatermarkOverlay`     | 登录用户水印          | [WatermarkOverlay/README.md](./WatermarkOverlay/README.md)         |
+
+除 `AppForm` 和 `AppSearchForm` 外，其余组件均为应用壳层组件，通常由 `App.vue` 或 `BasicLayout` 统一挂载，不建议在业务页面重复创建。

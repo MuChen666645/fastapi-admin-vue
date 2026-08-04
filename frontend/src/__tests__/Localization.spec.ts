@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { translateMenuTitle, translateRouteTitle } from '../utils/i18n'
+import { translateMenuTitle, translateRouteTitle } from '../utils'
 
 describe('frontend localization', () => {
   it('translates known menu and route titles while preserving unknown server titles', () => {

@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { getActivePinia } from 'pinia'
 
 import { usePreferencesStore } from '@/stores'
-import { translations } from '@/utils/i18n'
+import { translations } from '@/utils'
 
 import type { PreferenceLanguage, TranslationKey } from '@/types'
 

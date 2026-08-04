@@ -18,7 +18,7 @@ import { useECharts } from '@/hooks/useECharts'
 import { useLocale } from '@/hooks/useLocale'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuthStore, usePreferencesStore } from '@/stores'
-import { findAccentColor } from '@/utils/preferences'
+import { findAccentColor } from '@/utils'
 import type {
   DashboardActivity,
   DashboardAnnouncement,

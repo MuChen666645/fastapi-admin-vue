@@ -68,13 +68,13 @@ home/index
 ```text
 src/
 ├── api/                 # 领域 API 和响应解析
-├── components/          # 全局 Loading、请求 Message 桥、面包屑、路由进度条
-├── hooks/               # 主题、语言、标题、Lottie、图标、路由缓存等可复用行为
+├── components/          # 公共表单、Loading、请求 Message 桥、面包屑和路由反馈组件
+├── hooks/               # 主题、语言、标题、Lottie、ECharts 和路由缓存等可复用行为
 ├── layouts/BasicLayout/ # 侧边栏、头部、标签页、内容区和页脚
 ├── router/              # 静态路由、认证守卫、动态路由转换
 ├── stores/modules/      # auth、tabs、route-loading、preferences
 ├── types/               # API、路由、Store、传输和 Lottie 类型
-├── utils/               # 传输边界、运行时守卫和 Lottie 封装
+├── utils/               # 公共工具包、传输边界、运行时守卫和 Lottie 基础封装
 ├── views/               # 路由级页面
 └── __tests__/           # Vitest 单元与组件测试
 ```
@@ -129,7 +129,7 @@ GET  /user/routes
 - `meta.noCache === false` 的页面允许 KeepAlive 缓存，缓存名为 `RouteTab_<route-key>`。
 - tabs 列表由 `useTabsStore` 使用 `sessionStorage` 持久化；组件缓存和标签列表是两个独立状态。
 
-Lottie 封装位于 `src/utils/lottie.ts` 和 `src/hooks/useLottie.ts`，动画数据位于 `src/assets/lottie/car-loading3-data.json`。
+公共组件说明见 [`src/components/README.md`](./src/components/README.md)，Hook 使用说明见 [`src/hooks/README.md`](./src/hooks/README.md)，工具包说明见 [`src/utils/README.md`](./src/utils/README.md)。Lottie 基础函数位于 `src/utils/lottie.ts`，生命周期封装位于 `src/hooks/useLottie.ts`，动画数据位于 `src/assets/lottie/car-loading3-data.json`。
 
 ## 常用命令
 
