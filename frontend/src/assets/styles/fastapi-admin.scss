@@ -9,8 +9,8 @@
   --app-color-sidebar-border: rgb(255 255 255 / 16%);
   --app-color-sidebar-hover: rgb(255 255 255 / 8%);
   --app-color-sidebar-selected: rgb(255 255 255 / 16%);
-  --app-color-sidebar-accent: #ffffff;
-  --app-color-sidebar-accent-text: #ffffff;
+  --app-color-sidebar-accent: #d8dae2;
+  --app-color-sidebar-accent-text: #000000;
   --app-color-primary: #6c7ce5;
   --app-color-primary-dark: #5762e0;
   --app-color-success: #18a058;
@@ -638,6 +638,7 @@ body {
   flex: 0 0 64px;
   align-items: center;
   gap: 10px;
+  box-sizing: border-box;
   padding: 18px;
   border-bottom: 1px solid rgb(255 255 255 / 10%);
   color: var(--app-color-sidebar-text);
@@ -680,8 +681,11 @@ body {
 }
 
 .sidebar-content {
+  // display: flex;
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  // flex-direction: column;
   gap: 4px;
   overflow-x: hidden;
   overflow-y: auto;

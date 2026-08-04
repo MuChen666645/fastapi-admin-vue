@@ -4,7 +4,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { NMenu, NMessageProvider, NNotificationProvider } from 'naive-ui'
+import { NEllipsis, NMenu, NMessageProvider, NNotificationProvider } from 'naive-ui'
+import type { MenuOption } from 'naive-ui'
 
 import BasicLayout from '../layouts/BasicLayout/index.vue'
 import { useLayoutSettingsStore, usePreferencesStore } from '../stores'
@@ -125,19 +126,36 @@ describe('BasicLayout', () => {
     expect(wrapper.find('.sidebar-toggle').exists()).toBe(true)
     expect(wrapper.get('.language-toggle').attributes('title')).toBe('切换到 English')
     expect(wrapper.find('.app-sidebar').text()).toContain('演示')
-    expect(wrapper.findComponent(NMenu).props('options')).toEqual([
+    const menuOptions = wrapper.findComponent(NMenu).props('options') as MenuOption[]
+    const demoOption = menuOptions.find((option) => option.key === 'demo')
+
+    expect(demoOption?.label).toEqual(expect.any(Function))
+    if (demoOption && typeof demoOption.label === 'function') {
+      expect(demoOption.label()).toEqual(expect.objectContaining({ type: NEllipsis }))
+    }
+
+    expect(menuOptions).toEqual([
       expect.objectContaining({
         key: 'demo',
-        label: '演示',
+        label: expect.any(Function),
         children: [
           expect.objectContaining({
             key: 'default-pages',
-            label: '缺省页',
+            label: expect.any(Function),
             children: [
-              expect.objectContaining({ key: 'default-page-forbidden', label: '403 无权限' }),
-              expect.objectContaining({ key: 'default-page-not-found', label: '404 页面不存在' }),
-              expect.objectContaining({ key: 'default-page-server-error', label: '500 服务异常' }),
-              expect.objectContaining({ key: 'default-page-offline', label: '网络离线' }),
+              expect.objectContaining({
+                key: 'default-page-forbidden',
+                label: expect.any(Function),
+              }),
+              expect.objectContaining({
+                key: 'default-page-not-found',
+                label: expect.any(Function),
+              }),
+              expect.objectContaining({
+                key: 'default-page-server-error',
+                label: expect.any(Function),
+              }),
+              expect.objectContaining({ key: 'default-page-offline', label: expect.any(Function) }),
             ],
           }),
         ],

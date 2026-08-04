@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
 import type { Component } from 'vue'
-import { NEmpty, NIcon, NLayoutSider, NMenu } from 'naive-ui'
+import { NEllipsis, NEmpty, NIcon, NLayoutSider, NMenu } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
@@ -25,6 +25,30 @@ const { language, t } = useLocale()
 const renderMenuIcon = (icon: Component) =>
   h(NIcon, { class: 'menu-item-icon', component: icon, 'aria-hidden': 'true' })
 
+interface MenuOptionConfig {
+  key: string
+  label: string
+  icon?: Component | null
+  children?: MenuOption[]
+}
+
+const renderMenuLabel = (label: string) =>
+  h(
+    NEllipsis,
+    {
+      class: 'menu-item-label',
+      tooltip: { placement: 'right' },
+    },
+    { default: () => label },
+  )
+
+const createMenuOption = ({ key, label, icon, children }: MenuOptionConfig): MenuOption => ({
+  key,
+  label: () => renderMenuLabel(label),
+  ...(icon ? { icon: () => renderMenuIcon(icon) } : {}),
+  ...(children && children.length > 0 ? { children } : {}),
+})
+
 const toMenuOptions = (routes: UserRoute[], locale: typeof language.value): MenuOption[] => {
   return routes
     .filter((item) => !item.hidden)
@@ -32,12 +56,12 @@ const toMenuOptions = (routes: UserRoute[], locale: typeof language.value): Menu
       const children = toMenuOptions(item.children, locale)
       const icon = resolveIconComponent(item.meta.icon)
 
-      return {
+      return createMenuOption({
         key: item.name,
         label: translateMenuTitle(item.meta.title, locale),
-        ...(icon ? { icon: () => renderMenuIcon(icon) } : {}),
-        ...(children.length > 0 ? { children } : {}),
-      }
+        icon,
+        children,
+      })
     })
 }
 
@@ -61,12 +85,12 @@ const toStaticMenuOptions = (
       const iconName = typeof meta.icon === 'string' ? meta.icon : null
       const icon = resolveIconComponent(iconName)
 
-      return {
+      return createMenuOption({
         key: String(item.name),
         label: translateMenuTitle(String(meta.title ?? item.name), locale),
-        ...(icon ? { icon: () => renderMenuIcon(icon) } : {}),
-        ...(children.length > 0 ? { children } : {}),
-      }
+        icon,
+        children,
+      })
     })
 
 const staticMenuOptions = computed<MenuOption[]>(() => {
