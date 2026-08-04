@@ -119,6 +119,7 @@ describe('BasicLayout', () => {
 
     expect(wrapper.find('.basic-layout').exists()).toBe(true)
     expect(wrapper.find('.app-sidebar').exists()).toBe(true)
+    expect(wrapper.find('.app-sidebar .n-layout-sider-scroll-container').exists()).toBe(true)
     expect(wrapper.get('.sidebar-brand').text()).toContain('FastAPI Admin')
     expect(wrapper.find('.sidebar-brand__icon').exists()).toBe(true)
     expect(wrapper.find('.sidebar-toggle').exists()).toBe(true)

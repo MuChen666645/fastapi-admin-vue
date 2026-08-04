@@ -13,6 +13,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppBreadcrumb: typeof import('./src/components/AppBreadcrumb/index.vue')['default']
+    AppForm: typeof import('./src/components/AppForm/index.vue')['default']
+    AppSearchForm: typeof import('./src/components/AppSearchForm/index.vue')['default']
     ContentLoading: typeof import('./src/components/ContentLoading/index.vue')['default']
     GlobalLoading: typeof import('./src/components/GlobalLoading/index.vue')['default']
     RequestMessageBridge: typeof import('./src/components/RequestMessageBridge/index.vue')['default']
@@ -26,6 +28,8 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const AppBreadcrumb: typeof import('./src/components/AppBreadcrumb/index.vue')['default']
+  const AppForm: typeof import('./src/components/AppForm/index.vue')['default']
+  const AppSearchForm: typeof import('./src/components/AppSearchForm/index.vue')['default']
   const ContentLoading: typeof import('./src/components/ContentLoading/index.vue')['default']
   const GlobalLoading: typeof import('./src/components/GlobalLoading/index.vue')['default']
   const RequestMessageBridge: typeof import('./src/components/RequestMessageBridge/index.vue')['default']

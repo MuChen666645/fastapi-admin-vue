@@ -127,7 +127,8 @@ const handleMenuSelect = (key: string | number): void => {
     :width="220"
     :collapsed="collapsed"
     :collapsed-width="64"
-    :native-scrollbar="false"
+    :native-scrollbar="true"
+    :content-style="{ overflow: 'hidden' }"
     collapse-mode="width"
     class="app-sidebar"
   >
@@ -142,7 +143,6 @@ const handleMenuSelect = (key: string | number): void => {
     </div>
 
     <div class="sidebar-content">
-      <div class="menu-caption">{{ t('sidebar.caption') }}</div>
       <NMenu
         :value="activeMenuKey"
         :options="menuOptions"

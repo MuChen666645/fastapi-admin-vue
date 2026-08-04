@@ -74,7 +74,6 @@ export type TranslationKey =
   | 'app.footer.rights'
   | 'app.loading.screen'
   | 'app.loading.content'
-  | 'sidebar.caption'
   | 'sidebar.brand'
   | 'sidebar.brandDescription'
   | 'sidebar.empty'
