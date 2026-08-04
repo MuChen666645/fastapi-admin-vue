@@ -23,15 +23,15 @@ src/
 │   ├── user/index.ts、parsers.ts
 │   └── index.ts
 ├── components/
-│   ├── AppBreadcrumb/
-│   ├── ContentLoading/
-│   ├── GlobalLoading/
-│   ├── RequestMessageBridge/
-│   └── RouterLoadingBar/
+│   ├── AppBreadcrumb/、AppForm/、AppSearchForm/
+│   ├── ContentLoading/、GlobalLoading/、WatermarkOverlay/
+│   ├── RequestMessageBridge/、RouterLoadingBar/
+│   └── README.md
 ├── hooks/
-│   ├── useECharts.ts、useLottie.ts
-│   ├── useRouteCache.ts、useTheme.ts
-│   └── index.ts
+│   ├── useDocumentTitle.ts、useECharts.ts、useLocale.ts
+│   ├── useLottie.ts、useRouteCache.ts、useTheme.ts
+│   ├── index.ts
+│   └── README.md
 ├── layouts/BasicLayout/
 ├── router/
 │   ├── guards/auth.ts
@@ -51,6 +51,8 @@ src/
 ```
 
 `src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；类型声明统一位于 `src/types/system-config.ts`。
+
+公共代码文档与源码保持同目录维护：`src/components/README.md` 记录公共组件索引和提交边界，组件组 README 记录各自公开 API；`src/hooks/README.md` 记录 Hook 的上下文依赖、返回值和清理行为；`src/utils/README.md` 记录公共工具入口、基础设施边界和安全校验。新增或迁移代码时，目录、公共出口、类型、测试和 README 必须同步。
 
 ## 偏好配置与双语模式 / Preferences and bilingual mode
 

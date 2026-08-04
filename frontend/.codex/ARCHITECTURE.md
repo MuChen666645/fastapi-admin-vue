@@ -56,6 +56,34 @@ main.ts
 
 当前没有 `src/composables/` 目录。新增可复用页面行为优先放入 `src/hooks/`，不要为了目录形式新建第二套抽象。
 
+## 组件、工具函数和 Hooks 分层
+
+| 场景 | 放置位置 | 可以承担的职责 | 明确禁止 |
+| ---- | -------- | -------------- | -------- |
+| 跨页面公共 UI | `src/components/<name>/` | 展示、交互、Props/Emits、局部校验、局部 Loading | 领域 API、业务列表、Token、跨页面业务状态 |
+| 页面专属 UI | `src/views/<domain>/<page>/components/` | 页面内展示和交互编排 | 被无关页面直接依赖，或重复实现公共基础组件 |
+| Vue/Router/Pinia 上下文行为 | `src/hooks/use*.ts` | 生命周期、DOM Ref、Router 监听、Store 驱动的共享 UI 行为 | 领域请求、后端响应解析、模块级业务状态 |
+| 无生命周期公共逻辑 | `src/utils/` | 纯计算、格式化、解析、转换和安全校验 | 依赖组件上下文、隐式全局状态、未经说明的业务副作用 |
+| 传输和运行时守卫 | `src/utils/request.ts`、`src/utils/guards/` | 请求发送、响应包装、`unknown` 校验和动态路由安全校验 | 页面直接调用、绕过 API 领域层或放宽校验 |
+
+推荐依赖方向为：
+
+```text
+页面 / 页面专属组件
+    -> 公共组件
+    -> Hooks / Pinia Store
+    -> @/api
+
+公共组件 -> Hooks / Utils
+Hooks     -> Utils / Pinia / Router
+API parser -> Utils guards
+Utils     -/-> 页面、组件、Router 实例和领域 Store
+```
+
+组件、Hook 和工具的公开合同必须同时由源码、`src/types/` 类型、所属 README 和测试表达。组件 README 记录 Props、Emits、Slots、暴露方法、校验与状态；Hook README 记录依赖上下文、返回值和清理行为；工具 README 记录公共入口、副作用边界、失败处理和安全限制。
+
+新增代码的选择顺序：先判断是否只是纯函数；若需要生命周期或 Router/Pinia 上下文则使用 Hook；若需要跨页面状态则使用 Store；若需要 API 或响应解析则使用领域 API；只有跨页面复用的 UI 才放入公共组件。
+
 ## API 数据流
 
 1. 页面或 Store 从 `@/api` 调用领域函数。

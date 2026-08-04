@@ -83,3 +83,11 @@ pauseLottieAnimation(animation)
 - 依赖 Vue 生命周期、Router、Pinia 或组件上下文的行为放在 `hooks`。
 - 领域请求放在 `api`，跨页面状态放在 Pinia Store。
 - 新增公共工具优先补充 `index.ts` 和本 README；基础设施工具保留具体模块入口并补充测试。
+
+## 新增或修改工具检查清单
+
+1. 先确认函数不需要 Vue 生命周期、Router、Pinia 或组件上下文；需要这些依赖时改用 Hook、Store 或对应基础设施层。
+2. 明确输入、输出、空值、错误和副作用；处理 `unknown`、接口响应、路由、外链或存储内容时必须先校验。
+3. 适合跨模块复用的函数从 `src/utils/index.ts` 和 `@/utils` 导出；请求传输、响应守卫、存储和反馈桥等基础设施保留具体入口。
+4. 不创建模块级业务状态，不修改页面、Router 或业务 Store，不用 `any`、无检查断言或默认成功值掩盖错误。
+5. 同步更新本 README、必要的 `src/types/` 类型和边界测试；涉及浏览器能力时覆盖 SSR、不可用环境和清理行为。

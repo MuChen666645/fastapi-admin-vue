@@ -28,6 +28,35 @@
 - 可复用组件或组件组必须在所属目录维护 `README.md`；文档至少说明用途边界、Props、Emits、Slots、暴露方法、校验/状态约定和最小使用示例，并与源码和测试同步更新。
 - 组件文档中的提交示例必须通过页面的 `@submit` 调用 `@/api`，组件本身只负责展示、交互和校验，不得把业务请求写入通用组件。
 
+## 组件、工具函数和 Hooks 规范
+
+### 组件
+
+- 跨页面复用的组件放在 `src/components/<ComponentName>/`，页面专属组件放在对应页面的 `src/views/<domain>/<page>/components/`；不能因为暂时只有一个调用方就把业务组件提升为全局组件。
+- 组件只负责展示、用户交互、局部状态和局部校验。组件不直接调用 `@/api`、Alova、`fetch` 或 Axios，不读取业务接口原始响应，不保存 Token、密码、业务列表和跨页面业务状态。
+- 通用组件通过 Props 接收数据和配置，通过 Emits 或 `v-model` 交付变化；提交表单时先完成组件内校验，再由页面或领域 Store 调用已核实的 `@/api`。
+- 组件公开的 Props、Emits、Slots、`defineExpose` 方法和校验/Loading 状态必须有稳定类型，并在所属目录 README 中记录；类型声明统一从 `@/types` 导入。
+- 应用壳层组件可以使用明确指定的 Router、Pinia Store 或基础工具（例如路由 Loading、Message 桥和水印），但必须只挂载一个实例，并在卸载时清理监听器、回调、观察器和动画实例。
+- 组件测试放在 `src/__tests__/`，优先验证公开渲染、事件、校验、Loading、防重复提交和卸载清理行为；不要为了测试内部变量而暴露额外 API。
+
+### 工具函数
+
+- 无 Vue 生命周期、Router、Pinia 或组件上下文依赖的纯计算、格式化、解析、转换和存储逻辑放在 `src/utils/`，公共工具通过 `src/utils/index.ts` 和 `@/utils` 导出。
+- 工具函数应保持输入、输出和失败行为明确；处理 `unknown`、外部响应、路由、外链和浏览器存储时必须先校验，不能用 `any`、无检查断言或静默成功掩盖异常。
+- `request.ts`、`request-feedback.ts`、`guards/api.ts`、`guards/route.ts` 属于工具目录中的基础设施边界，必须保留各自职责；页面和 Store 不得因此直接绕过 `@/api` 调用传输层。
+- 工具函数不得创建隐式全局可变状态、修改业务 Store 或依赖组件生命周期。需要生命周期、Router 或 Pinia 上下文时，应改为 Hook 或 Store。
+- 浏览器存储工具必须安全处理 SSR、不可用存储和解析失败，不得新增或扩大敏感数据持久化；Lottie 基础函数只管理实例动作，生命周期销毁由 `useLottie` 或所属组件负责。
+- 新增公共工具必须补充 `src/utils/README.md`、`src/utils/index.ts`（基础设施例外需说明具体入口）和针对边界行为的单元测试。
+
+### Hooks
+
+- 依赖 Vue 生命周期、Router、Pinia、DOM Ref 或组件上下文的可复用行为放在 `src/hooks/use*.ts`，统一使用 `use` 命名；项目不新增第二套 `composables` 目录。
+- Hook 只封装可复用的交互和生命周期编排，不直接调用领域 API、不提交业务表单、不解析后端响应；领域请求由页面、Store 或 API 层负责。
+- Hook 可以读取或更新明确的 Pinia UI 状态，也可以使用 Router，但不得通过模块级可变变量共享跨页面业务状态，不得把 Token、密码或业务数据写入 Hook 私有缓存。
+- Hook 创建的监听器、订阅、ResizeObserver、Router 回调、定时器和第三方实例必须在卸载或停止时清理；重复调用不能产生重复监听或泄漏。
+- 返回值应优先使用响应式 Ref、Computed 或明确动作函数，调用方只依赖公开返回合同；Hook 中的类型从 `@/types` 导入，不在文件内声明领域类型。
+- 新增或修改 Hook 必须同步 `src/hooks/README.md` 和 `src/hooks/index.ts`，并用组件测试或单元测试覆盖初始化、更新、清理和无 DOM/无 Pinia 的安全降级行为。
+
 ## 当前路由事实
 
 - `src/router/index.ts` 创建 Router、注册静态路由和认证守卫，并暴露动态路由注册/清理能力。

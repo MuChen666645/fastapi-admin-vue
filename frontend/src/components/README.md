@@ -48,3 +48,11 @@ const handleSubmit = async (model: FormModel): Promise<void> => {
 | `WatermarkOverlay`     | 登录用户水印          | [WatermarkOverlay/README.md](./WatermarkOverlay/README.md)         |
 
 除 `AppForm` 和 `AppSearchForm` 外，其余组件均为应用壳层组件，通常由 `App.vue` 或 `BasicLayout` 统一挂载，不建议在业务页面重复创建。
+
+## 新增组件检查清单
+
+1. 先确认组件是跨页面公共 UI，还是只服务一个页面；页面专属组件放在页面目录的 `components/`。
+2. 明确 Props、Emits、Slots、`v-model` 和 `defineExpose` 的公开合同，相关类型从 `@/types` 导入。
+3. 组件只处理展示、交互、局部校验和局部 Loading；提交事件交给页面或 Store 调用 `@/api`，组件不直接请求后端。
+4. 覆盖空值、校验失败、禁用、重复提交、无权限展示和卸载清理等与组件公开行为相关的状态。
+5. 在组件目录补充 README，在 `src/__tests__/` 补公开行为测试；复杂能力需要时接入认证后的静态演示路由。

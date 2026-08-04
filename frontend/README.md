@@ -83,6 +83,24 @@ src/
 
 大页面的业务区域放在页面目录的 `components/` 中，例如 `src/views/system/config/components/`。公共组件才放入 `src/components/`。所有 `type`、`interface`、`enum` 声明统一放在 `src/types/`，通过 `@/types` 导入；新增普通样式优先使用 UnoCSS utility class。`src/views/` 下目录使用能表达业务域和页面职责的语义化名称。
 
+## 组件、工具函数和 Hooks 开发约定
+
+按依赖选择代码位置：
+
+| 需求                | 目录                                    | 主要职责                                              | 不应承担                                     |
+| ------------------- | --------------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
+| 跨页面 UI           | `src/components/`                       | 展示、交互、Props/Emits、插槽和局部校验               | 领域 API、业务列表、Token 和跨页面业务状态   |
+| 页面专属 UI         | `src/views/<domain>/<page>/components/` | 当前页面的展示和交互编排                              | 被无关页面直接依赖，或重复实现公共组件       |
+| 生命周期/上下文行为 | `src/hooks/use*.ts`                     | Vue 生命周期、Router、Pinia、DOM Ref 和第三方实例编排 | 领域 API、后端响应解析和业务提交             |
+| 无生命周期逻辑      | `src/utils/`                            | 纯计算、格式化、解析、转换和安全校验                  | 隐式全局状态、页面副作用和未经说明的业务修改 |
+| 跨页面业务状态      | `src/stores/modules/`                   | 会话、标签页、偏好和 Loading 状态                     | DOM、页面组件和后端授权替代                  |
+
+组件通过 Props、Emits、`v-model` 或插槽交付数据和状态；提交表单或搜索时，组件先完成局部校验，再由页面或 Store 调用已核实的 `@/api`。新增公共组件必须维护组件目录 README 和 `src/__tests__/` 测试，记录 Props、Emits、Slots、暴露方法、校验/Loading 状态和最小示例。
+
+Hook 统一使用 `use` 命名，只在需要 Vue/Router/Pinia/DOM 上下文时使用；所有监听器、订阅、观察器、定时器和第三方实例都必须在卸载时清理。工具函数默认保持无生命周期和明确输入输出，公共函数从 `@/utils` 导出；请求传输、响应守卫、存储和反馈桥等基础设施使用具体模块入口。
+
+详细索引：[`src/components/README.md`](./src/components/README.md)、[`src/hooks/README.md`](./src/hooks/README.md)、[`src/utils/README.md`](./src/utils/README.md)。Codex 强制规则、架构边界和验证流程见 [`.codex/README.md`](./.codex/README.md)。
+
 ## 偏好配置与双语模式 / Preferences and bilingual mode
 
 系统设置入口为 `/system/settings`，配置由 `usePreferencesStore` 统一管理，并通过 `localStorage` 持久化。设置包括：

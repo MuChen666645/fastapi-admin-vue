@@ -71,6 +71,24 @@ Component documentation is indexed in [`src/components/README.md`](./src/compone
 
 The default-pages demo is a nested route tree in `src/router/modules/protected.ts`; its four leaf routes reuse the 403, 404, 500, and offline views under `src/views/error/`.
 
+## Components, Utilities, and Hooks
+
+Choose the location by dependency:
+
+| Need                       | Directory                               | Owns                                                                 | Must not own                                                                  |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Shared UI                  | `src/components/`                       | Rendering, interaction, Props/Emits, slots, and local validation     | Domain API calls, business lists, tokens, or cross-page business state        |
+| Page-specific UI           | `src/views/<domain>/<page>/components/` | Display and interaction for one page                                 | Direct reuse by unrelated pages or duplicate shared primitives                |
+| Lifecycle/context behavior | `src/hooks/use*.ts`                     | Vue lifecycle, Router, Pinia, DOM refs, and third-party instances    | Domain API calls, response parsing, or business submission                    |
+| Lifecycle-free logic       | `src/utils/`                            | Pure calculation, formatting, parsing, conversion, and safety checks | Hidden global state, page effects, or undocumented business mutations         |
+| Cross-page business state  | `src/stores/modules/`                   | Session, tabs, preferences, and loading state                        | DOM access, page-component dependencies, or backend authorization replacement |
+
+Components communicate through Props, Emits, `v-model`, or slots. A form or search component validates locally first, then the page or Store calls a verified API from `@/api`. Every shared component needs a directory README and public-behavior tests covering its contract, validation, loading, duplicate-submission handling, and cleanup behavior.
+
+Hooks use the `use` naming convention and are reserved for Vue, Router, Pinia, DOM, or lifecycle context. Every listener, subscription, observer, timer, and third-party instance must have a cleanup path. Utilities should have explicit inputs, outputs, errors, and side effects; reusable functions are exported from `@/utils`, while request transport, response guards, storage, and feedback bridges keep their specific module entry points.
+
+See the detailed [component conventions](./src/components/README.md), [Hook guide](./src/hooks/README.md), [utility guide](./src/utils/README.md), and [Codex documentation index](./.codex/README.md).
+
 ## Preferences and bilingual mode
 
 The `/system/settings` page uses one `usePreferencesStore` persisted in `localStorage`.

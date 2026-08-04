@@ -41,3 +41,11 @@ User-facing documentation is bilingual: see [`../README.md`](../README.md) and [
 - CSS 优先使用 UnoCSS utility class；`<style scoped>` 仅用于复杂的组件专属样式。
 - 所有 `type`、`interface`、`enum` 声明集中到 `src/types/`，通过 `@/types` 统一导入。
 - `src/views/` 下目录必须语义化并与后端 `component` 路径一致，页面私有组件放在页面自己的 `components/`。
+
+## 公共代码文档
+
+- [组件组使用约定](../src/components/README.md)：公共组件索引、页面提交边界和组件组文档入口。
+- [Hooks 使用文档](../src/hooks/README.md)：Hook 的调用上下文、返回合同和生命周期清理要求。
+- [工具包使用文档](../src/utils/README.md)：公共工具出口、API/路由守卫、存储和 Lottie 基础函数边界。
+
+选择实现位置时，先判断是否需要 Vue 生命周期、Router、Pinia、DOM Ref 或组件上下文：不需要则放 `utils`，需要则放 `hooks`；跨页面 UI 放 `components`，跨页面业务状态放 Store，领域请求和响应解析放 `api`。

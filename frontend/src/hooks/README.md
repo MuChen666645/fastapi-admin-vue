@@ -106,3 +106,11 @@ const { isDarkMode, naiveTheme, toggleTheme } = useTheme()
 - 所有生命周期监听必须在卸载时清理。
 - 需要跨页面共享的数据放 Pinia Store，不通过模块级可变变量传递。
 - 纯计算、格式化、解析和浏览器存储函数放入 `src/utils/`，从 [工具包入口](../utils/README.md) 了解导出范围。
+
+## 新增或修改 Hook 检查清单
+
+1. 只有依赖 Vue 生命周期、Router、Pinia、DOM Ref 或组件上下文的行为才放入 `src/hooks/`；纯函数放入 `src/utils/`。
+2. Hook 使用 `use` 命名，返回值只暴露调用方需要的 Ref、Computed 和动作函数，不把内部实例作为隐式全局状态。
+3. 记录依赖的 Router、Store、Provider 或浏览器能力，并为无 DOM、无 Pinia 和测试环境提供安全降级（如果当前行为需要）。
+4. 为 Router 监听、事件监听、ResizeObserver、定时器和第三方实例建立成对的清理逻辑，重复挂载和卸载不能泄漏。
+5. 不在 Hook 内调用领域 API、提交业务数据或持久化敏感信息；修改后同步 `hooks/index.ts`、本 README 和针对初始化/更新/清理的测试。
