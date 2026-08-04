@@ -118,6 +118,8 @@ export type TranslationKey =
   | 'route.serverError'
   | 'route.offline'
   | 'route.demo'
+  | 'route.demo.features'
+  | 'route.demo.features.form'
   | 'route.defaultPages'
   | 'route.defaultPages.forbidden'
   | 'route.defaultPages.notFound'

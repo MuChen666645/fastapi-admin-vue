@@ -7,6 +7,7 @@ vi.mock('@/views/error/500.vue', () => ({ default: {} }))
 vi.mock('@/views/error/offline.vue', () => ({ default: {} }))
 vi.mock('@/views/change-password/index.vue', () => ({ default: {} }))
 vi.mock('@/views/login/index.vue', () => ({ default: {} }))
+vi.mock('@/views/demo/form/index.vue', () => ({ default: {} }))
 
 import { buildDynamicRoutes, resolveRouteComponent } from '../router/route-utils'
 import { errorRoutes, protectedRoutes, publicRoutes } from '../router/modules'
@@ -58,6 +59,23 @@ describe('dynamic routes', () => {
       'default-page-server-error',
       'default-page-offline',
     ])
+  })
+
+  it('registers the form component demo under the features menu', () => {
+    const appRoute = protectedRoutes.find((route) => route.name === 'app')
+    const demoRoute = appRoute?.children?.find((route) => route.name === 'demo')
+    const featuresRoute = demoRoute?.children?.find((route) => route.name === 'demo-features')
+    const formRoute = featuresRoute?.children?.find((route) => route.name === 'demo-form')
+
+    expect(featuresRoute?.path).toBe('features')
+    expect(featuresRoute?.meta?.title).toBe('功能')
+    expect(featuresRoute?.meta?.requiresAuth).toBe(true)
+    expect(featuresRoute?.meta?.menu).toBe(true)
+    expect(featuresRoute?.redirect).toEqual({ name: 'demo-form' })
+    expect(formRoute?.path).toBe('form')
+    expect(formRoute?.meta?.title).toBe('表单')
+    expect(formRoute?.meta?.requiresAuth).toBe(true)
+    expect(formRoute?.meta?.menu).toBe(true)
   })
 
   it('filters unknown backend components and warns once', () => {

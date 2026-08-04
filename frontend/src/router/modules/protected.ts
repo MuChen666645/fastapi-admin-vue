@@ -7,6 +7,7 @@ import ForbiddenView from '@/views/error/403.vue'
 import NotFoundView from '@/views/error/404.vue'
 import OfflineView from '@/views/error/offline.vue'
 import ServerErrorView from '@/views/error/500.vue'
+import FormDemoView from '@/views/demo/form/index.vue'
 import SystemConfigView from '@/views/system/config/index.vue'
 
 export const protectedRoutes: RouteRecordRaw[] = [
@@ -64,6 +65,39 @@ export const protectedRoutes: RouteRecordRaw[] = [
           link: null,
         },
         children: [
+          {
+            path: 'features',
+            name: 'demo-features',
+            component: RouterView,
+            redirect: { name: 'demo-form' },
+            meta: {
+              title: '功能',
+              menu: true,
+              hideBreadcrumb: false,
+              requiresAuth: true,
+              noCache: false,
+              icon: 'ConstructOutline',
+              menuType: 'C',
+              link: null,
+            },
+            children: [
+              {
+                path: 'form',
+                name: 'demo-form',
+                component: FormDemoView,
+                meta: {
+                  title: '表单',
+                  menu: true,
+                  hideBreadcrumb: false,
+                  requiresAuth: true,
+                  noCache: false,
+                  icon: 'CreateOutline',
+                  menuType: 'C',
+                  link: null,
+                },
+              },
+            ],
+          },
           {
             path: 'default-pages',
             name: 'default-pages',
