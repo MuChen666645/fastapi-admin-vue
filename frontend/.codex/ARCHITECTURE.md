@@ -37,6 +37,7 @@ main.ts
 | `src/utils/request.ts`                | Alova 实例、基地址、Authorization、响应解包、错误归一化、401 刷新  |
 | `src/utils/request-feedback.ts`       | 注册并触发全局请求 Message 回调                                  |
 | `src/utils/guards/api.ts`             | 基础值和统一响应结构守卫                                           |
+| `src/utils/guards/route.ts`           | 动态路由路径、名称、菜单类型和外链的安全校验                       |
 | `src/router/modules`                  | 静态路由记录：public、protected、error                             |
 | `src/router/guards/auth.ts`           | 会话初始化、密码变更重定向、动态路由注册和 not-found 恢复          |
 | `src/router/route-utils.ts`           | 后端路由校验后的组件解析、容器重定向和 RouteRecord 转换            |

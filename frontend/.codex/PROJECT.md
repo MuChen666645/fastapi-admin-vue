@@ -45,7 +45,7 @@ src/
 ├── utils/
 │   ├── index.ts、icon.ts、i18n.ts、lottie.ts、preferences.ts
 │   ├── request.ts、request-feedback.ts、loginPreferences.ts
-│   └── guards/api.ts
+│   └── guards/api.ts、route.ts
 ├── views/
 └── __tests__/
 ```

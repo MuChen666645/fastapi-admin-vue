@@ -16,9 +16,11 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 | `translateMenuTitle` / `translateRouteTitle`                                                   | `@/utils`                  | 翻译已知前端菜单和路由标题。                 |
 | `findAccentColor`、`accentColorOptions`、`radiusOptions`                                       | `@/utils`                  | 读取主题色和圆角选项。                       |
 | `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation` | `@/utils`                  | 管理 Lottie 实例的基础动作。                 |
+| `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。     |
 | `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。       |
 | `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。 |
 | `guards/api`                                                                                   | `@/utils/guards/api`       | API 响应和值的运行时校验。                   |
+| `guards/route`                                                                                 | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。    |
 
 ## 图标解析
 
@@ -31,6 +33,17 @@ const icon = resolveIconComponent('HomeOutline')
 图标名称只能从已静态导入的 `@vicons/ionicons5` 中解析，未找到时返回 `null`。禁止将后端字符串直接传给 `import()`，也不要在工具包中增加动态组件白名单之外的加载逻辑。
 
 原 `hooks/useIcon.ts` 只包含这个纯函数，已迁移到 `utils/icon.ts`。它不是 Vue Hook，新的代码应从 `@/utils` 导入。
+
+## 路由安全校验
+
+```ts
+import { isSafeExternalLink, isSafeRoutePath } from '@/utils'
+
+const validPath = isSafeRoutePath('system/users')
+const validLink = isSafeExternalLink('https://example.com/docs')
+```
+
+这些方法只校验路由输入的格式和协议安全性，不能替代后端的认证、授权和业务校验。
 
 ## 本地化和主题选项
 
@@ -60,6 +73,7 @@ pauseLottieAnimation(animation)
 
 - `request.ts` 是唯一请求传输边界。页面和 Store 应从 `@/api` 调用领域 API，不直接调用它。
 - `guards/api.ts` 只用于从 `unknown` 校验 API 响应，不能用类型断言绕过校验。
+- `guards/route.ts` 集中维护动态路由输入的安全校验，API 解析器只负责调用它并组装领域数据。
 - `request-feedback.ts` 由 `RequestMessageBridge` 注册全局 Message 回调，业务代码不应自行覆盖处理器。
 - `loginPreferences.ts` 当前会在用户主动选择记住登录时保存账号和密码，这是已知安全风险；新代码不得扩大或复用该行为。
 

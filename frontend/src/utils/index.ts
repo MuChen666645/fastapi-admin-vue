@@ -7,3 +7,9 @@ export {
   playLottieAnimation,
 } from './lottie'
 export { accentColorOptions, findAccentColor, radiusOptions } from './preferences'
+export {
+  isSafeExternalLink,
+  isSafeRouteName,
+  isSafeRoutePath,
+  isUserRouteMenuType,
+} from './guards/route'
