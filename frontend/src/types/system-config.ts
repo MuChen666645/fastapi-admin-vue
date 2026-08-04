@@ -75,6 +75,8 @@ export type TranslationKey =
   | 'app.loading.screen'
   | 'app.loading.content'
   | 'sidebar.caption'
+  | 'sidebar.brand'
+  | 'sidebar.brandDescription'
   | 'sidebar.empty'
   | 'sidebar.serverStatus'
   | 'sidebar.cpu'

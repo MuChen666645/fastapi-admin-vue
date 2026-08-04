@@ -3,6 +3,7 @@ import { computed, h } from 'vue'
 import type { Component } from 'vue'
 import { NEmpty, NIcon, NLayoutSider, NMenu } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
+import { ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
@@ -130,6 +131,16 @@ const handleMenuSelect = (key: string | number): void => {
     collapse-mode="width"
     class="app-sidebar"
   >
+    <div class="sidebar-brand" :title="t('sidebar.brand')">
+      <span class="sidebar-brand__icon" aria-hidden="true">
+        <NIcon :size="20"><ShieldCheckmarkOutline /></NIcon>
+      </span>
+      <div class="sidebar-brand__copy">
+        <strong>{{ t('sidebar.brand') }}</strong>
+        <span>{{ t('sidebar.brandDescription') }}</span>
+      </div>
+    </div>
+
     <div class="sidebar-content">
       <div class="menu-caption">{{ t('sidebar.caption') }}</div>
       <NMenu

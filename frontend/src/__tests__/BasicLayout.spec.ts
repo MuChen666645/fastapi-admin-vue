@@ -119,6 +119,8 @@ describe('BasicLayout', () => {
 
     expect(wrapper.find('.basic-layout').exists()).toBe(true)
     expect(wrapper.find('.app-sidebar').exists()).toBe(true)
+    expect(wrapper.get('.sidebar-brand').text()).toContain('FastAPI Admin')
+    expect(wrapper.find('.sidebar-brand__icon').exists()).toBe(true)
     expect(wrapper.find('.sidebar-toggle').exists()).toBe(true)
     expect(wrapper.get('.language-toggle').attributes('title')).toBe('切换到 English')
     expect(wrapper.find('.app-sidebar').text()).toContain('演示')
@@ -152,6 +154,7 @@ describe('BasicLayout', () => {
     expect(usePreferencesStore(pinia).language).toBe('en-US')
 
     await wrapper.get('.sidebar-toggle').trigger('click')
+    await nextTick()
     expect(wrapper.find('.app-sidebar').classes()).toContain('n-layout-sider--collapsed')
 
     wrapper.unmount()

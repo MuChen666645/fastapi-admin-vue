@@ -611,7 +611,9 @@ body {
 
 .app-sidebar {
   position: relative;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   color: var(--app-color-sidebar-text);
   background: linear-gradient(
     135deg,
@@ -623,16 +625,71 @@ body {
 }
 
 .app-sidebar .n-layout-sider-scroll-container {
-  min-height: 100%;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
   background: inherit;
+}
+
+.sidebar-brand {
+  display: flex;
+  flex: 0 0 64px;
+  align-items: center;
+  gap: 10px;
+  padding:18px;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  color: var(--app-color-sidebar-text);
+}
+
+.sidebar-brand__icon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 9px;
+  color: var(--app-color-sidebar-accent);
+  background: rgb(255 255 255 / 10%);
+}
+
+.sidebar-brand__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.sidebar-brand__copy strong {
+  overflow: hidden;
+  color: var(--app-color-sidebar-text);
+  font-size: 14px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-brand__copy span {
+  overflow: hidden;
+  color: var(--app-color-sidebar-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-content {
   display: flex;
-  min-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   flex-direction: column;
   gap: 4px;
-  padding: 24px 12px 180px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 18px 12px 24px;
+  scrollbar-color: rgb(255 255 255 / 24%) transparent;
+  scrollbar-width: thin;
 }
 
 .menu-caption {
@@ -705,6 +762,15 @@ body {
 .app-sidebar.n-layout-sider--collapsed .menu-caption,
 .app-sidebar.n-layout-sider--collapsed .server-status {
   display: none;
+}
+
+.app-sidebar.n-layout-sider--collapsed .sidebar-brand__copy {
+  display: none;
+}
+
+.app-sidebar.n-layout-sider--collapsed .sidebar-brand {
+  justify-content: center;
+  // padding: 0;
 }
 
 .app-sidebar.n-layout-sider--collapsed .sidebar-content {
