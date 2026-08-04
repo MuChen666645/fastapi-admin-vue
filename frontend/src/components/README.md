@@ -30,4 +30,6 @@ const handleSubmit = async (model: FormModel): Promise<void> => {
 }
 ```
 
-`AppForm` 的完整配置、动态分组和自定义字段用法见 [AppForm/README.md](./AppForm/README.md)。可直接访问 `/demo/features/form` 查看交互演示。
+`AppForm` 的完整配置、动态分组和自定义字段用法见 [AppForm/README.md](./AppForm/README.md)。
+
+`AppSearchForm` 的搜索字段、折叠条件、回车策略和动作区用法见 [AppSearchForm/README.md](./AppSearchForm/README.md)。可访问 `/demo/features/form` 和 `/demo/features/search-form` 查看交互演示。

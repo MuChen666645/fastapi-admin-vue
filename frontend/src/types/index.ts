@@ -37,6 +37,18 @@ export type {
   FormDemoReviewerRole,
 } from './form-demo'
 export type {
+  AppSearchFormActionAlign,
+  AppSearchFormExposed,
+  AppSearchFormLayout,
+  AppSearchFormProps,
+  AppSearchFormValidationPayload,
+} from './search-form'
+export type {
+  SearchFormDemoModel,
+  SearchFormDemoRecord,
+  SearchFormDemoStatus,
+} from './search-form-demo'
+export type {
   DashboardActivity,
   DashboardAnnouncement,
   DashboardCardTone,

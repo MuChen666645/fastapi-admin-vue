@@ -8,6 +8,7 @@ import NotFoundView from '@/views/error/404.vue'
 import OfflineView from '@/views/error/offline.vue'
 import ServerErrorView from '@/views/error/500.vue'
 import FormDemoView from '@/views/demo/form/index.vue'
+import SearchFormDemoView from '@/views/demo/search-form/index.vue'
 import SystemConfigView from '@/views/system/config/index.vue'
 
 export const protectedRoutes: RouteRecordRaw[] = [
@@ -92,6 +93,21 @@ export const protectedRoutes: RouteRecordRaw[] = [
                   requiresAuth: true,
                   noCache: false,
                   icon: 'CreateOutline',
+                  menuType: 'C',
+                  link: null,
+                },
+              },
+              {
+                path: 'search-form',
+                name: 'demo-search-form',
+                component: SearchFormDemoView,
+                meta: {
+                  title: '搜索表单',
+                  menu: true,
+                  hideBreadcrumb: false,
+                  requiresAuth: true,
+                  noCache: false,
+                  icon: 'SearchOutline',
                   menuType: 'C',
                   link: null,
                 },

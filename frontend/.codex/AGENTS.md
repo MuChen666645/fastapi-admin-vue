@@ -31,7 +31,7 @@
 ## 当前路由事实
 
 - `src/router/index.ts` 创建 Router、注册静态路由和认证守卫，并暴露动态路由注册/清理能力。
-- `src/router/modules/public.ts` 提供双语登录页，`protected.ts` 提供认证入口、修改密码页、`system-settings` 和“演示 / 功能 / 表单、缺省页 / 403、404、500、网络离线”静态菜单树，`error.ts` 提供 403、404、500 和离线页面。
+- `src/router/modules/public.ts` 提供双语登录页，`protected.ts` 提供认证入口、修改密码页、`system-settings` 和“演示 / 功能 / 表单、搜索表单、缺省页 / 403、404、500、网络离线”静态菜单树，`error.ts` 提供 403、404、500 和离线页面。
 - 认证后通过 `GET /api/v1/user/routes` 获取业务路由，并将通过校验的路由添加到 `app` 布局下。
 - 项目不再使用 `VITE_ROUTE_MODE`，不再维护前端静态业务路由清单。
 

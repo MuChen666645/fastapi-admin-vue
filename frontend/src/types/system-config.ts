@@ -120,6 +120,7 @@ export type TranslationKey =
   | 'route.demo'
   | 'route.demo.features'
   | 'route.demo.features.form'
+  | 'route.demo.features.searchForm'
   | 'route.defaultPages'
   | 'route.defaultPages.forbidden'
   | 'route.defaultPages.notFound'
