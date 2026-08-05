@@ -10,6 +10,7 @@ export type {
 } from './api'
 export type { BreadcrumbItem } from './breadcrumb'
 export type { ErrorPageProps } from './error'
+export type { AppUpdateManifest, AppUpdateOptions } from './app-update'
 export type {
   AppFormExposed,
   AppFormField,

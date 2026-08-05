@@ -1,5 +1,6 @@
 export { useDocumentTitle } from './useDocumentTitle'
 export { useECharts } from './useECharts'
+export { useAppUpdate } from './useAppUpdate'
 export { useLottie } from './useLottie'
 export { useLocale } from './useLocale'
 export { useRouteCache } from './useRouteCache'

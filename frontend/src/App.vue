@@ -11,6 +11,7 @@ import {
 import { RouterView } from 'vue-router'
 
 import GlobalLoading from './components/GlobalLoading/index.vue'
+import AppUpdatePrompt from './components/AppUpdatePrompt/index.vue'
 import RequestMessageBridge from './components/RequestMessageBridge/index.vue'
 import RouterLoadingBar from './components/RouterLoadingBar/index.vue'
 import WatermarkOverlay from './components/WatermarkOverlay/index.vue'
@@ -98,6 +99,7 @@ watch(
         <NDialogProvider>
           <NNotificationProvider>
             <NLoadingBarProvider :loading-bar-style="loadingBarStyle">
+              <AppUpdatePrompt />
               <RequestMessageBridge />
               <GlobalLoading />
               <RouterLoadingBar />

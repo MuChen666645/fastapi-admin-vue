@@ -35,6 +35,7 @@ main.ts
 | `src/api/<domain>/index.ts`           | 领域请求函数和请求参数编码                                         |
 | `src/api/<domain>/parsers.ts`         | 对 `unknown` 响应进行运行时校验和转换                              |
 | `src/utils/request.ts`                | Alova 实例、基地址、Authorization、响应解包、错误归一化、401 刷新  |
+| `src/utils/app-update.ts`              | 同源构建清单校验、版本清单读取和整页刷新基础能力                 |
 | `src/utils/request-feedback.ts`       | 注册并触发全局请求 Message 回调                                  |
 | `src/utils/guards/api.ts`             | 基础值和统一响应结构守卫                                           |
 | `src/utils/guards/route.ts`           | 动态路由路径、名称、菜单类型和外链的安全校验                       |
@@ -47,9 +48,9 @@ main.ts
 | `src/stores/modules/route-loading.ts` | 全屏/内容区 Loading 状态和最短显示时间                             |
 | `src/stores/modules/preferences.ts` | 外观、布局、通用偏好和 `localStorage` 持久化                   |
 | `src/stores/modules/layout-settings.ts` | 统一偏好 Store 的旧布局兼容导出                               |
-| `src/hooks`                           | Lottie、主题、语言、ECharts 和路由缓存等依赖上下文的可复用行为     |
+| `src/hooks`                           | Lottie、主题、语言、ECharts、路由缓存和版本检查等依赖上下文的可复用行为 |
 | `src/utils/index.ts`                  | 无生命周期的公共工具包入口：图标、本地化、主题选项、Lottie 和 Moment 日期函数 |
-| `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑、上传等跨页面组件 |
+| `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑、上传和更新提示等跨页面组件 |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
 | `src/views`                           | 语义化路由级页面；页面私有业务组件放在对应页面的 `components/`     |
 | `src/types`                           | API DTO、路由、Store、传输、页面和测试类型；所有类型声明的唯一归属 |
@@ -215,4 +216,4 @@ App.vue
   -> BasicLayout and system settings
 ```
 
-`useLocale` 只负责前端界面文案；它不翻译或修改后端业务数据、权限码、菜单契约和错误字段。`useDocumentTitle` 只对已知静态路由标题使用词典，动态标题保持原文。`autoUpdate` 没有隐藏网络请求，避免在没有后端契约时制造假接口。
+`useLocale` 只负责前端界面文案；它不翻译或修改后端业务数据、权限码、菜单契约和错误字段。`useDocumentTitle` 只对已知静态路由标题使用词典，动态标题保持原文。`autoUpdate` 只读取 Vite 生成的同源 `version.json`，这是前端部署元数据，不是业务接口。

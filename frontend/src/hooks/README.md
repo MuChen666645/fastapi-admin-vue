@@ -5,7 +5,7 @@
 ## 公共入口
 
 ```ts
-import { useECharts, useLocale, useLottie, useRouteCache, useTheme } from '@/hooks'
+import { useAppUpdate, useECharts, useLocale, useLottie, useRouteCache, useTheme } from '@/hooks'
 ```
 
 `useDocumentTitle` 通常只在 `App.vue` 调用；`useRouteCache` 只在 `BasicLayout` 使用。纯函数不放在 hooks 中，图标解析已迁移到 [工具包](../utils/README.md)。
@@ -15,6 +15,7 @@ import { useECharts, useLocale, useLottie, useRouteCache, useTheme } from '@/hoo
 | Hook               | 参数                                              | 返回值                                          | 适用场景                           |
 | ------------------ | ------------------------------------------------- | ----------------------------------------------- | ---------------------------------- |
 | `useDocumentTitle` | 无                                                | `void`                                          | 监听路由和语言，更新浏览器标题。   |
+| `useAppUpdate`     | 可选启用 Ref、检查间隔和立即检查配置              | 更新状态、检查、启停和刷新方法                  | 轮询构建版本清单并协调整页刷新。   |
 | `useECharts`       | `Ref<HTMLElement \| null>`、`() => EChartsOption` | `renderChart`                                   | 初始化、更新和销毁 ECharts。       |
 | `useLocale`        | 无                                                | `language`、`t`                                 | 读取界面语言和类型安全的词典文案。 |
 | `useLottie`        | 容器 Ref、动画数据、可选项                        | `animation`、`load`、`play`、`pause`、`destroy` | 管理 Lottie 生命周期。             |
@@ -49,6 +50,18 @@ const { items, loading, pagination, reset } = usePagination(
 Hook 默认在组件挂载后加载第 1 页；传入 `immediate: false` 可改为手动调用 `load()`。切换页码会自动请求，切换页大小会回到第 1 页并请求。`reset()` 会恢复初始页码和页大小后请求，`reset({ reload: false })` 只恢复状态。`reload` 和 `refresh` 是 `load` 的语义别名。
 
 `pagination` 使用 `itemCount` 驱动 Naive UI，不同时传入 `pageCount`，避免组件重复计算告警。后端返回数据为空但当前页已越界时，Hook 会自动请求最后一页；过期请求的结果不会覆盖较新的结果。`error` 仅保存当前请求错误，失败时保留已有列表数据，页面可据此展示重试操作。
+
+## useAppUpdate
+
+`useAppUpdate` 依赖浏览器生命周期和 `usePreferencesStore` 的 `autoUpdate` 偏好，通过 `version.json` 检查构建 ID。它不调用后端业务 API，检查失败会保存在 `lastError` 中但不会中断页面；启动时会立即检查，随后按默认 5 分钟间隔轮询，卸载或停用时会清理定时器并中止请求。
+
+```ts
+const { hasUpdate, reload } = useAppUpdate({
+  enabled: toRef(preferences, 'autoUpdate'),
+})
+```
+
+应用壳层使用 `AppUpdatePrompt` 显示更新提示。`reload()` 只负责调用浏览器的 `window.location.reload()`，不会自动刷新或清理用户会话。
 
 ## useDocumentTitle
 

@@ -23,12 +23,12 @@ src/
 │   ├── user/index.ts、parsers.ts
 │   └── index.ts
 ├── components/
-│   ├── AppBreadcrumb/、AppForm/、AppSearchForm/、AppUpload/
+│   ├── AppBreadcrumb/、AppForm/、AppSearchForm/、AppUpload/、AppUpdatePrompt/
 │   ├── ContentLoading/、GlobalLoading/、WatermarkOverlay/
 │   ├── RequestMessageBridge/、RouterLoadingBar/
 │   └── README.md
 ├── hooks/
-│   ├── useDocumentTitle.ts、useECharts.ts、useLocale.ts
+│   ├── useAppUpdate.ts、useDocumentTitle.ts、useECharts.ts、useLocale.ts
 │   ├── useLottie.ts、useRouteCache.ts、useTheme.ts
 │   ├── index.ts
 │   └── README.md
@@ -43,7 +43,7 @@ src/
 │   └── index.ts
 ├── types/
 ├── utils/
-│   ├── index.ts、icon.ts、i18n.ts、lottie.ts、preferences.ts、route-menu.ts
+│   ├── index.ts、app-update.ts、icon.ts、i18n.ts、lottie.ts、preferences.ts、route-menu.ts
 │   ├── request.ts、request-feedback.ts、loginPreferences.ts
 │   └── guards/api.ts、route.ts
 ├── views/
@@ -60,9 +60,9 @@ src/
 
 `zh-CN` 和 `en-US` 由 `src/utils/i18n.ts` 提供词典，纯工具通过 `src/utils/index.ts` 的 `@/utils` 入口复用；`useLocale` 暴露给设置页和公共壳层。静态路由标题由 `translateRouteTitle` 翻译；未收录的后端动态标题保持服务端原文。`dynamicTitle` 控制浏览器标题，`watermark` 只在已认证用户的工作区显示姓名水印。
 
-`content`、`workspace`、`sticky` 分别表示内容区内部滚动、右侧工作区整体滚动、仅顶部栏和标签栏固定。`pageTransition` 控制顶部进度条，`loadingAnimation` 控制全屏和内容区 Lottie。`autoUpdate` 当前只持久化配置，不调用不存在的更新接口；真正接入前必须核对更新清单地址和版本契约。
+`content`、`workspace`、`sticky` 分别表示内容区内部滚动、右侧工作区整体滚动、仅顶部栏和标签栏固定。`pageTransition` 控制顶部进度条，`loadingAnimation` 控制全屏和内容区 Lottie。`autoUpdate` 控制 `AppUpdatePrompt` 对同源 `version.json` 的轮询；该清单由 Vite 正式构建生成，不属于后端业务 API，检查失败不会阻断页面。
 
-`usePreferencesStore` is the single runtime source for appearance, layout, and general preferences. `useLayoutSettingsStore` remains only as a compatibility alias. The UI dictionary supports `zh-CN` and `en-US`; static shell titles are translated, while unknown backend titles are preserved. Scroll modes are `content`, `workspace`, and `sticky`. The update-check option stores intent only until a real update manifest contract is verified.
+`usePreferencesStore` is the single runtime source for appearance, layout, and general preferences. `useLayoutSettingsStore` remains only as a compatibility alias. The UI dictionary supports `zh-CN` and `en-US`; static shell titles are translated, while unknown backend titles are preserved. Scroll modes are `content`, `workspace`, and `sticky`. The `autoUpdate` option controls polling of the Vite-generated same-origin `version.json` deployment manifest; failures do not block the page.
 
 ## 构建与测试脚本
 

@@ -5,7 +5,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import UnoCSS from 'unocss/vite'
-import { defineConfig, loadEnv, type ConfigEnv, type UserConfig } from 'vite'
+import { defineConfig, loadEnv, type ConfigEnv, type Plugin, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
@@ -20,6 +20,7 @@ const buildOutputDirs: Record<string, string> = {
   production: 'dist',
   staging: 'dist-staging',
 }
+const appUpdateManifestFile = 'version.json'
 
 const buildMinifyOptions = {
   compress: {
@@ -91,6 +92,18 @@ const manualChunks = (id: string): string | undefined => {
   return normalizedId.includes('/node_modules/naive-ui/') ? 'naive' : undefined
 }
 
+const createAppUpdateManifestPlugin = (buildId: string): Plugin => ({
+  name: 'app-update-manifest',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: appUpdateManifestFile,
+      source: `${JSON.stringify({ buildId, builtAt: new Date().toISOString() }, null, 2)}\n`,
+    })
+  },
+})
+
 export const createViteConfig = ({ command, mode, isPreview = false }: ConfigEnv): UserConfig => {
   const env = loadEnv(mode, frontendRoot, 'VITE_')
   const isTest = mode === 'test'
@@ -99,9 +112,13 @@ export const createViteConfig = ({ command, mode, isPreview = false }: ConfigEnv
   const apiProxy = createApiProxy(env.VITE_API_PROXY_TARGET, apiProxyEnabled)
   const basePath = readBasePath(env.VITE_BASE_PATH)
   const sourcemap = readBoolean(env.VITE_SOURCEMAP, false)
+  const buildId = command === 'build' ? `build-${Date.now().toString(36)}` : 'development'
 
   return {
     base: basePath,
+    define: {
+      __APP_BUILD_ID__: JSON.stringify(buildId),
+    },
     plugins: [
       vue(),
       vueJsx(),
@@ -128,6 +145,7 @@ export const createViteConfig = ({ command, mode, isPreview = false }: ConfigEnv
               dts: path.resolve(frontendRoot, 'components.d.ts'),
               resolvers: [NaiveUiResolver()],
             }),
+            createAppUpdateManifestPlugin(buildId),
           ]
         : []),
       ...(isDevelopmentServer && !isTest ? [vueDevTools()] : []),

@@ -7,6 +7,14 @@ export {
   playLottieAnimation,
 } from './lottie'
 export { accentColorOptions, findAccentColor, radiusOptions } from './preferences'
+export {
+  APP_BUILD_ID,
+  APP_UPDATE_MANIFEST_FILE,
+  fetchAppUpdateManifest,
+  forceReloadApp,
+  getAppUpdateManifestUrl,
+  isAppUpdateManifest,
+} from './app-update'
 export { resolveRouteMenuState } from './route-menu'
 export {
   isSafeExternalLink,

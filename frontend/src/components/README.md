@@ -36,6 +36,8 @@ const handleSubmit = async (model: FormModel): Promise<void> => {
 
 `AppUpload` 的文件列表绑定、拖拽触发、上传校验和生命周期事件见 [AppUpload/README.md](./AppUpload/README.md)。组件不绑定具体后端上传接口。
 
+`AppUpdatePrompt` 由应用壳层统一挂载，负责轮询同源构建版本清单并提供整页刷新操作，详见 [AppUpdatePrompt/README.md](./AppUpdatePrompt/README.md)。
+
 ## 公共组件索引
 
 | 组件                   | 用途                  | 说明                                                               |
@@ -44,13 +46,14 @@ const handleSubmit = async (model: FormModel): Promise<void> => {
 | `AppForm`              | 标准提交表单          | [AppForm/README.md](./AppForm/README.md)                           |
 | `AppSearchForm`        | 标准搜索表单          | [AppSearchForm/README.md](./AppSearchForm/README.md)               |
 | `AppUpload`            | 标准文件上传          | [AppUpload/README.md](./AppUpload/README.md)                       |
+| `AppUpdatePrompt`      | 前端更新提示          | [AppUpdatePrompt/README.md](./AppUpdatePrompt/README.md)           |
 | `ContentLoading`       | 布局内容区 Loading    | [ContentLoading/README.md](./ContentLoading/README.md)             |
 | `GlobalLoading`        | 全屏导航 Loading      | [GlobalLoading/README.md](./GlobalLoading/README.md)               |
 | `RequestMessageBridge` | 请求错误 Message 桥接 | [RequestMessageBridge/README.md](./RequestMessageBridge/README.md) |
 | `RouterLoadingBar`     | 路由顶部进度条        | [RouterLoadingBar/README.md](./RouterLoadingBar/README.md)         |
 | `WatermarkOverlay`     | 登录用户水印          | [WatermarkOverlay/README.md](./WatermarkOverlay/README.md)         |
 
-除 `AppForm`、`AppSearchForm` 和 `AppUpload` 外，其余组件均为应用壳层组件，通常由 `App.vue` 或 `BasicLayout` 统一挂载，不建议在业务页面重复创建。
+除 `AppForm`、`AppSearchForm` 和 `AppUpload` 外，其余组件均为应用壳层组件，通常由 `App.vue` 或 `BasicLayout` 统一挂载，不建议在业务页面重复创建。`AppUpdatePrompt` 只应在 `App.vue` 挂载一次。
 
 ## 新增组件检查清单
 

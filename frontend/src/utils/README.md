@@ -18,7 +18,8 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 | `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation` | `@/utils`                  | 管理 Lottie 实例的基础动作。                     |
 | `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。         |
 | `createMoment`、`formatDate`、`formatDateTime` 等                                              | `@/utils`                  | 统一 Moment locale、格式化、严格解析和日期范围。 |
-| `resolveRouteMenuState`                                                                         | `@/utils`                  | 根据当前路由匹配结果同步菜单选中项和展开项。     |
+| `resolveRouteMenuState`                                                                        | `@/utils`                  | 根据当前路由匹配结果同步菜单选中项和展开项。     |
+| `isAppUpdateManifest`、`fetchAppUpdateManifest`、`forceReloadApp`                              | `@/utils`                  | 校验同源构建清单、读取版本和执行整页刷新。       |
 | `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。           |
 | `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。     |
 | `guards/api`                                                                                   | `@/utils/guards/api`       | API 响应和值的运行时校验。                       |
@@ -79,10 +80,17 @@ const todayRange = getDateRange(parsedValue)
 ```ts
 import { resolveRouteMenuState } from '@/utils'
 
-const state = resolveRouteMenuState(menuItems, route.matched.map(({ name }) => name))
+const state = resolveRouteMenuState(
+  menuItems,
+  route.matched.map(({ name }) => name),
+)
 ```
 
 函数从最深的已匹配路由开始查找菜单项；找不到菜单项时返回空的选中项和展开项，不会修改路由或菜单状态。
+
+## 前端更新清单
+
+正式构建会在输出目录生成同源 `version.json`，其中包含构建 ID 和构建时间。`fetchAppUpdateManifest` 使用 `cache: 'no-store'` 与时间戳查询参数，避免 CDN 或浏览器复用旧清单；清单格式必须先经过 `isAppUpdateManifest` 校验。该静态部署元数据是应用壳层基础设施，不属于后端业务 API，也不携带认证令牌。
 
 ## Lottie 基础函数
 

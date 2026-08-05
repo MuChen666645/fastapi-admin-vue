@@ -117,9 +117,9 @@ The `/system/settings` page is backed by one `usePreferencesStore` and persists 
 
 The app header and login-page toolbar include a language toggle, so users can switch between `zh-CN` and `en-US` without opening system settings. Dashboard cards, charts, and activity copy follow the selected preference.
 
-“定时检查更新”当前只保存用户意图，不会伪造更新请求；接入前必须提供真实的 update manifest URL、版本格式和错误处理契约。复制偏好设置只包含本地 UI 配置，不包含 Token、密码或用户会话凭据。
+“定时检查更新”控制应用壳层对同源 `version.json` 的轮询。正式构建会生成唯一构建 ID，发现版本变化后显示更新提示；用户点击“立即刷新”才会执行整页刷新。该清单属于前端部署元数据，不依赖后端业务接口。复制偏好设置只包含本地 UI 配置，不包含 Token、密码或用户会话凭据。
 
-The update-check switch currently persists user intent only. It does not invent an update API; a real update manifest URL, version format, and error contract are required before runtime checks are enabled. Copying preferences exports UI settings only and never session credentials.
+The update-check switch controls polling of the same-origin `version.json` file used by the application shell. Production builds generate a unique build ID; when it changes, the app shows an update prompt, and a full reload occurs only after the user clicks “Refresh now”. This deployment metadata does not depend on a business API. Copying preferences exports UI settings only and never session credentials.
 
 ## 认证与 API
 
