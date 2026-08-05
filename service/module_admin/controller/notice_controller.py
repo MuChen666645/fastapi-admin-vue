@@ -8,9 +8,11 @@ from module_admin.entity.dto.notice_dto import (
     NoticeCreateDto,
     NoticeDto,
     NoticeInboxDto,
+    NoticeLatestDto,
     NoticeUpdateDto,
 )
 from module_admin.entity.dto.response_dto import ApiResponseDto
+from module_admin.entity.notice_type import NoticeType
 from module_admin.service.notice_service import NoticeService
 
 
@@ -29,7 +31,7 @@ class NoticeController:
     async def list_notices(
         request: Request,
         title: str | None = Query(default=None, description="公告标题，支持模糊查询"),
-        notice_type: str | None = Query(default=None, description="公告类型"),
+        notice_type: NoticeType | None = Query(default=None, description="公告类型"),
         status: str | None = Query(
             default=None,
             pattern="^[01]$",
@@ -66,6 +68,16 @@ class NoticeController:
     ):
         """查询当前用户收件箱通知。"""
         return await NoticeService.list_inbox(request, unread_only, params)
+
+    @notice.get(
+        "/latest",
+        summary="查询三类最新通知",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[NoticeLatestDto]}},
+    )
+    async def latest(request: Request):
+        """查询系统通知、审批消息和报警提醒各自最新的五条记录。"""
+        return await NoticeService.list_latest(request)
 
     @notice.post(
         "/{notice_id}/read",

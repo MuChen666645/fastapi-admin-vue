@@ -13,6 +13,7 @@ from module_admin.dao.tenant_scope import (
 )
 from module_admin.entity.do.notice_do import NoticeDo, NoticeRecipientDo
 from module_admin.entity.do.user_do import UserDo
+from module_admin.entity.notice_type import NoticeType
 from utils.time_utils import now_utc8_naive
 
 
@@ -23,7 +24,7 @@ class NoticeDao:
     async def list_notices(
         request: Request,
         title: str | None,
-        notice_type: str | None,
+        notice_type: NoticeType | None,
         status: str | None,
         params: Params,
     ):
@@ -33,7 +34,7 @@ class NoticeDao:
         if title:
             query = query.where(NoticeDo.notice_title.contains(title))
         if notice_type:
-            query = query.where(NoticeDo.notice_type == notice_type)
+            query = query.where(NoticeDo.notice_type == notice_type.value)
         if status is not None:
             query = query.where(NoticeDo.status == status)
         return await paginate(request.state.mysql, query, params=params)
@@ -48,11 +49,41 @@ class NoticeDao:
         return item
 
     @staticmethod
+    def _visible_query(request: Request):
+        """构造当前用户在当前租户可见的通知查询。"""
+        user_id = getattr(request.state, "user_id", None)
+        recipient = NoticeRecipientDo.user_id == user_id
+        has_recipients = exists(
+            select(NoticeRecipientDo.notice_id)
+            .where(NoticeRecipientDo.notice_id == NoticeDo.id)
+            .correlate(NoticeDo)
+        )
+        return (
+            select(NoticeDo, NoticeRecipientDo.read_at)
+            .outerjoin(
+                NoticeRecipientDo,
+                and_(
+                    NoticeRecipientDo.notice_id == NoticeDo.id,
+                    recipient,
+                ),
+            )
+            .where(
+                NoticeDo.status == "1",
+                tenant_clause(request, NoticeDo),
+                or_(~has_recipients, NoticeRecipientDo.user_id == user_id),
+            )
+        )
+
+    @staticmethod
     async def create(data, request: Request) -> NoticeDo:
         """创建通知公告实体。"""
         tenant_id = require_tenant_id(request)
+        notice_data = data.model_dump(
+            exclude={"recipient_user_ids", "delivery_channels"}
+        )
+        notice_data["notice_type"] = data.notice_type.value
         item = NoticeDo(
-            **data.model_dump(exclude={"recipient_user_ids", "delivery_channels"}),
+            **notice_data,
             create_by=getattr(request.state, "user_id", None),
             tenant_id=tenant_id,
         )
@@ -82,28 +113,8 @@ class NoticeDao:
     @staticmethod
     async def list_inbox(request: Request, unread_only: bool, params: Params):
         """查询当前用户可见通知及已读状态。"""
-        user_id = getattr(request.state, "user_id", None)
-        recipient = NoticeRecipientDo.user_id == user_id
-        has_recipients = exists(
-            select(NoticeRecipientDo.notice_id).where(
-                NoticeRecipientDo.notice_id == NoticeDo.id
-            )
-        )
-        query = (
-            select(NoticeDo, NoticeRecipientDo.read_at)
-            .outerjoin(
-                NoticeRecipientDo,
-                and_(
-                    NoticeRecipientDo.notice_id == NoticeDo.id,
-                    recipient,
-                ),
-            )
-            .where(
-                NoticeDo.status == "1",
-                tenant_clause(request, NoticeDo),
-                or_(~has_recipients, NoticeRecipientDo.user_id == user_id),
-            )
-            .order_by(NoticeDo.publish_time.desc(), NoticeDo.id.desc())
+        query = NoticeDao._visible_query(request).order_by(
+            NoticeDo.publish_time.desc(), NoticeDo.id.desc()
         )
         if unread_only:
             query = query.where(NoticeRecipientDo.read_at.is_(None))
@@ -122,6 +133,27 @@ class NoticeDao:
             for notice, read_at in result.all()
         ]
         return create_page(items, total=total, params=params)
+
+    @staticmethod
+    async def list_latest(request: Request) -> dict[str, list[dict]]:
+        """查询三类通知中各自最新的五条记录。"""
+        latest: dict[str, list[dict]] = {}
+        for notice_type in NoticeType:
+            query = (
+                NoticeDao._visible_query(request)
+                .where(NoticeDo.notice_type == notice_type.value)
+                .order_by(NoticeDo.publish_time.desc(), NoticeDo.id.desc())
+                .limit(5)
+            )
+            result = await request.state.mysql.execute(query)
+            latest[notice_type.value] = [
+                {
+                    **notice.model_dump(),
+                    "read_at": read_at,
+                }
+                for notice, read_at in result.all()
+            ]
+        return latest
 
     @staticmethod
     async def mark_read(notice_id: int, request: Request) -> bool:
@@ -161,7 +193,10 @@ class NoticeDao:
         tenant_id = require_tenant_id(request)
         if item is None or item.tenant_id != tenant_id:
             return None
-        item.sqlmodel_update(data.model_dump(exclude_unset=True))
+        update_data = data.model_dump(exclude_unset=True)
+        if data.notice_type is not None:
+            update_data["notice_type"] = data.notice_type.value
+        item.sqlmodel_update(update_data)
         return item
 
     @staticmethod

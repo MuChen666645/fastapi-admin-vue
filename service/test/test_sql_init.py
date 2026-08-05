@@ -30,6 +30,22 @@ def test_organization_and_dictionary_seed_data_exists() -> None:
     assert "'sys_yes_no'" in sql
 
 
+def test_notice_seed_data_covers_the_three_message_types() -> None:
+    sql = SEED_SQL_PATH.read_text(encoding="utf-8")
+    notices_block = sql[
+        sql.index("INSERT IGNORE INTO notices") : sql.index(
+            "-- ---------------------------------------------------------------------------\n-- 4. 权限目录"
+        )
+    ]
+
+    assert "tenant_id, notice_title, notice_type" in notices_block
+    assert notices_block.count("'system'") == 5
+    assert notices_block.count("'approval'") == 5
+    assert notices_block.count("'alarm'") == 5
+    assert "(400, @seed_tenant_id" in notices_block
+    assert "(414, @seed_tenant_id" in notices_block
+
+
 def test_foreign_key_upgrade_sql_is_idempotent() -> None:
     sql = SCHEMA_SQL_PATH.read_text(encoding="utf-8")
 
@@ -78,14 +94,14 @@ def test_tenant_scoped_seed_rows_include_the_default_tenant() -> None:
         "dict_types",
         "dict_data",
     ):
-        match = re.search(
-            rf"INSERT IGNORE INTO {table_name} \(\s*tenant_id\b", sql
-        )
+        match = re.search(rf"INSERT IGNORE INTO {table_name} \(\s*tenant_id\b", sql)
         assert match is not None, table_name
 
-    users_block = sql[sql.index("INSERT IGNORE INTO users") : sql.index(
-        "INSERT IGNORE INTO tenant_members"
-    )]
+    users_block = sql[
+        sql.index("INSERT IGNORE INTO users") : sql.index(
+            "INSERT IGNORE INTO tenant_members"
+        )
+    ]
     assert "tenant_id" in users_block
     assert "(1, CURRENT_TIMESTAMP, 'admin'" in users_block
 

@@ -95,6 +95,7 @@ def test_admin_operation_routes_are_registered() -> None:
         "/api/v1/config/list",
         "/api/v1/config/value/{config_key}",
         "/api/v1/notice/list",
+        "/api/v1/notice/latest",
         "/api/v1/job/list",
         "/api/v1/job/{job_id}/run",
     } <= paths

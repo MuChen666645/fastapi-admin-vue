@@ -154,7 +154,31 @@ WHERE u.username IN ('admin', 'test')
   AND u.tenant_id = @seed_tenant_id;
 
 -- ---------------------------------------------------------------------------
--- 3. 权限目录
+-- 3. 消息中心通知种子
+-- ---------------------------------------------------------------------------
+
+INSERT IGNORE INTO notices (
+    id, tenant_id, notice_title, notice_type, notice_content, status,
+    publish_time, create_by, create_time, update_time
+) VALUES
+    (400, @seed_tenant_id, '平台服务升级通知', 'system', '平台将进行例行服务升级，请提前保存正在编辑的内容。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (401, @seed_tenant_id, '系统安全策略更新', 'system', '系统安全策略已更新，请按照最新要求完成账号安全设置。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (402, @seed_tenant_id, '数据备份完成通知', 'system', '本次系统数据备份已完成，备份任务运行正常。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (403, @seed_tenant_id, '版本功能更新说明', 'system', '消息中心已支持系统通知、审批消息和报警提醒三类消息。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (404, @seed_tenant_id, '欢迎使用管理平台', 'system', '欢迎使用 FastAPI Admin 管理平台。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (405, @seed_tenant_id, '采购申请待审批', 'approval', '有新的采购申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (406, @seed_tenant_id, '报销申请待审批', 'approval', '有新的报销申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (407, @seed_tenant_id, '请假申请待审批', 'approval', '有新的请假申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (408, @seed_tenant_id, '合同申请待审批', 'approval', '有新的合同申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (409, @seed_tenant_id, '用章申请待审批', 'approval', '有新的用章申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (410, @seed_tenant_id, '接口响应时间异常', 'alarm', '检测到接口响应时间异常，请检查相关服务运行状态。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (411, @seed_tenant_id, '磁盘空间不足提醒', 'alarm', '检测到服务器磁盘空间不足，请及时清理或扩容。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (412, @seed_tenant_id, '任务执行失败提醒', 'alarm', '检测到定时任务执行失败，请查看任务日志。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (413, @seed_tenant_id, 'Redis 连接异常提醒', 'alarm', '检测到 Redis 连接异常，请检查基础设施和网络状态。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (414, @seed_tenant_id, '数据库连接池预警', 'alarm', '检测到数据库连接池使用率较高，请关注服务负载。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- ---------------------------------------------------------------------------
+-- 4. 权限目录
 -- ---------------------------------------------------------------------------
 
 INSERT IGNORE INTO permissions (
@@ -243,7 +267,7 @@ SET api_path = '/user/{user_id}/reset-password',
 WHERE code = 'system:user:resetPwd';
 
 -- ---------------------------------------------------------------------------
--- 4. 菜单树和按钮菜单
+-- 5. 菜单树和按钮菜单
 -- ---------------------------------------------------------------------------
 
 INSERT IGNORE INTO menu (
@@ -379,7 +403,7 @@ WHERE r.code = @seed_admin_role_code
   AND r.tenant_id = @seed_tenant_id;
 
 -- ---------------------------------------------------------------------------
--- 5. 字典数据
+-- 6. 字典数据
 -- ---------------------------------------------------------------------------
 
 INSERT IGNORE INTO dict_types (

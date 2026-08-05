@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from module_admin.entity.notice_type import NoticeType
+
 
 class NoticeCreateDto(BaseModel):
     """创建通知公告。"""
@@ -11,11 +13,9 @@ class NoticeCreateDto(BaseModel):
     notice_title: str = Field(
         title="公告标题", min_length=1, max_length=100, description="公告标题"
     )
-    notice_type: str = Field(
+    notice_type: NoticeType = Field(
         title="公告类型",
-        default="notice",
-        min_length=1,
-        max_length=20,
+        default=NoticeType.SYSTEM,
         description="公告类型",
     )
     notice_content: str = Field(title="公告内容", min_length=1, description="公告内容")
@@ -59,11 +59,9 @@ class NoticeUpdateDto(BaseModel):
         max_length=100,
         description="公告标题",
     )
-    notice_type: str | None = Field(
+    notice_type: NoticeType | None = Field(
         title="公告类型",
         default=None,
-        min_length=1,
-        max_length=20,
         description="公告类型",
     )
     notice_content: str | None = Field(
@@ -82,6 +80,8 @@ class NoticeDto(NoticeCreateDto):
 
     model_config = ConfigDict(from_attributes=True)
 
+    # 响应保留字符串类型，确保历史自定义类型仍可被管理员查看；新建和修改只接受 NoticeType。
+    notice_type: str = Field(title="公告类型", description="公告类型")
     id: int = Field(title="公告编号", description="公告编号")
     create_by: int | None = Field(title="创建人", description="创建人")
     create_time: datetime = Field(title="创建时间", description="创建时间")
@@ -99,3 +99,17 @@ class NoticeInboxDto(BaseModel):
     notice_content: str = Field(description="公告内容")
     publish_time: datetime | None = Field(description="发布时间")
     read_at: datetime | None = Field(description="阅读时间")
+
+
+class NoticeLatestDto(BaseModel):
+    """消息中心三类最新通知。"""
+
+    system: list[NoticeInboxDto] = Field(
+        default_factory=list, description="最新系统通知，最多 5 条"
+    )
+    approval: list[NoticeInboxDto] = Field(
+        default_factory=list, description="最新审批消息，最多 5 条"
+    )
+    alarm: list[NoticeInboxDto] = Field(
+        default_factory=list, description="最新报警提醒，最多 5 条"
+    )

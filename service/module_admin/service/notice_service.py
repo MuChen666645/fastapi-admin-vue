@@ -4,6 +4,8 @@ from fastapi import HTTPException, Request
 from fastapi_pagination import Params
 
 from module_admin.dao.notice_dao import NoticeDao
+from module_admin.entity.dto.notice_dto import NoticeInboxDto, NoticeLatestDto
+from module_admin.entity.notice_type import NoticeType
 from module_admin.service.notification_service import NotificationService
 
 
@@ -36,6 +38,20 @@ class NoticeService:
     async def list_inbox(request: Request, unread_only: bool, params: Params):
         """查询当前用户通知收件箱。"""
         return await NoticeDao.list_inbox(request, unread_only, params)
+
+    @staticmethod
+    async def list_latest(request: Request) -> NoticeLatestDto:
+        """查询三类消息中各自最新的五条通知。"""
+        latest = await NoticeDao.list_latest(request)
+        return NoticeLatestDto(
+            **{
+                notice_type.value: [
+                    NoticeInboxDto.model_validate(item)
+                    for item in latest[notice_type.value]
+                ]
+                for notice_type in NoticeType
+            }
+        )
 
     @staticmethod
     async def mark_read(notice_id: int, request: Request) -> None:

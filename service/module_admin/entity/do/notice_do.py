@@ -18,7 +18,7 @@ class NoticeDo(SQLModel, table=True):
     id: int | None = Field(title="公告编号", default=None, primary_key=True)
     notice_title: str = Field(title="公告标题", max_length=100, index=True)
     notice_type: str = Field(
-        title="公告类型", default="notice", max_length=20, index=True
+        title="公告类型", default="system", max_length=20, index=True
     )
     notice_content: str = Field(
         title="公告内容", sa_column=Column(Text, nullable=False)

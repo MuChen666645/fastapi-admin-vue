@@ -450,7 +450,7 @@ docker compose down
 | 指标监控 | `/metrics` | Prometheus HTTP 请求数、状态码和耗时指标                 |
 | 文件存储 | `/api/v1/file`    | 本地或阿里云 OSS 文件上传、下载和删除                     |
 | 系统参数 | `/api/v1/config`  | 系统参数键值配置                                         |
-| 通知公告 | `/api/v1/notice`  | 公告增删改查                                             |
+| 通知公告 | `/api/v1/notice`  | 公告增删改查、消息中心最新通知                           |
 | 定时任务 | `/api/v1/job`     | Cron 任务管理、手动执行和执行日志                        |
 | 外部认证 | `/api/v1/auth`    | OIDC/OAuth 与 LDAP 登录                                  |
 | 数据备份 | `/api/v1/ops/backup` | 受权限保护的数据库备份接口                              |
@@ -648,6 +648,7 @@ Authorization: Bearer <access_token>
 - 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
 - 用户、角色和字典支持异步导出：调用对应的 `/export/async` 创建任务，再轮询 `/export/tasks/{task_id}`，完成后通过 `/export/tasks/{task_id}/download` 下载。
 - 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /api/v1/notice/inbox/list`、`POST /api/v1/notice/{notice_id}/read`。
+- 消息中心通过 `GET /api/v1/notice/latest` 返回系统通知、审批消息和报警提醒三组数据，每组最多最新 5 条；新建和修改通知的 `notice_type` 仅支持 `system`、`approval`、`alarm`。
 - 通知支持收件箱、Webhook、邮件和短信渠道，使用 `NOTIFICATION_DELIVERY_LEASE_SECONDS` 防止多实例重复认领，并按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
 - 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受平台超级管理员保护的 `/api/v1/ops/backup/create` 执行；`verify` 命令和 `/api/v1/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/api/v1/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。在线恢复接口默认禁用，仅在受控维护窗口、运维令牌和 MFA 二次验证全部满足时启用。备份使用 Fernet 加密并按保留天数清理。
 
@@ -1110,7 +1111,7 @@ The base Compose profile binds FastAPI, MySQL, and Redis to localhost. The produ
 | Metrics      | `/metrics`   | Prometheus request count, status, and latency metrics              |
 | File Storage | `/api/v1/file`      | Local or Aliyun OSS upload, download, and deletion                 |
 | System Config| `/api/v1/config`    | Key/value system parameters                                        |
-| Notices      | `/api/v1/notice`    | Announcement CRUD                                                  |
+| Notices      | `/api/v1/notice`    | Announcement CRUD and latest message-center notices                |
 | Jobs         | `/api/v1/job`       | Cron job management, manual run, and execution logs               |
 | External Auth| `/api/v1/auth`      | OIDC/OAuth and LDAP login                                          |
 | Backups      | `/api/v1/ops/backup`| Permission-protected database backup operations                    |
@@ -1309,6 +1310,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
 - Users, roles, and dictionaries also support persistent asynchronous exports: call `/export/async`, poll `/export/tasks/{task_id}`, and download from `/export/tasks/{task_id}/download` after completion.
 - Notices support recipients, inbox queries, unread filtering, and read state through `GET /api/v1/notice/inbox/list` and `POST /api/v1/notice/{notice_id}/read`.
+- `GET /api/v1/notice/latest` returns up to the five newest system, approval, and alarm notices in separate groups. New and updated notices accept only `system`, `approval`, or `alarm` for `notice_type`.
 - Notices support inbox, webhook, email, and SMS delivery. External delivery failures use a database-backed lease plus bounded exponential backoff using `NOTIFICATION_DELIVERY_LEASE_SECONDS`, `NOTIFICATION_RETRY_MAX_ATTEMPTS`, and `NOTIFICATION_RETRY_BASE_SECONDS`.
 - Database backups can be created with `poetry run python -m scripts.backup_database backup` or the platform-super-admin-protected `/api/v1/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/api/v1/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/api/v1/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Online restore is disabled by default and requires an explicit maintenance window, operations token, and MFA reauthentication. Backups are Fernet-encrypted and cleaned up according to the retention policy.
 
