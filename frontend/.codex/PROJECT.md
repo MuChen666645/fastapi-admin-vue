@@ -128,6 +128,7 @@ src/
 - `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。
 - `/demo/features/form` 是认证后的表单组件演示页，菜单层级为 `demo -> features -> form`，用于展示通用 `AppForm` 的布局、自定义字段、标准校验、动态分组和规范提交；它不调用后端业务接口。
 - `/demo/features/search-form` 是认证后的搜索表单组件演示页，菜单层级为 `demo -> features -> search-form`，用于展示通用 `AppSearchForm` 的搜索布局、条件折叠、自定义字段、回车策略、重置和查询状态；它不调用后端业务接口。
+- `/demo/features/hooks` 是认证后的 Hooks 演示页，菜单层级为 `demo -> features -> hooks`，用于展示 `usePagination` 与 Naive UI `NDataTable` 内置分页的请求参数、加载状态、筛选重置和分页交互；它使用页面私有的本地异步适配器，不调用后端业务接口。
 - `/403`、`/404`、`/500` 和 `/offline` 是公开缺省页面，统一提供刷新页面和返回首页操作，并使用 `src/assets/lottie/error/` 下的静态动画。
 - 后端 `component` 会被标准化为 `src/views/<component>.vue`，支持 `home/index`、`@/views/home/index.vue`、`../views/home/index.vue` 等形式。
 - 不安全路径、未知本地组件和没有可导航子节点的容器路由会被过滤；未知组件会在控制台打印一次警告。

@@ -8,6 +8,7 @@ import NotFoundView from '@/views/error/404.vue'
 import OfflineView from '@/views/error/offline.vue'
 import ServerErrorView from '@/views/error/500.vue'
 import FormDemoView from '@/views/demo/form/index.vue'
+import HooksDemoView from '@/views/demo/hooks/index.vue'
 import SearchFormDemoView from '@/views/demo/search-form/index.vue'
 import SystemConfigView from '@/views/system/config/index.vue'
 
@@ -108,6 +109,21 @@ export const protectedRoutes: RouteRecordRaw[] = [
                   requiresAuth: true,
                   noCache: false,
                   icon: 'SearchOutline',
+                  menuType: 'C',
+                  link: null,
+                },
+              },
+              {
+                path: 'hooks',
+                name: 'demo-hooks',
+                component: HooksDemoView,
+                meta: {
+                  title: 'Hooks',
+                  menu: true,
+                  hideBreadcrumb: false,
+                  requiresAuth: true,
+                  noCache: false,
+                  icon: 'GitBranchOutline',
                   menuType: 'C',
                   link: null,
                 },

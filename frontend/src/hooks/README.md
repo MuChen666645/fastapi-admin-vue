@@ -21,6 +21,35 @@ import { useECharts, useLocale, useLottie, useRouteCache, useTheme } from '@/hoo
 | `useRouteCache`    | 无                                                | 缓存名称、组件包装和路由 key 方法               | BasicLayout 的 KeepAlive 缓存。    |
 | `useTheme`         | 无                                                | `isDarkMode`、`naiveTheme`、`toggleTheme`       | 主题状态和主题切换。               |
 
+## usePagination
+
+`usePagination` 只负责分页状态、并发请求协调和 Naive UI 分页属性，不直接调用 API。页面应从领域 API 获取分页数据，再把请求函数传入 Hook。请求函数接收后端 `fastapi-pagination` 的 `{ page, size }` 参数，并返回 `{ items, total, page, size, pages }`。
+
+```ts
+import { usePagination } from '@/hooks'
+
+const { items, loading, pagination, reset } = usePagination(
+  (params) => fetchUserList({ ...filters, ...params }),
+  { initialPageSize: 20 },
+)
+```
+
+`pagination` 可直接绑定到 Naive UI 的 `NPagination`：
+
+```vue
+<NPagination v-bind="pagination" />
+```
+
+使用 `NDataTable` 的内置远程分页时，开启 `remote` 并把同一个绑定传给 `pagination`：
+
+```vue
+<NDataTable remote :data="items" :pagination="pagination" />
+```
+
+Hook 默认在组件挂载后加载第 1 页；传入 `immediate: false` 可改为手动调用 `load()`。切换页码会自动请求，切换页大小会回到第 1 页并请求。`reset()` 会恢复初始页码和页大小后请求，`reset({ reload: false })` 只恢复状态。`reload` 和 `refresh` 是 `load` 的语义别名。
+
+`pagination` 使用 `itemCount` 驱动 Naive UI，不同时传入 `pageCount`，避免组件重复计算告警。后端返回数据为空但当前页已越界时，Hook 会自动请求最后一页；过期请求的结果不会覆盖较新的结果。`error` 仅保存当前请求错误，失败时保留已有列表数据，页面可据此展示重试操作。
+
 ## useDocumentTitle
 
 ```ts

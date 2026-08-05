@@ -8,6 +8,7 @@ vi.mock('@/views/error/offline.vue', () => ({ default: {} }))
 vi.mock('@/views/change-password/index.vue', () => ({ default: {} }))
 vi.mock('@/views/login/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/form/index.vue', () => ({ default: {} }))
+vi.mock('@/views/demo/hooks/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/search-form/index.vue', () => ({ default: {} }))
 
 import { buildDynamicRoutes, resolveRouteComponent } from '../router/route-utils'
@@ -70,6 +71,7 @@ describe('dynamic routes', () => {
     const searchFormRoute = featuresRoute?.children?.find(
       (route) => route.name === 'demo-search-form',
     )
+    const hooksRoute = featuresRoute?.children?.find((route) => route.name === 'demo-hooks')
 
     expect(featuresRoute?.path).toBe('features')
     expect(featuresRoute?.meta?.title).toBe('功能')
@@ -84,6 +86,10 @@ describe('dynamic routes', () => {
     expect(searchFormRoute?.meta?.title).toBe('搜索表单')
     expect(searchFormRoute?.meta?.requiresAuth).toBe(true)
     expect(searchFormRoute?.meta?.menu).toBe(true)
+    expect(hooksRoute?.path).toBe('hooks')
+    expect(hooksRoute?.meta?.title).toBe('Hooks')
+    expect(hooksRoute?.meta?.requiresAuth).toBe(true)
+    expect(hooksRoute?.meta?.menu).toBe(true)
   })
 
   it('filters unknown backend components and warns once', () => {
