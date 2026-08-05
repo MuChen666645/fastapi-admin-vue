@@ -23,7 +23,7 @@ src/
 │   ├── user/index.ts、parsers.ts
 │   └── index.ts
 ├── components/
-│   ├── AppBreadcrumb/、AppForm/、AppSearchForm/
+│   ├── AppBreadcrumb/、AppForm/、AppSearchForm/、AppUpload/
 │   ├── ContentLoading/、GlobalLoading/、WatermarkOverlay/
 │   ├── RequestMessageBridge/、RouterLoadingBar/
 │   └── README.md

@@ -99,6 +99,28 @@ export type {
 } from './hooks-demo'
 export type { UtilsDemoFormat, UtilsDemoModel, UtilsDemoResult } from './utils-demo'
 export type {
+  AppUploadBeforeRemove,
+  AppUploadBeforeUpload,
+  AppUploadChangePayload,
+  AppUploadDownloadFile,
+  AppUploadErrorPayload,
+  AppUploadExposed,
+  AppUploadFileList,
+  AppUploadFinishPayload,
+  AppUploadOnDownload,
+  AppUploadOnError,
+  AppUploadOnFinish,
+  AppUploadOnPreview,
+  AppUploadOnRetry,
+  AppUploadPreviewDetail,
+  AppUploadPreviewFile,
+  AppUploadProps,
+  AppUploadRemovePayload,
+  AppUploadRetryPayload,
+  AppUploadValidationError,
+  AppUploadValidationReason,
+} from './upload'
+export type {
   MomentFormatOptions,
   MomentFormatSpecification,
   MomentInput,

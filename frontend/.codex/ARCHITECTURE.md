@@ -49,7 +49,7 @@ main.ts
 | `src/stores/modules/layout-settings.ts` | 统一偏好 Store 的旧布局兼容导出                               |
 | `src/hooks`                           | Lottie、主题、语言、ECharts 和路由缓存等依赖上下文的可复用行为     |
 | `src/utils/index.ts`                  | 无生命周期的公共工具包入口：图标、本地化、主题选项、Lottie 和 Moment 日期函数 |
-| `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑等跨页面组件       |
+| `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑、上传等跨页面组件 |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
 | `src/views`                           | 语义化路由级页面；页面私有业务组件放在对应页面的 `components/`     |
 | `src/types`                           | API DTO、路由、Store、传输、页面和测试类型；所有类型声明的唯一归属 |
