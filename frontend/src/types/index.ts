@@ -95,3 +95,14 @@ export type {
   HooksDemoRecord,
   HooksDemoStatus,
 } from './hooks-demo'
+export type { UtilsDemoFormat, UtilsDemoModel, UtilsDemoResult } from './utils-demo'
+export type {
+  MomentFormatOptions,
+  MomentFormatSpecification,
+  MomentInput,
+  MomentInputValue,
+  MomentInstance,
+  MomentParseOptions,
+  MomentRange,
+  MomentUnit,
+} from './moment'

@@ -10,6 +10,7 @@ vi.mock('@/views/login/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/form/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/hooks/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/search-form/index.vue', () => ({ default: {} }))
+vi.mock('@/views/demo/utils/index.vue', () => ({ default: {} }))
 
 import { buildDynamicRoutes, resolveRouteComponent } from '../router/route-utils'
 import { errorRoutes, protectedRoutes, publicRoutes } from '../router/modules'
@@ -72,6 +73,7 @@ describe('dynamic routes', () => {
       (route) => route.name === 'demo-search-form',
     )
     const hooksRoute = featuresRoute?.children?.find((route) => route.name === 'demo-hooks')
+    const utilsRoute = featuresRoute?.children?.find((route) => route.name === 'demo-utils')
 
     expect(featuresRoute?.path).toBe('features')
     expect(featuresRoute?.meta?.title).toBe('功能')
@@ -90,6 +92,10 @@ describe('dynamic routes', () => {
     expect(hooksRoute?.meta?.title).toBe('Hooks')
     expect(hooksRoute?.meta?.requiresAuth).toBe(true)
     expect(hooksRoute?.meta?.menu).toBe(true)
+    expect(utilsRoute?.path).toBe('utils')
+    expect(utilsRoute?.meta?.title).toBe('工具函数')
+    expect(utilsRoute?.meta?.requiresAuth).toBe(true)
+    expect(utilsRoute?.meta?.menu).toBe(true)
   })
 
   it('filters unknown backend components and warns once', () => {

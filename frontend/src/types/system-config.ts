@@ -123,6 +123,7 @@ export type TranslationKey =
   | 'route.demo.features.form'
   | 'route.demo.features.searchForm'
   | 'route.demo.features.hooks'
+  | 'route.demo.features.utils'
   | 'route.defaultPages'
   | 'route.defaultPages.forbidden'
   | 'route.defaultPages.notFound'

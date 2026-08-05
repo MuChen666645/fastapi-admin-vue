@@ -10,17 +10,18 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 
 ## 工具索引
 
-| 工具                                                                                           | 公共入口                   | 用途                                         |
-| ---------------------------------------------------------------------------------------------- | -------------------------- | -------------------------------------------- |
-| `resolveIconComponent`                                                                         | `@/utils`                  | 从静态 Ionicons5 集合解析菜单图标。          |
-| `translateMenuTitle` / `translateRouteTitle`                                                   | `@/utils`                  | 翻译已知前端菜单和路由标题。                 |
-| `findAccentColor`、`accentColorOptions`、`radiusOptions`                                       | `@/utils`                  | 读取主题色和圆角选项。                       |
-| `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation` | `@/utils`                  | 管理 Lottie 实例的基础动作。                 |
-| `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。     |
-| `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。       |
-| `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。 |
-| `guards/api`                                                                                   | `@/utils/guards/api`       | API 响应和值的运行时校验。                   |
-| `guards/route`                                                                                 | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。    |
+| 工具                                                                                           | 公共入口                   | 用途                                             |
+| ---------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------ |
+| `resolveIconComponent`                                                                         | `@/utils`                  | 从静态 Ionicons5 集合解析菜单图标。              |
+| `translateMenuTitle` / `translateRouteTitle`                                                   | `@/utils`                  | 翻译已知前端菜单和路由标题。                     |
+| `findAccentColor`、`accentColorOptions`、`radiusOptions`                                       | `@/utils`                  | 读取主题色和圆角选项。                           |
+| `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation` | `@/utils`                  | 管理 Lottie 实例的基础动作。                     |
+| `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。         |
+| `createMoment`、`formatDate`、`formatDateTime` 等                                              | `@/utils`                  | 统一 Moment locale、格式化、严格解析和日期范围。 |
+| `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。           |
+| `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。     |
+| `guards/api`                                                                                   | `@/utils/guards/api`       | API 响应和值的运行时校验。                       |
+| `guards/route`                                                                                 | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。        |
 
 ## 图标解析
 
@@ -55,6 +56,20 @@ const title = translateRouteTitle('home.title', 'zh-CN')
 ```
 
 本地化工具只处理前端已知词典；未知动态菜单标题保留原文。主题选项只提供配置数据和查找函数，不直接修改 DOM 或偏好 Store。
+
+## Moment 日期工具
+
+页面不应直接导入 Moment，统一从 `@/utils` 使用日期工具：
+
+```ts
+import { formatDateTime, getDateRange, parseMoment } from '@/utils'
+
+const displayValue = formatDateTime('2026-08-05 13:14:15')
+const parsedValue = parseMoment('2026-08-05', { format: 'YYYY-MM-DD' })
+const todayRange = getDateRange(parsedValue)
+```
+
+默认格式为 `YYYY-MM-DD`、`YYYY-MM-DD HH:mm:ss` 和 `HH:mm:ss`。带格式的解析默认启用严格模式，无法解析的输入返回 `null`；格式化和转换方法支持通过 `fallback` 返回安全的占位文本。Moment 实例使用 `zh-cn` locale，但工具不会要求业务代码修改全局 locale。
 
 ## Lottie 基础函数
 

@@ -11,6 +11,7 @@ import FormDemoView from '@/views/demo/form/index.vue'
 import HooksDemoView from '@/views/demo/hooks/index.vue'
 import SearchFormDemoView from '@/views/demo/search-form/index.vue'
 import SystemConfigView from '@/views/system/config/index.vue'
+import UtilsDemoView from '@/views/demo/utils/index.vue'
 
 export const protectedRoutes: RouteRecordRaw[] = [
   {
@@ -124,6 +125,21 @@ export const protectedRoutes: RouteRecordRaw[] = [
                   requiresAuth: true,
                   noCache: false,
                   icon: 'GitBranchOutline',
+                  menuType: 'C',
+                  link: null,
+                },
+              },
+              {
+                path: 'utils',
+                name: 'demo-utils',
+                component: UtilsDemoView,
+                meta: {
+                  title: '工具函数',
+                  menu: true,
+                  hideBreadcrumb: false,
+                  requiresAuth: true,
+                  noCache: false,
+                  icon: 'CodeSlashOutline',
                   menuType: 'C',
                   link: null,
                 },
