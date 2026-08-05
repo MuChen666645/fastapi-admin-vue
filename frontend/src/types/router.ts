@@ -26,3 +26,13 @@ export interface AppTab {
   cacheable: boolean
   closable: boolean
 }
+
+export interface RouteMenuItem {
+  key?: string | number
+  children?: readonly RouteMenuItem[]
+}
+
+export interface RouteMenuState {
+  activeKey: string | null
+  expandedKeys: string[]
+}

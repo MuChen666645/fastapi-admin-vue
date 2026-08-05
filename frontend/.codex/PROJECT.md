@@ -43,7 +43,7 @@ src/
 │   └── index.ts
 ├── types/
 ├── utils/
-│   ├── index.ts、icon.ts、i18n.ts、lottie.ts、preferences.ts
+│   ├── index.ts、icon.ts、i18n.ts、lottie.ts、preferences.ts、route-menu.ts
 │   ├── request.ts、request-feedback.ts、loginPreferences.ts
 │   └── guards/api.ts、route.ts
 ├── views/
@@ -129,7 +129,7 @@ src/
 - `/demo/features/form` 是认证后的表单组件演示页，菜单层级为 `demo -> features -> form`，用于展示通用 `AppForm` 的布局、自定义字段、标准校验、动态分组和规范提交；它不调用后端业务接口。
 - `/demo/features/search-form` 是认证后的搜索表单组件演示页，菜单层级为 `demo -> features -> search-form`，用于展示通用 `AppSearchForm` 的搜索布局、条件折叠、自定义字段、回车策略、重置和查询状态；它不调用后端业务接口。
 - `/demo/features/hooks` 是认证后的 Hooks 演示页，菜单层级为 `demo -> features -> hooks`，用于展示 `usePagination` 与 Naive UI `NDataTable` 内置分页的请求参数、加载状态、筛选重置和分页交互；它使用页面私有的本地异步适配器，不调用后端业务接口。
-- `/demo/features/utils` 是认证后的工具函数演示页，菜单层级为 `demo -> features -> utils`，用于交互展示 `@/utils` 的 Moment 日期解析、格式化、locale、ISO 转换和日期范围能力；它不调用后端业务接口。
+- `/demo/features/utils` 是认证后的工具函数演示页，菜单层级为 `demo -> features -> utils`，使用 `AppSearchForm` 交互展示 `@/utils` 的 Moment 日期解析、格式化、locale、ISO 转换和日期范围能力；它不调用后端业务接口。
 - `/403`、`/404`、`/500` 和 `/offline` 是公开缺省页面，统一提供刷新页面和返回首页操作，并使用 `src/assets/lottie/error/` 下的静态动画。
 - 后端 `component` 会被标准化为 `src/views/<component>.vue`，支持 `home/index`、`@/views/home/index.vue`、`../views/home/index.vue` 等形式。
 - 不安全路径、未知本地组件和没有可导航子节点的容器路由会被过滤；未知组件会在控制台打印一次警告。

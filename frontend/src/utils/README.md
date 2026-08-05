@@ -18,6 +18,7 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 | `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation` | `@/utils`                  | 管理 Lottie 实例的基础动作。                     |
 | `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。         |
 | `createMoment`、`formatDate`、`formatDateTime` 等                                              | `@/utils`                  | 统一 Moment locale、格式化、严格解析和日期范围。 |
+| `resolveRouteMenuState`                                                                         | `@/utils`                  | 根据当前路由匹配结果同步菜单选中项和展开项。     |
 | `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。           |
 | `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。     |
 | `guards/api`                                                                                   | `@/utils/guards/api`       | API 响应和值的运行时校验。                       |
@@ -70,6 +71,18 @@ const todayRange = getDateRange(parsedValue)
 ```
 
 默认格式为 `YYYY-MM-DD`、`YYYY-MM-DD HH:mm:ss` 和 `HH:mm:ss`。带格式的解析默认启用严格模式，无法解析的输入返回 `null`；格式化和转换方法支持通过 `fallback` 返回安全的占位文本。Moment 实例使用 `zh-cn` locale，但工具不会要求业务代码修改全局 locale。
+
+## 路由菜单状态
+
+布局侧边栏使用当前路由匹配结果计算菜单选中项和父级展开项，面包屑、标签页以及其他路由导航都可以复用同一规则：
+
+```ts
+import { resolveRouteMenuState } from '@/utils'
+
+const state = resolveRouteMenuState(menuItems, route.matched.map(({ name }) => name))
+```
+
+函数从最深的已匹配路由开始查找菜单项；找不到菜单项时返回空的选中项和展开项，不会修改路由或菜单状态。
 
 ## Lottie 基础函数
 

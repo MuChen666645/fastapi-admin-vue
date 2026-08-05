@@ -211,6 +211,50 @@ describe('BasicLayout', () => {
     wrapper.unmount()
   })
 
+  it('syncs the selected and expanded menu after breadcrumb and tab navigation', async () => {
+    const router = createLayoutRouter()
+    const pinia = createPinia()
+
+    await router.push('/demo/default-pages/403')
+    await router.isReady()
+
+    const wrapper = mount(LayoutTestHost, {
+      global: {
+        plugins: [router, pinia],
+      },
+    })
+
+    await flushPromises()
+
+    const getMenu = () => wrapper.findComponent(NMenu)
+    expect(getMenu().props('value')).toBe('default-page-forbidden')
+    expect(getMenu().props('expandedKeys')).toEqual(['demo', 'default-pages'])
+
+    const demoBreadcrumb = wrapper.findAll('.breadcrumb-link')[0]
+    expect(demoBreadcrumb?.text()).toBe('演示')
+    await demoBreadcrumb?.trigger('click')
+    await router.isReady()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('demo')
+    expect(getMenu().props('value')).toBe('demo')
+    expect(getMenu().props('expandedKeys')).toEqual([])
+
+    const forbiddenTab = wrapper
+      .findAll('.app-tab')
+      .find((tab) => tab.text().includes('403 无权限'))
+    expect(forbiddenTab).toBeDefined()
+    await forbiddenTab?.trigger('click')
+    await router.isReady()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('default-page-forbidden')
+    expect(getMenu().props('value')).toBe('default-page-forbidden')
+    expect(getMenu().props('expandedKeys')).toEqual(['demo', 'default-pages'])
+
+    wrapper.unmount()
+  })
+
   it('applies layout visibility, width and sticky navigation preferences', async () => {
     const router = createLayoutRouter()
     const pinia = createPinia()

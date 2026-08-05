@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { NEllipsis, NEmpty, NIcon, NLayoutSider, NMenu } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
@@ -8,7 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 import { useLocale } from '@/hooks'
-import { resolveIconComponent, translateMenuTitle } from '@/utils'
+import { resolveIconComponent, resolveRouteMenuState, translateMenuTitle } from '@/utils'
 import { useAuthStore } from '@/stores'
 import type { UserRoute } from '@/types'
 
@@ -106,7 +106,22 @@ const menuOptions = computed(() => {
     ...staticMenuOptions.value.filter((item) => !serverMenuKeys.has(String(item.key))),
   ]
 })
-const activeMenuKey = computed(() => (route.name ? String(route.name) : null))
+const routeMenuState = computed(() =>
+  resolveRouteMenuState(
+    menuOptions.value,
+    route.matched.map(({ name }) => name),
+  ),
+)
+const activeMenuKey = computed(() => routeMenuState.value.activeKey)
+const expandedMenuKeys = ref<string[]>([])
+
+watch(
+  routeMenuState,
+  (state) => {
+    expandedMenuKeys.value = state.expandedKeys
+  },
+  { immediate: true },
+)
 const dropdownProps = {
   class: 'sidebar-submenu-dropdown',
   overlap: false,
@@ -143,6 +158,10 @@ const handleMenuSelect = (key: string | number): void => {
 
   void router.push({ name: String(key) })
 }
+
+const handleExpandedKeysUpdate = (keys: Array<string | number>): void => {
+  expandedMenuKeys.value = keys.map(String)
+}
 </script>
 
 <template>
@@ -168,6 +187,7 @@ const handleMenuSelect = (key: string | number): void => {
     <div class="sidebar-content">
       <NMenu
         :value="activeMenuKey"
+        :expanded-keys="expandedMenuKeys"
         :options="menuOptions"
         :collapsed="collapsed"
         :collapsed-icon-size="20"
@@ -177,6 +197,7 @@ const handleMenuSelect = (key: string | number): void => {
         dropdown-placement="right-start"
         :dropdown-props="dropdownProps"
         @update:value="handleMenuSelect"
+        @update:expanded-keys="handleExpandedKeysUpdate"
       />
       <NEmpty
         v-if="menuOptions.length === 0"

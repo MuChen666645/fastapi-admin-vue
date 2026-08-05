@@ -60,6 +60,8 @@ export type {
   AppTab,
   AuthenticatedRouteRegistrar,
   RouteCacheTarget,
+  RouteMenuItem,
+  RouteMenuState,
   RouteComponent,
   RouteViewComponent,
   RouteViewSlot,
