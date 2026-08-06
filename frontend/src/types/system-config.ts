@@ -84,6 +84,7 @@ export type TranslationKey =
   | 'message.refresh'
   | 'message.total'
   | 'message.noTime'
+  | 'message.notification.newTitle'
   | 'message.unread'
   | 'message.read'
   | 'message.type.system'

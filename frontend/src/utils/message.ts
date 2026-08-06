@@ -1,4 +1,10 @@
-import type { MessageTab, MessageType, MessageVisualTone, PreferenceLanguage } from '@/types'
+import type {
+  MessageItem,
+  MessageTab,
+  MessageType,
+  MessageVisualTone,
+  PreferenceLanguage,
+} from '@/types'
 
 const MINUTE_IN_SECONDS = 60
 const HOUR_IN_SECONDS = MINUTE_IN_SECONDS * 60
@@ -31,6 +37,14 @@ export const resolveMessageTone = (messageType: string): MessageVisualTone => {
   }
 
   return 'info'
+}
+
+export const findNewUnreadMessages = (
+  previousItems: readonly MessageItem[],
+  currentItems: readonly MessageItem[],
+): MessageItem[] => {
+  const previousIds = new Set(previousItems.map((item) => item.id))
+  return currentItems.filter((item) => !item.read_at && !previousIds.has(item.id))
 }
 
 const relativeTimeParts = (

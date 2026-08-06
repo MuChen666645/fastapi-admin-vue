@@ -50,7 +50,7 @@ src/
 └── __tests__/
 ```
 
-`src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；`src/views/system/message/` 是后端消息中心动态路由的收件箱和消息管理页面；类型声明统一位于 `src/types/` 的语义化领域文件中。
+`src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；`src/views/system/message/` 是后端消息中心动态路由的收件箱和消息管理页面；顶栏 `useMessagePopover` 每 30 秒轮询最新消息并对新增未读站内信显示 `Notification`；类型声明统一位于 `src/types/` 的语义化领域文件中。
 
 公共代码文档与源码保持同目录维护：`src/components/README.md` 记录公共组件索引和提交边界，组件组 README 记录各自公开 API；`src/hooks/README.md` 记录 Hook 的上下文依赖、返回值和清理行为；`src/utils/README.md` 记录公共工具入口、基础设施边界和安全校验。新增或迁移代码时，目录、公共出口、类型、测试和 README 必须同步。
 

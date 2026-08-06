@@ -10,21 +10,21 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 
 ## 工具索引
 
-| 工具                                                                                           | 公共入口                   | 用途                                             |
-| ---------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------ |
-| `resolveIconComponent`                                                                         | `@/utils`                  | 从静态 Ionicons5 集合解析菜单图标。              |
-| `translateMenuTitle` / `translateRouteTitle`                                                   | `@/utils`                  | 翻译已知前端菜单和路由标题。                     |
-| `findAccentColor`、`accentColorOptions`、`radiusOptions`                                       | `@/utils`                  | 读取主题色和圆角选项。                           |
-| `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation` | `@/utils`                  | 管理 Lottie 实例的基础动作。                     |
-| `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。         |
-| `createMoment`、`formatDate`、`formatDateTime` 等                                              | `@/utils`                  | 统一 Moment locale、格式化、严格解析和日期范围。 |
-| `resolveRouteMenuState`                                                                        | `@/utils`                  | 根据当前路由匹配结果同步菜单选中项和展开项。     |
-| `resolveMessageTab` / `resolveMessageTone` / `formatMessageRelativeTime`                      | `@/utils`                  | 消息类型展示、风险色调、相对时间和消息表单值转换。 |
-| `isAppUpdateManifest`、`fetchAppUpdateManifest`、`forceReloadApp`                              | `@/utils`                  | 校验同源构建清单、读取版本和执行整页刷新。       |
-| `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。           |
-| `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。     |
-| `guards/api`                                                                                   | `@/utils/guards/api`       | API 响应和值的运行时校验。                       |
-| `guards/route`                                                                                 | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。        |
+| 工具                                                                                               | 公共入口                   | 用途                                                               |
+| -------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------ |
+| `resolveIconComponent`                                                                             | `@/utils`                  | 从静态 Ionicons5 集合解析菜单图标。                                |
+| `translateMenuTitle` / `translateRouteTitle`                                                       | `@/utils`                  | 翻译已知前端菜单和路由标题。                                       |
+| `findAccentColor`、`accentColorOptions`、`radiusOptions`                                           | `@/utils`                  | 读取主题色和圆角选项。                                             |
+| `loadLottieAnimation`、`playLottieAnimation`、`pauseLottieAnimation`、`destroyLottieAnimation`     | `@/utils`                  | 管理 Lottie 实例的基础动作。                                       |
+| `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`                  | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。                           |
+| `createMoment`、`formatDate`、`formatDateTime` 等                                                  | `@/utils`                  | 统一 Moment locale、格式化、严格解析和日期范围。                   |
+| `resolveRouteMenuState`                                                                            | `@/utils`                  | 根据当前路由匹配结果同步菜单选中项和展开项。                       |
+| `resolveMessageTab` / `resolveMessageTone` / `findNewUnreadMessages` / `formatMessageRelativeTime` | `@/utils`                  | 消息类型展示、新未读消息识别、风险色调、相对时间和消息表单值转换。 |
+| `isAppUpdateManifest`、`fetchAppUpdateManifest`、`forceReloadApp`                                  | `@/utils`                  | 校验同源构建清单、读取版本和执行整页刷新。                         |
+| `loginPreferences`                                                                                 | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。                             |
+| `request`                                                                                          | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。                       |
+| `guards/api`                                                                                       | `@/utils/guards/api`       | API 响应和值的运行时校验。                                         |
+| `guards/route`                                                                                     | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。                          |
 
 ## 图标解析
 

@@ -18,6 +18,7 @@ export {
 } from './app-update'
 export { resolveRouteMenuState } from './route-menu'
 export {
+  findNewUnreadMessages,
   formatMessageRelativeTime,
   isMessageType,
   parseRecipientUserIds,

@@ -173,7 +173,7 @@ const { isDarkMode, naiveTheme, toggleTheme } = useTheme()
 
 `useMessageCenter` 通过 `useMessageStore` 暴露最新消息分类、后端未读总数、已读和跳转行为；它不直接调用消息 API。
 
-`useMessagePopover` 编排顶栏消息弹层的打开、关闭、首次加载三类最新消息、刷新和“查看全部消息”。两个 Hook 共享同一个非持久化消息 Store，登出时由认证 Store 清理；消息中心分页由页面复用 `usePagination` 编排。
+`useMessagePopover` 编排顶栏消息弹层的打开、关闭、刷新和“查看全部消息”，并在认证布局挂载后每 30 秒轮询三类最新消息。首次加载只建立快照，后续发现新增未读站内信时通过 Naive UI `Notification` 提示；轮询定时器在卸载时清理。两个 Hook 共享同一个非持久化消息 Store，登出时由认证 Store 清理；消息中心分页由页面复用 `usePagination` 编排。
 
 ## 新增或修改 Hook 检查清单
 
