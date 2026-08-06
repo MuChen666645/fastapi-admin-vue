@@ -3,6 +3,7 @@
   --app-color-workspace: #f0f2fa;
   --app-color-surface: #ffffff;
   --app-color-surface-muted: #f0f1f7;
+  --app-color-fill: #f3f4f6;
   --app-color-sidebar: #6c7ce5;
   --app-color-sidebar-text: #ffffff;
   --app-color-sidebar-muted: rgb(255 255 255 / 70%);
@@ -65,6 +66,7 @@
   --app-color-workspace: #202433;
   --app-color-surface: #252a40;
   --app-color-surface-muted: #303650;
+  --app-color-fill: #303650;
   --app-color-sidebar: #343d78;
   --app-color-sidebar-text: #eef1ff;
   --app-color-sidebar-muted: rgb(238 241 255 / 70%);
@@ -104,9 +106,28 @@ body,
   margin: 0;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   min-height: 100vh;
+  color: var(--app-color-text);
   background: var(--app-color-page);
+  font-family: inherit;
+  font-size: var(--app-font-size);
+  line-height: 1.5;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }
 
 * {

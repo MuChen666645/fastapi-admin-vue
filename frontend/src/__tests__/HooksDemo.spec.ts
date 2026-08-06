@@ -19,7 +19,7 @@ describe('HooksDemoView', () => {
       const table = wrapper.findComponent(NDataTable)
       expect(table.props('remote')).toBe(true)
       expect(table.props('pagination')).not.toBe(false)
-      expect(wrapper.get('h1').text()).toBe('可复用 Hooks')
+      expect(wrapper.find('.hooks-demo-header').exists()).toBe(false)
       expect(wrapper.text()).toContain('共 15 条记录')
       expect(wrapper.text()).toContain('usePagination')
 

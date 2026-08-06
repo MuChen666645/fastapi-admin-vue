@@ -31,7 +31,7 @@ describe('HomeView', () => {
     await nextTick()
 
     expect(preferences.language).toBe('en-US')
-    expect(wrapper.get('.page-heading h1').text()).toBe('Dashboard overview')
+    expect(wrapper.find('.page-heading').exists()).toBe(false)
 
     wrapper.unmount()
   })

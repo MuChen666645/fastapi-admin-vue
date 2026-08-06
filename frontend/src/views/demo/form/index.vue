@@ -3,12 +3,11 @@ import { computed, reactive, ref, toRaw } from 'vue'
 import {
   CheckmarkCircleOutline,
   CodeSlashOutline,
-  CreateOutline,
   LayersOutline,
   ListOutline,
   ShieldCheckmarkOutline,
 } from '@vicons/ionicons5'
-import { NAlert, NButton, NIcon, NInput, NTag, useMessage } from 'naive-ui'
+import { NAlert, NButton, NIcon, NInput, useMessage } from 'naive-ui'
 
 import AppForm from '@/components/AppForm/index.vue'
 import type {
@@ -213,18 +212,6 @@ const handleReset = (): void => {
 
 <template>
   <main class="form-demo-page">
-    <header class="form-demo-header">
-      <div>
-        <div class="form-demo-eyebrow">
-          <NIcon :size="16" aria-hidden="true"><CreateOutline /></NIcon>
-          <span>组件演示 / AppForm</span>
-        </div>
-        <h1>标准提交表单</h1>
-        <p>集中演示布局配置、自定义字段、动态分组、标准校验和提交状态。</p>
-      </div>
-      <NTag type="info" round>交互示例</NTag>
-    </header>
-
     <div class="form-demo-layout">
       <section class="form-demo-panel" aria-labelledby="form-demo-title">
         <div class="form-demo-panel__header">
@@ -324,7 +311,7 @@ const handleReset = (): void => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .form-demo-page {
   display: grid;
   gap: 20px;
@@ -332,7 +319,6 @@ const handleReset = (): void => {
   color: var(--app-color-text);
 }
 
-.form-demo-header,
 .form-demo-panel__header,
 .form-demo-guide__heading {
   display: flex;
@@ -341,9 +327,6 @@ const handleReset = (): void => {
   gap: 16px;
 }
 
-.form-demo-header h1,
-.form-demo-header p,
-.form-demo-eyebrow,
 .form-demo-panel__header h2,
 .form-demo-panel__header p,
 .form-demo-guide__heading h2,
@@ -351,23 +334,6 @@ const handleReset = (): void => {
   margin: 0;
 }
 
-.form-demo-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.form-demo-header h1 {
-  font-size: 26px;
-  line-height: 1.2;
-}
-
-.form-demo-header p,
 .form-demo-panel__header p {
   margin-top: 8px;
   color: var(--app-color-text-muted);
@@ -480,10 +446,6 @@ const handleReset = (): void => {
 @media (width <= 560px) {
   .form-demo-panel {
     padding: 16px;
-  }
-
-  .form-demo-header {
-    align-items: flex-start;
   }
 }
 </style>

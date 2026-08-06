@@ -127,7 +127,7 @@ watch(() => props.resetKey, resetGeneral)
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .settings-panel {
   padding: 32px 0 48px;
 }

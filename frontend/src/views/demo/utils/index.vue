@@ -103,18 +103,6 @@ runDemo()
 
 <template>
   <main class="utils-demo-page">
-    <header class="utils-demo-header">
-      <div>
-        <div class="utils-demo-eyebrow">
-          <NIcon :size="16" aria-hidden="true"><CodeSlashOutline /></NIcon>
-          <span>工具演示 / @/utils</span>
-        </div>
-        <h1>工具函数</h1>
-        <p>通过真实输入观察 Moment 日期工具的解析、格式化、转换和日期范围能力。</p>
-      </div>
-      <NTag type="info" round>纯函数工具</NTag>
-    </header>
-
     <section class="utils-demo-panel" aria-labelledby="utils-input-title">
       <div class="utils-demo-panel-heading">
         <div>
@@ -236,7 +224,7 @@ runDemo()
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .utils-demo-page {
   display: grid;
   gap: 20px;
@@ -244,7 +232,6 @@ runDemo()
   color: var(--app-color-text);
 }
 
-.utils-demo-header,
 .utils-demo-panel-heading,
 .utils-demo-guide-heading {
   display: flex;
@@ -253,9 +240,6 @@ runDemo()
   gap: 16px;
 }
 
-.utils-demo-header h1,
-.utils-demo-header p,
-.utils-demo-eyebrow,
 .utils-demo-panel-heading h2,
 .utils-demo-panel-heading p,
 .utils-demo-guide-heading h2,
@@ -263,23 +247,6 @@ runDemo()
   margin: 0;
 }
 
-.utils-demo-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.utils-demo-header h1 {
-  font-size: 26px;
-  line-height: 1.2;
-}
-
-.utils-demo-header p,
 .utils-demo-panel-heading p {
   margin-top: 8px;
   color: var(--app-color-text-muted);

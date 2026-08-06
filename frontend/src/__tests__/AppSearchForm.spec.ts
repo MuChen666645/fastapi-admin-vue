@@ -119,4 +119,40 @@ describe('AppSearchForm', () => {
       getBoundingClientRect.mockRestore()
     }
   })
+
+  it('keeps the complete first row visible when collapsed', async () => {
+    const firstRowKeys = new Set(['keyword', 'status'])
+    const getBoundingClientRect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const fieldKey = this.dataset.testid?.replace('app-form-field-', '')
+        const top = fieldKey && firstRowKeys.has(fieldKey) ? 10 : 60
+        return new DOMRect(0, top, 800, 40)
+      })
+    const model = reactive(createModel())
+    const fields: AppFormField[] = [
+      { key: 'keyword', path: 'keyword', label: '关键词' },
+      { key: 'status', path: 'status', label: '状态', type: 'select' },
+      { key: 'owner', path: 'owner', label: '负责人' },
+      { key: 'scope', path: 'scope', label: '范围', type: 'select' },
+    ]
+    const wrapper = mount(AppSearchForm, {
+      props: {
+        model,
+        fields,
+        defaultCollapsed: true,
+        collapsedFields: 1,
+      },
+    })
+
+    try {
+      await flushPromises()
+      expect(wrapper.find('[data-testid="app-form-field-keyword"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="app-form-field-status"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="app-form-field-owner"]').exists()).toBe(false)
+    } finally {
+      wrapper.unmount()
+      getBoundingClientRect.mockRestore()
+    }
+  })
 })

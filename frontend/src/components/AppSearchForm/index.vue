@@ -50,6 +50,7 @@ const formRef = ref<AppFormExposed<T> | null>(null)
 const sectionRef = ref<HTMLElement | null>(null)
 const localCollapsed = ref(props.defaultCollapsed)
 const measuredCanToggle = ref<boolean | null>(null)
+const firstRowFieldCount = ref<number | null>(null)
 const isMeasuring = ref(false)
 let resizeObserver: ResizeObserver | null = null
 let lastMeasuredWidth: number | null = null
@@ -58,6 +59,9 @@ let measurementVersion = 0
 const isCollapsed = computed(() => props.collapsed ?? localCollapsed.value)
 const collapsedFieldCount = computed(() => Math.max(0, Math.floor(props.collapsedFields)))
 const countCanToggle = computed(() => props.fields.length > collapsedFieldCount.value)
+const visibleCollapsedFieldCount = computed(() =>
+  Math.max(collapsedFieldCount.value, firstRowFieldCount.value ?? 0),
+)
 const canToggle = computed(
   () => props.showToggle && (measuredCanToggle.value ?? countCanToggle.value),
 )
@@ -66,7 +70,7 @@ const visibleFields = computed(() => {
     return props.fields
   }
 
-  return props.fields.slice(0, collapsedFieldCount.value)
+  return props.fields.slice(0, visibleCollapsedFieldCount.value)
 })
 const customFields = computed(() =>
   visibleFields.value.filter((field) => Boolean(slots[`field-${field.key}`])),
@@ -87,6 +91,7 @@ const actionAlignClass = computed(
 const measureFieldLayout = async (width?: number): Promise<void> => {
   const currentVersion = ++measurementVersion
   if (props.fields.length === 0) {
+    firstRowFieldCount.value = 0
     measuredCanToggle.value = false
     isMeasuring.value = false
     return
@@ -103,17 +108,19 @@ const measureFieldLayout = async (width?: number): Promise<void> => {
     section?.querySelectorAll<HTMLElement>('[data-testid^="app-form-field-"]') ?? [],
   )
 
-  if (fieldElements.length <= collapsedFieldCount.value) {
-    measuredCanToggle.value = false
-  } else {
+  if (fieldElements.length > 0) {
     const rects = fieldElements.map((element) => element.getBoundingClientRect())
     const hasGeometry = rects.some((rect) => rect.width > 0 || rect.height > 0)
 
     if (!hasGeometry) {
+      firstRowFieldCount.value = null
       measuredCanToggle.value = countCanToggle.value
     } else {
       const firstTop = rects[0]?.top ?? 0
-      measuredCanToggle.value = rects.some((rect) => Math.abs(rect.top - firstTop) > 1)
+      const firstRowCount = rects.filter((rect) => Math.abs(rect.top - firstTop) <= 1).length
+      firstRowFieldCount.value = firstRowCount
+      measuredCanToggle.value =
+        fieldElements.length > Math.max(collapsedFieldCount.value, firstRowCount)
     }
   }
 
@@ -306,7 +313,7 @@ defineExpose<AppSearchFormExposed<T>>({
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .app-search-form {
   min-width: 0;
 }

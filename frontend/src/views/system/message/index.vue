@@ -8,7 +8,6 @@ import {
   CreateOutline,
   EyeOutline,
   InformationCircleOutline,
-  NotificationsOutline,
   RefreshOutline,
   TrashOutline,
 } from '@vicons/ionicons5'
@@ -179,7 +178,11 @@ const messageSearchFields = computed<ReadonlyArray<AppFormField<MessageListFilte
     path: 'status',
     label: t('message.search.status'),
     type: 'select',
-    componentProps: { clearable: true, options: statusOptions.value },
+    componentProps: {
+      clearable: true,
+      options: statusOptions.value,
+      placeholder: t('message.search.statusPlaceholder'),
+    },
   },
   {
     key: 'publish_time',
@@ -274,6 +277,27 @@ const getMessageIcon = (messageType: MessageType) => {
   return InformationCircleOutline
 }
 
+const renderMessageTypeTag = (messageType: MessageType) =>
+  h(
+    NTag,
+    {
+      class: 'message-type-tag',
+      type: getMessageTagType(messageType),
+      size: 'small',
+      round: true,
+    },
+    {
+      default: () => [
+        h(
+          NIcon,
+          { size: 14, 'aria-hidden': 'true' },
+          { default: () => h(getMessageIcon(messageType)) },
+        ),
+        h('span', { class: 'message-type-label' }, getMessageTypeLabel(messageType)),
+      ],
+    },
+  )
+
 const getStatusLabel = (status: MessageStatus): string =>
   status === '1' ? t('message.status.enabled') : t('message.status.disabled')
 
@@ -293,21 +317,7 @@ const messageColumns = computed<DataTableColumns<MessageListItem>>(() => [
     title: t('message.column.type'),
     key: 'message_type',
     width: 140,
-    render: (item) =>
-      h(
-        NTag,
-        { type: getMessageTagType(item.message_type), size: 'small', round: true },
-        {
-          default: () => [
-            h(
-              NIcon,
-              { size: 14, 'aria-hidden': 'true' },
-              { default: () => h(getMessageIcon(item.message_type)) },
-            ),
-            h('span', { class: 'message-type-label' }, getMessageTypeLabel(item.message_type)),
-          ],
-        },
-      ),
+    render: (item) => renderMessageTypeTag(item.message_type),
   },
   {
     title: t('message.column.content'),
@@ -404,12 +414,7 @@ const myColumns = computed<DataTableColumns<MessageItem>>(() => [
     title: t('message.column.type'),
     key: 'message_type',
     width: 140,
-    render: (item) =>
-      h(
-        NTag,
-        { type: getMessageTagType(item.message_type), size: 'small', round: true },
-        { default: () => getMessageTypeLabel(item.message_type) },
-      ),
+    render: (item) => renderMessageTypeTag(item.message_type),
   },
   {
     title: t('message.column.content'),
@@ -475,7 +480,7 @@ const refreshCurrentList = async (): Promise<void> => {
     return
   }
 
-  await myPagination.refresh()
+  await Promise.all([myPagination.refresh(), messageStore.loadLatest()])
 }
 
 const createInitialForm = (): MessageFormModel => ({
@@ -709,63 +714,15 @@ onMounted(() => {
       read_at: null,
     })
   }
+
+  if (!messageStore.latestLoaded && !messageStore.latestLoading) {
+    void messageStore.loadLatest()
+  }
 })
 </script>
 
 <template>
   <main class="message-page">
-    <header class="message-page-header">
-      <div class="message-page-heading">
-        <div class="message-page-eyebrow">
-          <NIcon :size="16" aria-hidden="true"><NotificationsOutline /></NIcon>
-          <span>{{ t('message.title') }}</span>
-        </div>
-        <h1>{{ t('message.title') }}</h1>
-        <p>{{ t('message.description') }}</p>
-      </div>
-      <div class="message-page-actions">
-        <NRadioGroup v-model:value="viewMode" name="message-view-mode" size="small">
-          <NRadioButton value="inbox">{{ t('message.mode.inbox') }}</NRadioButton>
-          <NRadioButton v-if="canManage" value="manage">{{
-            t('message.mode.manage')
-          }}</NRadioButton>
-        </NRadioGroup>
-        <NButton
-          v-if="viewMode === 'inbox'"
-          quaternary
-          :disabled="!messageStore.hasUnread || inboxLoading"
-          @click="markAllInboxRead"
-        >
-          <template #icon>
-            <NIcon><CheckmarkDoneOutline /></NIcon>
-          </template>
-          {{ t('message.action.markAllRead') }}
-        </NButton>
-        <NButton
-          v-if="viewMode === 'manage' && canCreate"
-          type="primary"
-          @click="openCreateMessage"
-        >
-          <template #icon>
-            <NIcon><AddOutline /></NIcon>
-          </template>
-          {{ t('message.action.create') }}
-        </NButton>
-        <NButton
-          quaternary
-          circle
-          :loading="activeLoading"
-          :aria-label="t('message.refresh')"
-          :title="t('message.refresh')"
-          @click="refreshCurrentList"
-        >
-          <template #icon>
-            <NIcon><RefreshOutline /></NIcon>
-          </template>
-        </NButton>
-      </div>
-    </header>
-
     <section class="message-list-panel" :aria-labelledby="`${viewMode}-message-list-title`">
       <div class="message-list-heading">
         <div>
@@ -778,7 +735,52 @@ onMounted(() => {
             }}
           </p>
         </div>
-        <span>{{ totalLabel }}</span>
+        <div class="message-page-actions">
+          <NRadioGroup v-model:value="viewMode" name="message-view-mode" size="medium">
+            <NRadioButton value="inbox">{{ t('message.mode.inbox') }}</NRadioButton>
+            <NRadioButton v-if="canManage" value="manage">{{
+              t('message.mode.manage')
+            }}</NRadioButton>
+          </NRadioGroup>
+          <NButton
+            v-if="viewMode === 'inbox'"
+            quaternary
+            size="medium"
+            :loading="messageStore.latestLoading"
+            :disabled="messageStore.latestLoading || !messageStore.hasUnread || inboxLoading"
+            @click="markAllInboxRead"
+          >
+            <template #icon>
+              <NIcon><CheckmarkDoneOutline /></NIcon>
+            </template>
+            {{ t('message.action.markAllRead') }}
+          </NButton>
+          <NButton
+            v-if="viewMode === 'manage' && canCreate"
+            type="primary"
+            size="medium"
+            @click="openCreateMessage"
+          >
+            <template #icon>
+              <NIcon><AddOutline /></NIcon>
+            </template>
+            {{ t('message.action.create') }}
+          </NButton>
+          <NButton
+            quaternary
+            circle
+            size="medium"
+            :loading="activeLoading"
+            :aria-label="t('message.refresh')"
+            :title="t('message.refresh')"
+            @click="refreshCurrentList"
+          >
+            <template #icon>
+              <NIcon><RefreshOutline /></NIcon>
+            </template>
+          </NButton>
+          <span class="message-total">{{ totalLabel }}</span>
+        </div>
       </div>
 
       <AppSearchForm
@@ -934,7 +936,11 @@ onMounted(() => {
             />
           </NFormItem>
           <NFormItem :label="t('message.form.status')" path="status">
-            <NSelect v-model:value="formModel.status" :options="formStatusOptions" />
+            <NSelect
+              v-model:value="formModel.status"
+              :options="formStatusOptions"
+              :placeholder="t('message.form.statusPlaceholder')"
+            />
           </NFormItem>
           <NFormItem :label="t('message.form.publishTime')" path="publish_time">
             <NDatePicker
@@ -987,7 +993,7 @@ onMounted(() => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .message-page {
   display: grid;
   gap: 16px;
@@ -995,7 +1001,6 @@ onMounted(() => {
   color: var(--app-color-text);
 }
 
-.message-page-header,
 .message-list-heading,
 .message-page-footer {
   display: flex;
@@ -1004,37 +1009,15 @@ onMounted(() => {
   gap: 16px;
 }
 
-.message-page-heading,
 .message-list-heading > div {
   min-width: 0;
 }
 
-.message-page-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.message-page-heading h1,
-.message-page-heading p,
 .message-list-heading h2,
 .message-list-heading p,
-.message-list-heading span {
+.message-total {
   margin: 0;
 }
-
-.message-page-heading h1 {
-  font-size: 24px;
-  line-height: 1.3;
-}
-
-.message-page-heading p,
 .message-list-heading p {
   margin-top: 6px;
   color: var(--app-color-text-muted);
@@ -1068,7 +1051,7 @@ onMounted(() => {
   font-size: 16px;
 }
 
-.message-list-heading > span,
+.message-total,
 .message-page-footer span {
   flex: 0 0 auto;
   color: var(--app-color-text-muted);
@@ -1076,7 +1059,7 @@ onMounted(() => {
 }
 
 .message-list-panel :deep(.n-data-table) {
-  margin: 0 -24px;
+  margin: 16px -24px 0;
 }
 
 .message-page-error {
@@ -1096,8 +1079,21 @@ onMounted(() => {
   border-top: 1px solid var(--app-color-border);
 }
 
+.message-type-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.message-type-tag :deep(.n-icon) {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
 .message-type-label {
-  margin-left: 4px;
+  line-height: 1;
 }
 
 .message-row-actions {
@@ -1237,7 +1233,6 @@ onMounted(() => {
 }
 
 @media (width <= 720px) {
-  .message-page-header,
   .message-list-heading {
     align-items: stretch;
     flex-direction: column;
@@ -1245,6 +1240,7 @@ onMounted(() => {
 
   .message-page-actions {
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -1255,7 +1251,7 @@ onMounted(() => {
   }
 
   .message-list-panel :deep(.n-data-table) {
-    margin: 0 -16px;
+    margin: 16px -16px 0;
   }
 
   .message-page-footer {
@@ -1275,7 +1271,7 @@ onMounted(() => {
 }
 </style>
 
-<style>
+<style lang="scss">
 .n-card.message-modal {
   width: min(760px, calc(100vw - 32px));
 }

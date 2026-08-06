@@ -17,7 +17,7 @@ const watermarkItems = Array.from({ length: 18 }, (_, index) => index)
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .watermark-overlay {
   position: fixed;
   z-index: 1500;

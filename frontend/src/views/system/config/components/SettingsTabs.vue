@@ -45,7 +45,7 @@ const selectTab = (tab: SettingsTab): void => {
   </nav>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .settings-tabs {
   display: flex;
   width: 100%;

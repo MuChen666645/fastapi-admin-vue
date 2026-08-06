@@ -621,7 +621,7 @@ defineExpose<AppFormExposed<T>>({
   </NForm>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .app-form__actions {
   display: flex;
   justify-content: flex-end;

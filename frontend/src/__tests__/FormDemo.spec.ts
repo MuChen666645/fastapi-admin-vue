@@ -23,7 +23,7 @@ describe('FormDemoView', () => {
     })
 
     expect(wrapper.find('main.form-demo-page').exists()).toBe(true)
-    expect(wrapper.get('h1').text()).toBe('标准提交表单')
+    expect(wrapper.find('.form-demo-header').exists()).toBe(false)
     expect(wrapper.text()).toContain('自定义备注控件和字段插槽')
     expect(wrapper.text()).toContain('评审成员分组的新增、删除和数量限制')
     expect(wrapper.find('[data-testid="app-form-field-remarks"] textarea').exists()).toBe(true)

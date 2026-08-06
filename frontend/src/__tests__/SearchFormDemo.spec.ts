@@ -25,7 +25,7 @@ describe('SearchFormDemoView', () => {
 
     try {
       expect(wrapper.find('main.search-form-demo-page').exists()).toBe(true)
-      expect(wrapper.get('h1').text()).toBe('标准搜索表单')
+      expect(wrapper.find('.search-form-demo-header').exists()).toBe(false)
       expect(wrapper.text()).toContain('常用条件优先展示，高级条件可折叠')
       expect(wrapper.find('[data-testid="app-form-field-category"]').exists()).toBe(false)
 

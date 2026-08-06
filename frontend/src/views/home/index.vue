@@ -207,10 +207,6 @@ watch(
 
 <template>
   <section class="home-page">
-    <div class="page-heading">
-      <h1>{{ t('home.title') }}</h1>
-    </div>
-
     <div class="summary-grid">
       <article v-for="card in summaryCards" :key="card.label" class="summary-card">
         <div class="summary-card-header">
@@ -299,7 +295,7 @@ watch(
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .home-page {
   --home-primary: var(--app-color-primary);
   --home-primary-dark: var(--app-color-primary-dark);
@@ -313,21 +309,8 @@ watch(
   color: var(--home-text);
 }
 
-.page-heading {
-  display: grid;
-  gap: 8px;
-}
-
-.page-heading h1,
 .content-card h2 {
   margin: 0;
-}
-
-.page-heading h1 {
-  color: var(--home-text);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.25;
 }
 
 .summary-grid,

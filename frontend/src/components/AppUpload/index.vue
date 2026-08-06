@@ -197,7 +197,7 @@ defineExpose<AppUploadExposed>({ open, submit, clear })
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .app-upload {
   min-width: 0;
 }

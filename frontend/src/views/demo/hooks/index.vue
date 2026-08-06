@@ -164,18 +164,6 @@ const handleReset = async (nextQuery: HooksDemoQuery): Promise<void> => {
 
 <template>
   <main class="hooks-demo-page">
-    <header class="hooks-demo-header">
-      <div>
-        <div class="hooks-demo-eyebrow">
-          <NIcon :size="16" aria-hidden="true"><GitBranchOutline /></NIcon>
-          <span>Hook 演示 / usePagination</span>
-        </div>
-        <h1>可复用 Hooks</h1>
-        <p>通过真实的分页交互观察 Hook 如何协调请求参数、列表状态和 Naive UI 组件。</p>
-      </div>
-      <NTag type="info" round>前端基础能力</NTag>
-    </header>
-
     <section class="hooks-demo-filter-panel" aria-labelledby="hooks-filter-title">
       <div class="hooks-demo-panel-heading">
         <div>
@@ -281,7 +269,7 @@ const handleReset = async (nextQuery: HooksDemoQuery): Promise<void> => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .hooks-demo-page {
   display: grid;
   gap: 20px;
@@ -289,7 +277,6 @@ const handleReset = async (nextQuery: HooksDemoQuery): Promise<void> => {
   color: var(--app-color-text);
 }
 
-.hooks-demo-header,
 .hooks-demo-panel-heading,
 .hooks-demo-guide-heading {
   display: flex;
@@ -298,9 +285,6 @@ const handleReset = async (nextQuery: HooksDemoQuery): Promise<void> => {
   gap: 16px;
 }
 
-.hooks-demo-header h1,
-.hooks-demo-header p,
-.hooks-demo-eyebrow,
 .hooks-demo-panel-heading h2,
 .hooks-demo-panel-heading p,
 .hooks-demo-guide-heading h2,
@@ -308,23 +292,6 @@ const handleReset = async (nextQuery: HooksDemoQuery): Promise<void> => {
   margin: 0;
 }
 
-.hooks-demo-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.hooks-demo-header h1 {
-  font-size: 26px;
-  line-height: 1.2;
-}
-
-.hooks-demo-header p,
 .hooks-demo-panel-heading p {
   margin-top: 8px;
   color: var(--app-color-text-muted);

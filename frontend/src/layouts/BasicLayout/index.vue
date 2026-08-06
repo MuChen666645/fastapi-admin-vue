@@ -84,7 +84,7 @@ const refreshRouteView = (): void => {
   </NLayout>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .layout-content__body {
   position: relative;
   min-height: 100%;

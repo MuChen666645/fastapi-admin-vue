@@ -51,7 +51,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .content-loading {
   position: absolute;
   z-index: 20;

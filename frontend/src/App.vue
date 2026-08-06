@@ -3,7 +3,6 @@ import { computed, watch } from 'vue'
 import {
   NConfigProvider,
   NDialogProvider,
-  NGlobalStyle,
   NLoadingBarProvider,
   NMessageProvider,
   NNotificationProvider,
@@ -94,7 +93,6 @@ watch(
 <template>
   <div class="app-root" :class="{ 'app-root--dark': isDarkMode }">
     <NConfigProvider :theme="naiveTheme" :theme-overrides="themeOverrides">
-      <NGlobalStyle />
       <NMessageProvider>
         <NDialogProvider>
           <NNotificationProvider>

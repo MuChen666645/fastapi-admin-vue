@@ -147,7 +147,7 @@ const selectItem = (item: MessageItem): void => {
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .message-center {
   min-width: 0;
   overflow: hidden;

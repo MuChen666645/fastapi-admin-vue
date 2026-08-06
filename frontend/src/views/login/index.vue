@@ -359,7 +359,7 @@ onMounted(() => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .login-page {
   --login-bg: #f4f6f8;
   --login-surface: #fff;

@@ -49,7 +49,7 @@ const dismiss = (): void => {
   </Transition>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .app-update-prompt {
   position: fixed;
   z-index: 3000;

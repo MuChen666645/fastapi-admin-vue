@@ -8,7 +8,7 @@ describe('UtilsDemoView', () => {
     const wrapper = mount(UtilsDemoView)
 
     expect(wrapper.find('main.utils-demo-page').exists()).toBe(true)
-    expect(wrapper.get('h1').text()).toBe('工具函数')
+    expect(wrapper.find('.utils-demo-header').exists()).toBe(false)
     expect(wrapper.text()).toContain('解析成功')
     expect(wrapper.text()).toContain('2026-08-05 13:14:15')
     expect(wrapper.text()).toContain('zh-cn')

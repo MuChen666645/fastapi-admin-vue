@@ -47,7 +47,7 @@ const handleHome = async (): Promise<void> => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .error-page {
   display: grid;
   min-height: 100dvh;

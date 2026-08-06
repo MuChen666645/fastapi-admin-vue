@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { CopyOutline, RefreshOutline, SettingsOutline } from '@vicons/ionicons5'
+import { CopyOutline } from '@vicons/ionicons5'
 import { NButton, NIcon, useMessage } from 'naive-ui'
 
 import { useLocale } from '@/hooks'
@@ -46,23 +46,6 @@ const copyPreferences = async (): Promise<void> => {
 
 <template>
   <main class="preferences-page">
-    <header class="preferences-header">
-      <div class="preferences-heading">
-        <div class="preferences-eyebrow">
-          <NIcon :size="16" aria-hidden="true"><SettingsOutline /></NIcon>
-          <span>{{ t('settings.eyebrow') }}</span>
-        </div>
-        <h1>{{ t('settings.title') }}</h1>
-        <p>{{ t('settings.description') }}</p>
-      </div>
-      <NButton quaternary class="reset-button" @click="resetPreferences">
-        <template #icon>
-          <NIcon><RefreshOutline /></NIcon>
-        </template>
-        {{ t('settings.reset') }}
-      </NButton>
-    </header>
-
     <SettingsTabs v-model="activeTab" />
 
     <div class="settings-content">
@@ -86,55 +69,13 @@ const copyPreferences = async (): Promise<void> => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .preferences-page {
   display: flex;
   min-height: 100%;
   flex-direction: column;
   overflow: auto;
   color: var(--app-color-text);
-}
-
-.preferences-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 4px 0 24px;
-}
-
-.preferences-heading h1,
-.preferences-heading p,
-.preferences-eyebrow {
-  margin: 0;
-}
-
-.preferences-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.preferences-heading h1 {
-  font-size: clamp(24px, 2vw, 30px);
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.preferences-heading p {
-  margin-top: 8px;
-  color: var(--app-color-text-muted);
-  font-size: 14px;
-}
-
-.reset-button {
-  color: var(--app-color-text-muted);
 }
 
 .settings-content {
@@ -161,16 +102,6 @@ const copyPreferences = async (): Promise<void> => {
 }
 
 @media (width <= 600px) {
-  .preferences-header {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .reset-button {
-    align-self: flex-start;
-  }
-
   .preferences-footer {
     align-items: stretch;
     flex-direction: column;

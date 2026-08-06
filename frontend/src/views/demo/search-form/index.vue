@@ -306,18 +306,6 @@ const formatSearchTime = computed(() =>
 
 <template>
   <main class="search-form-demo-page">
-    <header class="search-form-demo-header">
-      <div>
-        <div class="search-form-demo-eyebrow">
-          <NIcon :size="16" aria-hidden="true"><SearchOutline /></NIcon>
-          <span>组件演示 / AppSearchForm</span>
-        </div>
-        <h1>标准搜索表单</h1>
-        <p>集中演示筛选条件布局、折叠策略、校验、搜索状态和结果反馈。</p>
-      </div>
-      <NTag type="info" round>本地数据演示</NTag>
-    </header>
-
     <section class="search-form-demo-panel search-form-demo-panel--filters">
       <div class="search-form-demo-panel__header">
         <div>
@@ -478,7 +466,7 @@ const formatSearchTime = computed(() =>
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .search-form-demo-page {
   display: grid;
   gap: 20px;
@@ -486,7 +474,6 @@ const formatSearchTime = computed(() =>
   color: var(--app-color-text);
 }
 
-.search-form-demo-header,
 .search-form-demo-panel__header,
 .search-form-demo-guide__heading {
   display: flex;
@@ -495,9 +482,6 @@ const formatSearchTime = computed(() =>
   gap: 16px;
 }
 
-.search-form-demo-header h1,
-.search-form-demo-header p,
-.search-form-demo-eyebrow,
 .search-form-demo-panel__header h2,
 .search-form-demo-panel__header p,
 .search-form-demo-guide__heading h2,
@@ -505,23 +489,6 @@ const formatSearchTime = computed(() =>
   margin: 0;
 }
 
-.search-form-demo-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--app-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.search-form-demo-header h1 {
-  font-size: 26px;
-  line-height: 1.2;
-}
-
-.search-form-demo-header p,
 .search-form-demo-panel__header p {
   margin-top: 8px;
   color: var(--app-color-text-muted);
@@ -704,7 +671,6 @@ const formatSearchTime = computed(() =>
     padding: 16px;
   }
 
-  .search-form-demo-header,
   .search-form-demo-record {
     align-items: flex-start;
   }

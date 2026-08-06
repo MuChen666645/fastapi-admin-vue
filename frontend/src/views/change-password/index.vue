@@ -84,7 +84,7 @@ const handleSubmit = async (): Promise<void> => {
   </main>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .password-page {
   place-items: center;
   padding: 24px;

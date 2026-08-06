@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .global-loading {
   position: fixed;
   z-index: 2000;
