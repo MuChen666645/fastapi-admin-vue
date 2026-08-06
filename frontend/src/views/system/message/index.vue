@@ -744,7 +744,7 @@ onMounted(() => {
           </NRadioGroup>
           <NButton
             v-if="viewMode === 'inbox'"
-            quaternary
+            type="primary"
             size="medium"
             :loading="messageStore.latestLoading"
             :disabled="messageStore.latestLoading || !messageStore.hasUnread || inboxLoading"
@@ -789,6 +789,7 @@ onMounted(() => {
         :initial-values="createInitialMessageFilters()"
         :fields="messageSearchFields"
         :loading="managementLoading"
+        default-collapsed
         :search-text="t('message.search.submit')"
         :reset-text="t('message.search.reset')"
         :layout="{
@@ -810,6 +811,7 @@ onMounted(() => {
         :initial-values="createInitialMyFilters()"
         :fields="mySearchFields"
         :loading="inboxLoading"
+        default-collapsed
         :search-text="t('message.search.submit')"
         :reset-text="t('message.search.reset')"
         :layout="{

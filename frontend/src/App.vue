@@ -6,6 +6,10 @@ import {
   NLoadingBarProvider,
   NMessageProvider,
   NNotificationProvider,
+  dateEnUS,
+  dateZhCN,
+  enUS,
+  zhCN,
 } from 'naive-ui'
 import { RouterView } from 'vue-router'
 
@@ -24,6 +28,8 @@ const preferences = usePreferencesStore()
 useDocumentTitle()
 
 const activeAccent = computed(() => findAccentColor(preferences.accentColor))
+const naiveLocale = computed(() => (preferences.language === 'zh-CN' ? zhCN : enUS))
+const naiveDateLocale = computed(() => (preferences.language === 'zh-CN' ? dateZhCN : dateEnUS))
 const themeOverrides = computed(() => {
   const primaryColor = isDarkMode.value ? activeAccent.value.dark : activeAccent.value.light
   const primaryColorHover = isDarkMode.value ? activeAccent.value.dark : activeAccent.value.hover
@@ -92,7 +98,12 @@ watch(
 
 <template>
   <div class="app-root" :class="{ 'app-root--dark': isDarkMode }">
-    <NConfigProvider :theme="naiveTheme" :theme-overrides="themeOverrides">
+    <NConfigProvider
+      :theme="naiveTheme"
+      :theme-overrides="themeOverrides"
+      :locale="naiveLocale"
+      :date-locale="naiveDateLocale"
+    >
       <NMessageProvider>
         <NDialogProvider>
           <NNotificationProvider>

@@ -89,7 +89,7 @@ export const translations: Record<PreferenceLanguage, Record<TranslationKey, str
     'message.action.detail': '查看详情',
     'message.action.edit': '编辑消息',
     'message.action.delete': '删除消息',
-    'message.action.markAllRead': '全部标为已读',
+    'message.action.markAllRead': '全部已读',
     'message.action.confirmDelete': '确认删除消息？',
     'message.action.confirmDeleteContent': '删除后消息及其阅读记录将一并移除，且无法恢复。',
     'message.detailTitle': '消息详情',
@@ -426,7 +426,7 @@ export const translations: Record<PreferenceLanguage, Record<TranslationKey, str
     'message.action.detail': 'View details',
     'message.action.edit': 'Edit message',
     'message.action.delete': 'Delete message',
-    'message.action.markAllRead': 'Mark all as read',
+    'message.action.markAllRead': 'All read',
     'message.action.confirmDelete': 'Delete this message?',
     'message.action.confirmDeleteContent':
       'The message and its read records will be removed permanently.',

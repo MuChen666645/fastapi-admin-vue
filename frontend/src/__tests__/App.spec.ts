@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { mount } from '@vue/test-utils'
-import { NLoadingBarProvider } from 'naive-ui'
+import { dateEnUS, dateZhCN, enUS, NConfigProvider, NLoadingBarProvider, zhCN } from 'naive-ui'
 import { createPinia } from 'pinia'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -15,6 +15,8 @@ const LoginPage = defineComponent({ template: '<div data-testid="login-page">Log
 
 describe('App', () => {
   it('mounts the global loading provider', async () => {
+    localStorage.clear()
+
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: '/', component: LoginPage }],
@@ -35,6 +37,16 @@ describe('App', () => {
     expect(wrapper.findComponent(RouterLoadingBar).exists()).toBe(true)
 
     const preferences = usePreferencesStore(pinia)
+    const configProvider = wrapper.findComponent(NConfigProvider)
+    expect(configProvider.props('locale')).toBe(zhCN)
+    expect(configProvider.props('dateLocale')).toBe(dateZhCN)
+
+    preferences.language = 'en-US'
+    await nextTick()
+
+    expect(configProvider.props('locale')).toBe(enUS)
+    expect(configProvider.props('dateLocale')).toBe(dateEnUS)
+
     preferences.accentColor = 'rose'
     await nextTick()
 
