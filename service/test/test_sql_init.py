@@ -4,6 +4,7 @@ from pathlib import Path
 SQL_DIR = Path(__file__).parents[1] / "assets" / "sql"
 SCHEMA_SQL_PATH = SQL_DIR / "schema-upgrade.sql"
 SEED_SQL_PATH = SQL_DIR / "fastapi-admin.sql"
+COMPOSE_PATH = Path(__file__).parents[1] / "docker-compose.yml"
 
 
 def test_department_upgrade_sql_is_idempotent() -> None:
@@ -84,6 +85,15 @@ def test_sql_initialization_uses_utc8_and_null_root_departments() -> None:
     assert sql.rstrip().endswith("COMMIT;")
     assert sql.index("INSERT IGNORE INTO roles") < sql.index("INSERT IGNORE INTO users")
     assert "(@seed_tenant_id, 100, NULL, '0', '集团总部'" in sql
+
+
+def test_mysql_compose_defaults_to_utc8() -> None:
+    compose = COMPOSE_PATH.read_text(encoding="utf-8")
+    mysql_start = compose.index("  fastapi-mysql:\n    image")
+    mysql_end = compose.index("  fastapi-redis:", mysql_start)
+    mysql_block = compose[mysql_start:mysql_end]
+
+    assert "--default-time-zone=+08:00" in mysql_block
 
 
 def test_tenant_scoped_seed_rows_include_the_default_tenant() -> None:

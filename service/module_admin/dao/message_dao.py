@@ -16,7 +16,7 @@ from module_admin.dao.tenant_scope import (
 from module_admin.entity.do.message_do import MessageDo, MessageRecipientDo
 from module_admin.entity.do.user_do import UserDo
 from module_admin.entity.message_type import MessageReadStatus, MessageType
-from utils.time_utils import now_utc8_naive
+from utils.time_utils import normalize_utc8_naive, now_utc8_naive
 
 
 class MessageDao:
@@ -43,10 +43,12 @@ class MessageDao:
             query = query.where(MessageDo.message_type == message_type.value)
         if status is not None:
             query = query.where(MessageDo.status == status)
-        if start_time is not None:
-            query = query.where(MessageDo.publish_time >= start_time)
-        if end_time is not None:
-            query = query.where(MessageDo.publish_time <= end_time)
+        normalized_start_time = normalize_utc8_naive(start_time)
+        normalized_end_time = normalize_utc8_naive(end_time)
+        if normalized_start_time is not None:
+            query = query.where(MessageDo.publish_time >= normalized_start_time)
+        if normalized_end_time is not None:
+            query = query.where(MessageDo.publish_time <= normalized_end_time)
         query = query.order_by(MessageDo.publish_time.desc(), MessageDo.id.desc())
         return await paginate(request.state.mysql, query, params=params)
 
@@ -105,10 +107,12 @@ class MessageDao:
             query = query.where(MessageRecipientDo.read_at.is_(None))
         elif read_status == MessageReadStatus.READ:
             query = query.where(MessageRecipientDo.read_at.is_not(None))
-        if start_time is not None:
-            query = query.where(MessageDo.publish_time >= start_time)
-        if end_time is not None:
-            query = query.where(MessageDo.publish_time <= end_time)
+        normalized_start_time = normalize_utc8_naive(start_time)
+        normalized_end_time = normalize_utc8_naive(end_time)
+        if normalized_start_time is not None:
+            query = query.where(MessageDo.publish_time >= normalized_start_time)
+        if normalized_end_time is not None:
+            query = query.where(MessageDo.publish_time <= normalized_end_time)
         return await paginate(
             request.state.mysql,
             query.order_by(MessageDo.publish_time.desc(), MessageDo.id.desc()),
@@ -142,6 +146,9 @@ class MessageDao:
             exclude={"recipient_user_ids", "delivery_channels"}
         )
         message_data["message_type"] = data.message_type.value
+        message_data["publish_time"] = normalize_utc8_naive(
+            message_data.get("publish_time")
+        )
         item = MessageDo(
             **message_data,
             create_by=getattr(request.state, "user_id", None),
@@ -274,6 +281,10 @@ class MessageDao:
         update_data = data.model_dump(exclude_unset=True)
         if data.message_type is not None:
             update_data["message_type"] = data.message_type.value
+        if "publish_time" in update_data:
+            update_data["publish_time"] = normalize_utc8_naive(
+                update_data["publish_time"]
+            )
         item.sqlmodel_update(update_data)
         return item
 

@@ -32,7 +32,7 @@ class MessageService:
         params: Params,
     ) -> Page[MessageDto]:
         """分页查询租户消息。"""
-        return await MessageDao.list_messages(
+        page = await MessageDao.list_messages(
             request,
             title,
             content,
@@ -42,6 +42,8 @@ class MessageService:
             end_time,
             params,
         )
+        items = [MessageDto.model_validate(item) for item in page.items]
+        return create_page(items, total=page.total, params=params)
 
     @staticmethod
     async def list_my_messages(

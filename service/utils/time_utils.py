@@ -14,3 +14,16 @@ def now_utc8() -> datetime:
 def now_utc8_naive() -> datetime:
     """返回用于 MySQL DATETIME 字段存储的东八区本地时间。"""
     return now_utc8().replace(tzinfo=None)
+
+
+def normalize_utc8_naive(value: datetime | None) -> datetime | None:
+    """将时间统一转换为东八区无时区值，适用于 MySQL DATETIME。"""
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC8).replace(tzinfo=None)
+
+
+def format_utc8_datetime(value: datetime | None) -> str | None:
+    """将时间格式化为接口统一的东八区日期时间文本。"""
+    normalized = normalize_utc8_naive(value)
+    return normalized.strftime("%Y-%m-%d %H:%M:%S") if normalized is not None else None

@@ -2,9 +2,10 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from module_admin.entity.message_type import MessageType
+from utils.time_utils import format_utc8_datetime
 
 
 class MessageCreateDto(BaseModel):
@@ -86,6 +87,11 @@ class MessageDto(BaseModel):
     create_time: datetime = Field(title="创建时间", description="创建时间")
     update_time: datetime = Field(title="更新时间", description="更新时间")
 
+    @field_serializer("publish_time", "create_time", "update_time")
+    def serialize_datetime(self, value: datetime | None) -> str | None:
+        """以统一文本格式返回消息时间，避免前端重复处理 ISO 时间。"""
+        return format_utc8_datetime(value)
+
 
 class MessageItemDto(BaseModel):
     """个人消息中心列表和详情响应。"""
@@ -98,6 +104,11 @@ class MessageItemDto(BaseModel):
     message_content: str = Field(description="消息内容")
     publish_time: datetime | None = Field(description="发布时间")
     read_at: datetime | None = Field(description="阅读时间")
+
+    @field_serializer("publish_time", "read_at")
+    def serialize_datetime(self, value: datetime | None) -> str | None:
+        """以统一文本格式返回个人消息时间。"""
+        return format_utc8_datetime(value)
 
 
 class MessageLatestDto(BaseModel):
