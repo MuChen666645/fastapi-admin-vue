@@ -19,6 +19,7 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 | `isSafeRoutePath`、`isSafeRouteName`、`isUserRouteMenuType`、`isSafeExternalLink`              | `@/utils`                  | 校验后端路由路径、名称、菜单类型和外链。         |
 | `createMoment`、`formatDate`、`formatDateTime` 等                                              | `@/utils`                  | 统一 Moment locale、格式化、严格解析和日期范围。 |
 | `resolveRouteMenuState`                                                                        | `@/utils`                  | 根据当前路由匹配结果同步菜单选中项和展开项。     |
+| `resolveMessageTab` / `resolveMessageTone` / `formatMessageRelativeTime`                      | `@/utils`                  | 消息类型展示、风险色调、相对时间和消息表单值转换。 |
 | `isAppUpdateManifest`、`fetchAppUpdateManifest`、`forceReloadApp`                              | `@/utils`                  | 校验同源构建清单、读取版本和执行整页刷新。       |
 | `loginPreferences`                                                                             | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。           |
 | `request`                                                                                      | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。     |

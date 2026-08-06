@@ -91,10 +91,10 @@ const handleSearch = async (model: UserQuery): Promise<void> => {
 - `defaultCollapsed`：非受控模式的初始状态。
 - `collapsed`：受控模式的当前状态，可配合 `v-model:collapsed` 使用。
 - `collapsedFields`：折叠时保留展示的字段数量，默认为 `3`。
-- `showToggle`：是否显示展开/收起按钮；字段数量未超过 `collapsedFields` 时自动隐藏。
+- `showToggle`：是否显示展开/收起按钮；字段未发生换行时自动隐藏，字段数量未超过 `collapsedFields` 时也会隐藏。
 - `@toggle` / `@update:collapsed`：监听折叠状态变化。
 
-折叠只影响字段渲染，不会删除或清空隐藏条件；展开后可以继续编辑，点击搜索时 model 会包含所有已经填写的条件。
+组件会根据字段网格的实际换行情况判断是否需要折叠按钮，并在容器尺寸变化时重新计算。折叠只影响字段渲染，不会删除或清空隐藏条件；展开后可以继续编辑，点击搜索时 model 会包含所有已经填写的条件。
 
 ## 自定义字段与动作区
 

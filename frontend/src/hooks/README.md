@@ -12,15 +12,35 @@ import { useAppUpdate, useECharts, useLocale, useLottie, useRouteCache, useTheme
 
 ## Hook 索引
 
-| Hook               | 参数                                              | 返回值                                          | 适用场景                           |
-| ------------------ | ------------------------------------------------- | ----------------------------------------------- | ---------------------------------- |
-| `useDocumentTitle` | 无                                                | `void`                                          | 监听路由和语言，更新浏览器标题。   |
-| `useAppUpdate`     | 可选启用 Ref、检查间隔和立即检查配置              | 更新状态、检查、启停和刷新方法                  | 轮询构建版本清单并协调整页刷新。   |
-| `useECharts`       | `Ref<HTMLElement \| null>`、`() => EChartsOption` | `renderChart`                                   | 初始化、更新和销毁 ECharts。       |
-| `useLocale`        | 无                                                | `language`、`t`                                 | 读取界面语言和类型安全的词典文案。 |
-| `useLottie`        | 容器 Ref、动画数据、可选项                        | `animation`、`load`、`play`、`pause`、`destroy` | 管理 Lottie 生命周期。             |
-| `useRouteCache`    | 无                                                | 缓存名称、组件包装和路由 key 方法               | BasicLayout 的 KeepAlive 缓存。    |
-| `useTheme`         | 无                                                | `isDarkMode`、`naiveTheme`、`toggleTheme`       | 主题状态和主题切换。               |
+| Hook               | 参数                                              | 返回值                                                   | 适用场景                           |
+| ------------------ | ------------------------------------------------- | -------------------------------------------------------- | ---------------------------------- |
+| `useDocumentTitle` | 无                                                | `void`                                                   | 监听路由和语言，更新浏览器标题。   |
+| `useAppUpdate`     | 可选启用 Ref、检查间隔和立即检查配置              | 更新状态、检查、启停和刷新方法                           | 轮询构建版本清单并协调整页刷新。   |
+| `useECharts`       | `Ref<HTMLElement \| null>`、`() => EChartsOption` | `renderChart`                                            | 初始化、更新和销毁 ECharts。       |
+| `useLocale`        | 无                                                | `language`、`t`                                          | 读取界面语言和类型安全的词典文案。 |
+| `useLottie`        | 容器 Ref、动画数据、可选项                        | `animation`、`load`、`play`、`pause`、`destroy`          | 管理 Lottie 生命周期。             |
+| `useRouteCache`    | 无                                                | 缓存名称、组件包装和路由 key 方法                        | BasicLayout 的 KeepAlive 缓存。    |
+| `useTheme`         | 无                                                | `isDarkMode`、`naiveTheme`、`toggleTheme`                | 主题状态和主题切换。               |
+| `usePermission`    | 无                                                | `hasPermission`、`hasAnyPermission`、`hasAllPermissions` | 按钮和操作级权限控制。             |
+
+## usePermission
+
+`usePermission` 从当前认证 Store 读取权限，只负责前端按钮和操作入口的可见性判断。它支持精确权限码和后端返回的超级管理员通配权限 `*:*:*`；不会替代后端接口鉴权。
+
+```ts
+import { usePermission } from '@/hooks'
+
+const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermission()
+const canCreate = hasPermission('system:message:add')
+const canOperate = hasAnyPermission(['system:message:edit', 'system:message:remove'])
+const canPublishAndEdit = hasAllPermissions(['system:message:add', 'system:message:edit'])
+```
+
+在响应式模板中建议通过 `computed` 包装权限判断，确保登录态或权限刷新后按钮同步更新：
+
+```ts
+const canCreate = computed(() => hasPermission('system:message:add'))
+```
 
 ## usePagination
 
@@ -148,6 +168,12 @@ const { isDarkMode, naiveTheme, toggleTheme } = useTheme()
 - 所有生命周期监听必须在卸载时清理。
 - 需要跨页面共享的数据放 Pinia Store，不通过模块级可变变量传递。
 - 纯计算、格式化、解析和浏览器存储函数放入 `src/utils/`，从 [工具包入口](../utils/README.md) 了解导出范围。
+
+## 消息中心 Hooks
+
+`useMessageCenter` 通过 `useMessageStore` 暴露最新消息分类、后端未读总数、已读和跳转行为；它不直接调用消息 API。
+
+`useMessagePopover` 编排顶栏消息弹层的打开、关闭、首次加载三类最新消息、刷新和“查看全部消息”。两个 Hook 共享同一个非持久化消息 Store，登出时由认证 Store 清理；消息中心分页由页面复用 `usePagination` 编排。
 
 ## 新增或修改 Hook 检查清单
 

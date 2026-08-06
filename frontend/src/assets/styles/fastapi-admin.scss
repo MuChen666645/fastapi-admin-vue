@@ -421,15 +421,21 @@ body {
   outline: none;
 }
 
-.notification-dot {
+.notification-count {
   position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 5px;
-  height: 5px;
-  border: 1px solid var(--app-color-header-start);
-  border-radius: 50%;
-  background: #ff4d4f;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  color: #fff;
+  border: 2px solid var(--app-color-header-start);
+  border-radius: 10px;
+  background: var(--app-color-danger);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
 }
 
 .header-divider {

@@ -11,11 +11,20 @@ import {
   ShieldCheckmarkOutline,
   SunnyOutline,
 } from '@vicons/ionicons5'
-import { NAvatar, NDropdown, NIcon, NLayoutHeader, useMessage, useNotification } from 'naive-ui'
+import {
+  NAvatar,
+  NDropdown,
+  NIcon,
+  NLayoutHeader,
+  NPopover,
+  useMessage,
+  useNotification,
+} from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 import AppBreadcrumb from '@/components/AppBreadcrumb/index.vue'
-import { useLocale } from '@/hooks'
+import MessageCenter from '@/components/MessageCenter/index.vue'
+import { useLocale, useMessagePopover } from '@/hooks'
 import { useTheme } from '@/hooks/useTheme'
 import { clearAuthenticatedRoutes } from '@/router'
 import { useAuthStore, usePreferencesStore, useTabsStore } from '@/stores'
@@ -38,6 +47,24 @@ const message = useMessage()
 const notification = useNotification()
 const { isDarkMode, toggleTheme } = useTheme()
 const { t } = useLocale()
+const {
+  activeTab: messageActiveTab,
+  error: messageError,
+  loading: messageLoading,
+  refresh: refreshMessages,
+  selectItem: selectMessageItem,
+  selectTab: selectMessageTab,
+  tabUnreadCounts: messageTabUnreadCounts,
+  unreadCount: messageUnreadCount,
+  viewAll: viewAllMessages,
+  visible: messagePopoverVisible,
+  visibleItems: messageVisibleItems,
+  toggle: toggleMessagePopover,
+} = useMessagePopover()
+
+const messageUnreadBadge = computed(() =>
+  messageUnreadCount.value > 99 ? '99+' : String(messageUnreadCount.value),
+)
 
 const isFullscreen = ref(false)
 const userInitial = computed(() => auth.displayName.slice(0, 1).toUpperCase())
@@ -167,15 +194,42 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="header-actions">
-      <button
-        type="button"
-        class="header-icon-button notification-button"
-        :aria-label="t('app.notifications')"
-        :title="t('app.notifications')"
+      <NPopover
+        v-model:show="messagePopoverVisible"
+        trigger="manual"
+        placement="bottom-end"
+        :width="380"
+        :show-arrow="false"
+        :content-style="{ padding: '0' }"
       >
-        <NIcon :size="18"><NotificationsOutline /></NIcon>
-        <span class="notification-dot" aria-hidden="true" />
-      </button>
+        <template #trigger>
+          <button
+            type="button"
+            class="header-icon-button notification-button"
+            :aria-label="t('app.notifications')"
+            :title="t('app.notifications')"
+            @click="toggleMessagePopover"
+          >
+            <NIcon :size="18"><NotificationsOutline /></NIcon>
+            <span v-if="messageUnreadCount > 0" class="notification-count">
+              {{ messageUnreadBadge }}
+            </span>
+          </button>
+        </template>
+        <MessageCenter
+          compact
+          show-footer
+          :active-tab="messageActiveTab"
+          :error="messageError"
+          :items="messageVisibleItems"
+          :loading="messageLoading"
+          :tab-unread-counts="messageTabUnreadCounts"
+          @select="selectMessageItem"
+          @refresh="refreshMessages"
+          @update:active-tab="selectMessageTab"
+          @view-all="viewAllMessages"
+        />
+      </NPopover>
       <span class="header-divider" aria-hidden="true" />
       <button
         type="button"

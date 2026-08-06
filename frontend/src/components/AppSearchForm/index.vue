@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends AppFormRecord = AppFormRecord">
-import { computed, ref, useSlots } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
 import { NButton, NIcon } from 'naive-ui'
 import {
   ChevronDownOutline,
@@ -47,15 +47,22 @@ const emit = defineEmits<{
 
 const slots = useSlots()
 const formRef = ref<AppFormExposed<T> | null>(null)
+const sectionRef = ref<HTMLElement | null>(null)
 const localCollapsed = ref(props.defaultCollapsed)
+const measuredCanToggle = ref<boolean | null>(null)
+const isMeasuring = ref(false)
+let resizeObserver: ResizeObserver | null = null
+let lastMeasuredWidth: number | null = null
+let measurementVersion = 0
 
 const isCollapsed = computed(() => props.collapsed ?? localCollapsed.value)
 const collapsedFieldCount = computed(() => Math.max(0, Math.floor(props.collapsedFields)))
+const countCanToggle = computed(() => props.fields.length > collapsedFieldCount.value)
 const canToggle = computed(
-  () => props.showToggle && props.fields.length > collapsedFieldCount.value,
+  () => props.showToggle && (measuredCanToggle.value ?? countCanToggle.value),
 )
 const visibleFields = computed(() => {
-  if (!isCollapsed.value || !canToggle.value) {
+  if (isMeasuring.value || !isCollapsed.value || !canToggle.value) {
     return props.fields
   }
 
@@ -76,6 +83,85 @@ const layout = computed(() => ({
 const actionAlignClass = computed(
   () => `app-search-form__actions--${layout.value.actionAlign ?? 'end'}`,
 )
+
+const measureFieldLayout = async (width?: number): Promise<void> => {
+  const currentVersion = ++measurementVersion
+  if (props.fields.length === 0) {
+    measuredCanToggle.value = false
+    isMeasuring.value = false
+    return
+  }
+
+  isMeasuring.value = true
+  await nextTick()
+  if (currentVersion !== measurementVersion) {
+    return
+  }
+
+  const section = sectionRef.value
+  const fieldElements = Array.from(
+    section?.querySelectorAll<HTMLElement>('[data-testid^="app-form-field-"]') ?? [],
+  )
+
+  if (fieldElements.length <= collapsedFieldCount.value) {
+    measuredCanToggle.value = false
+  } else {
+    const rects = fieldElements.map((element) => element.getBoundingClientRect())
+    const hasGeometry = rects.some((rect) => rect.width > 0 || rect.height > 0)
+
+    if (!hasGeometry) {
+      measuredCanToggle.value = countCanToggle.value
+    } else {
+      const firstTop = rects[0]?.top ?? 0
+      measuredCanToggle.value = rects.some((rect) => Math.abs(rect.top - firstTop) > 1)
+    }
+  }
+
+  lastMeasuredWidth = width ?? section?.getBoundingClientRect().width ?? null
+  isMeasuring.value = false
+}
+
+const handleResize = (entries: ResizeObserverEntry[]): void => {
+  const width = entries[0]?.contentRect.width
+  if (width === undefined) {
+    return
+  }
+
+  if (lastMeasuredWidth !== null && Math.abs(width - lastMeasuredWidth) <= 1) {
+    return
+  }
+
+  void measureFieldLayout(width)
+}
+
+watch(
+  [
+    () => props.fields.length,
+    () => props.collapsedFields,
+    () => props.layout?.columns,
+    () => props.layout?.responsive,
+  ],
+  () => {
+    lastMeasuredWidth = null
+    void measureFieldLayout()
+  },
+)
+
+onMounted(() => {
+  void measureFieldLayout()
+
+  if (typeof ResizeObserver === 'undefined' || !sectionRef.value) {
+    return
+  }
+
+  resizeObserver = new ResizeObserver(handleResize)
+  resizeObserver.observe(sectionRef.value)
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
 
 const toggle = (): boolean => {
   if (!canToggle.value) {
@@ -126,7 +212,11 @@ defineExpose<AppSearchFormExposed<T>>({
 </script>
 
 <template>
-  <section class="app-search-form" :class="{ 'app-search-form--collapsed': isCollapsed }">
+  <section
+    ref="sectionRef"
+    class="app-search-form"
+    :class="{ 'app-search-form--collapsed': isCollapsed }"
+  >
     <AppForm
       ref="formRef"
       :model="model"

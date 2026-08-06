@@ -7,6 +7,7 @@ export {
   playLottieAnimation,
 } from './lottie'
 export { accentColorOptions, findAccentColor, radiusOptions } from './preferences'
+export { hasPermission } from './permissions'
 export {
   APP_BUILD_ID,
   APP_UPDATE_MANIFEST_FILE,
@@ -16,6 +17,15 @@ export {
   isAppUpdateManifest,
 } from './app-update'
 export { resolveRouteMenuState } from './route-menu'
+export {
+  formatMessageRelativeTime,
+  isMessageType,
+  parseRecipientUserIds,
+  resolveMessageTab,
+  resolveMessageTone,
+  toMessageFormTime,
+  toMessagePublishTime,
+} from './message'
 export {
   isSafeExternalLink,
   isSafeRouteName,

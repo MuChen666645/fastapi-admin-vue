@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { h, reactive } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import AppSearchForm from '../components/AppSearchForm/index.vue'
 import type { AppFormField } from '../types'
@@ -88,5 +88,35 @@ describe('AppSearchForm', () => {
     expect(wrapper.emitted('search')).toBeUndefined()
 
     wrapper.unmount()
+  })
+
+  it('hides the toggle when all fields fit on one row', async () => {
+    const getBoundingClientRect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(() => new DOMRect(0, 10, 800, 40))
+    const model = reactive(createModel())
+    const fields: AppFormField[] = [
+      { key: 'keyword', path: 'keyword', label: '鍏抽敭璇?' },
+      { key: 'status', path: 'status', label: '鐘舵€?', type: 'select' },
+      { key: 'owner', path: 'owner', label: '璐熻矗浜?' },
+      { key: 'scope', path: 'scope', label: '鑼冨洿', type: 'select' },
+    ]
+    const wrapper = mount(AppSearchForm, {
+      props: {
+        model,
+        fields,
+        defaultCollapsed: true,
+        collapsedFields: 3,
+      },
+    })
+
+    try {
+      await flushPromises()
+      expect(wrapper.find('.app-search-form__toggle').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="app-form-field-scope"]').exists()).toBe(true)
+    } finally {
+      wrapper.unmount()
+      getBoundingClientRect.mockRestore()
+    }
   })
 })
