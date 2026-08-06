@@ -1,4 +1,4 @@
-"""通知渠道投递记录模型。"""
+"""消息中心外部渠道投递记录模型。"""
 
 from datetime import datetime
 
@@ -7,14 +7,14 @@ from sqlmodel import Field, SQLModel
 from utils.time_utils import now_utc8_naive
 
 
-class NotificationDeliveryDo(SQLModel, table=True):
-    """一次通知渠道投递及重试状态。"""
+class MessageDeliveryDo(SQLModel, table=True):
+    """一次消息渠道投递及重试状态。"""
 
-    __tablename__ = "notification_deliveries"
+    __tablename__ = "message_deliveries"
 
     id: int | None = Field(default=None, primary_key=True)
     tenant_id: int | None = Field(default=1, index=True)
-    notice_id: int = Field(foreign_key="notices.id", ondelete="CASCADE", index=True)
+    message_id: int = Field(foreign_key="messages.id", ondelete="CASCADE", index=True)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     channel: str = Field(max_length=20, index=True)
     destination: str | None = Field(default=None, max_length=500)

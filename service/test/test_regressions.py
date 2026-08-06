@@ -15,8 +15,8 @@ from module_admin.dao.tenant_dao import TenantDao
 from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.export_do import ExportTaskDo
 from module_admin.entity.do.file_do import FileMetadataDo
-from module_admin.entity.do.notice_do import NoticeDo
-from module_admin.entity.do.notification_do import NotificationDeliveryDo
+from module_admin.entity.do.message_delivery_do import MessageDeliveryDo
+from module_admin.entity.do.message_do import MessageDo
 from module_admin.entity.do.tenant_do import TenantMemberDo
 from module_admin.entity.do.user_do import PasswordResetTokenDo, UserDo
 from module_admin.entity.dto.user_dto import (
@@ -323,11 +323,11 @@ def test_notification_enqueue_uses_membership_not_primary_tenant() -> None:
             email="member@example.com",
             tenant_id=1,
         )
-        notice = NoticeDo(
+        message = MessageDo(
             id=5,
             tenant_id=9,
-            notice_title="Tenant notice",
-            notice_content="Content",
+            message_title="Tenant message",
+            message_content="Content",
         )
 
         class Mysql:
@@ -348,7 +348,7 @@ def test_notification_enqueue_uses_membership_not_primary_tenant() -> None:
         request = SimpleNamespace(state=SimpleNamespace(mysql=mysql))
         data = SimpleNamespace(recipient_user_ids=[], delivery_channels=["inbox"])
 
-        count = await NotificationService.enqueue(notice, data, request)
+        count = await NotificationService.enqueue(message, data, request)
 
         assert count == 1
         assert mysql.added[0].tenant_id == 9
@@ -362,10 +362,10 @@ def test_notification_delivery_ignores_removed_tenant_members(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def run() -> None:
-        item = NotificationDeliveryDo(
+        item = MessageDeliveryDo(
             id=1,
             tenant_id=9,
-            notice_id=5,
+            message_id=5,
             user_id=3,
             channel="webhook",
             status="sending",

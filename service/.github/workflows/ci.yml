@@ -51,26 +51,33 @@ jobs:
             alembic/versions/0021_tenant_operations_permissions.py \
             alembic/versions/0022_role_lifecycle.py \
             alembic/versions/0023_async_exports.py \
+            alembic/versions/0026_message_center.py \
             module_admin/v1.py \
             module_admin/auth/authorization.py \
             module_admin/controller/secret_controller.py \
             module_admin/controller/tenant_controller.py \
             module_admin/controller/backup_controller.py \
             module_admin/controller/dictionary_controller.py \
+            module_admin/controller/message_controller.py \
             module_admin/controller/role_controller.py \
             module_admin/controller/user_controller.py \
             module_admin/dao/tenant_dao.py \
             module_admin/dao/tenant_scope.py \
-            module_admin/entity/do/notification_do.py \
+            module_admin/dao/message_dao.py \
+            module_admin/entity/do/message_delivery_do.py \
+            module_admin/entity/do/message_do.py \
             module_admin/entity/do/operation_do.py \
             module_admin/entity/do/export_do.py \
             module_admin/entity/do/tenant_do.py \
             module_admin/entity/dto/tenant_dto.py \
+            module_admin/entity/dto/message_dto.py \
+            module_admin/entity/message_type.py \
             module_admin/error_codes.py \
             module_admin/service/system_config_service.py \
             module_admin/service/idempotency_service.py \
             module_admin/service/job_worker.py \
             module_admin/service/notification_service.py \
+            module_admin/service/message_service.py \
             module_admin/service/secret_manager.py \
             module_admin/service/excel_service.py \
             module_admin/service/export_service.py \

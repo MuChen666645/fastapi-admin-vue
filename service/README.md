@@ -19,10 +19,10 @@ FastAPI Admin Vue Service 是一个基于 **FastAPI + SQLModel + MySQL + Redis**
 - 统一响应拦截与异常处理，未知错误返回脱敏的 500 响应
 - 请求 ID、W3C traceparent 链路关联和结构化 JSON 日志
 - 文件签名校验、可选 ClamAV 扫描、分片上传、预签名 URL 和文本脱敏
-- Excel 用户/角色/字典导入导出、通知收件箱、数据库备份和恢复工具
+- Excel 用户/角色/字典导入导出、通知投递、数据库备份和恢复工具
 - 持久化异步 Excel 导出任务，可查询状态并按租户下载结果文件
 - Redis 分布式任务锁、超时/重试/暂停、Prometheus 指标和可选 OTLP 链路
-- 本地/阿里云 OSS 文件上传下载、系统参数、通知公告和定时任务
+- 本地/阿里云 OSS 文件上传下载、系统参数、消息中心和定时任务
 - Prometheus 指标监控，可通过 `/metrics` 抓取
 - SlowAPI 请求限流
 - Swagger/OpenAPI 在线接口文档，按接口展示完整响应体 DTO
@@ -450,7 +450,7 @@ docker compose down
 | 指标监控 | `/metrics` | Prometheus HTTP 请求数、状态码和耗时指标                 |
 | 文件存储 | `/api/v1/file`    | 本地或阿里云 OSS 文件上传、下载和删除                     |
 | 系统参数 | `/api/v1/config`  | 系统参数键值配置                                         |
-| 通知公告 | `/api/v1/notice`  | 公告增删改查、消息中心最新通知                           |
+| 消息中心 | `/api/v1/message`  | 消息管理、个人消息、最新消息、未读数和已读状态             |
 | 定时任务 | `/api/v1/job`     | Cron 任务管理、手动执行和执行日志                        |
 | 外部认证 | `/api/v1/auth`    | OIDC/OAuth 与 LDAP 登录                                  |
 | 数据备份 | `/api/v1/ops/backup` | 受权限保护的数据库备份接口                              |
@@ -647,9 +647,9 @@ Authorization: Bearer <access_token>
 - 文本脱敏接口为 `GET /api/v1/file/redacted/{file_id}`，需显式启用 `FILE_REDACTION_ENABLED`。
 - 用户、角色和字典支持 Excel 导入导出；导入仍执行 DTO、密码策略、租户和重复数据校验。
 - 用户、角色和字典支持异步导出：调用对应的 `/export/async` 创建任务，再轮询 `/export/tasks/{task_id}`，完成后通过 `/export/tasks/{task_id}/download` 下载。
-- 通知支持指定收件人、收件箱、未读筛选和已读标记：`GET /api/v1/notice/inbox/list`、`POST /api/v1/notice/{notice_id}/read`。
-- 消息中心通过 `GET /api/v1/notice/latest` 返回系统通知、审批消息和报警提醒三组数据，每组最多最新 5 条；新建和修改通知的 `notice_type` 仅支持 `system`、`approval`、`alarm`。
-- 通知支持收件箱、Webhook、邮件和短信渠道，使用 `NOTIFICATION_DELIVERY_LEASE_SECONDS` 防止多实例重复认领，并按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
+- 消息管理列表支持标题、内容、类型、状态和发布时间范围筛选；个人消息通过 `GET /api/v1/message/my/list` 分页查询，支持关键词、类型、阅读状态和时间范围筛选。
+- 消息中心通过 `GET /api/v1/message/latest` 返回系统通知、审批消息和报警提醒三组数据，每组最多最新 5 条；`GET /api/v1/message/unread-count` 查询未读数，`POST /api/v1/message/{message_id}/read` 和 `POST /api/v1/message/read-all` 更新已读状态。
+- 新建和修改消息的 `message_type` 仅支持 `system`、`approval`、`alarm`；消息支持站内、Webhook、邮件和短信投递渠道，使用 `NOTIFICATION_DELIVERY_LEASE_SECONDS` 防止多实例重复认领，并按 `NOTIFICATION_RETRY_MAX_ATTEMPTS` 和退避间隔重试。
 - 数据库备份可通过 `poetry run python -m scripts.backup_database backup` 或受平台超级管理员保护的 `/api/v1/ops/backup/create` 执行；`verify` 命令和 `/api/v1/ops/backup/verify` 可在恢复前检查加密备份结构，`rehearse` 命令和 `/api/v1/ops/backup/rehearse` 会在 `BACKUP_REHEARSAL_DATABASE` 指定的临时库中实际恢复并自动删除。在线恢复接口默认禁用，仅在受控维护窗口、运维令牌和 MFA 二次验证全部满足时启用。备份使用 Fernet 加密并按保留天数清理。
 
 ### 定时任务与可观测性
@@ -693,14 +693,14 @@ FastAPI Admin Vue Service is a backend service for an admin management system bu
 - Unified response interception and exception handling with sanitized 500 responses
 - Request IDs, W3C `traceparent` correlation, and structured JSON logs
 - File signature checks, optional ClamAV scanning, chunked uploads, presigned URLs, and text redaction
-- Excel import/export for users, roles, and dictionaries, notice inboxes, and encrypted database backups
+- Excel import/export for users, roles, and dictionaries, message delivery, and encrypted database backups
 - Tenant memberships, tenant switching, soft deletion, optimistic locking, strict tenant-scoped queries, and rollback-safe writes
 - Idempotency keys for mutating requests and before/after audit snapshots for batch operations
 - Redis Streams task queue with an independent Worker, worker heartbeats, lock renewal, timeout, and retry controls
 - Versioned Secret Manager encryption, masked sensitive config, key rotation, encrypted backup verification, and restore rehearsal tooling
 - Inbox, webhook, email, and SMS notification delivery with bounded exponential retries
 - Redis-distributed job locks, timeout/retry/pause controls, Prometheus metrics, and optional OTLP traces
-- Local/Aliyun OSS file upload and download, system config, notices, and scheduled jobs
+- Local/Aliyun OSS file upload and download, system config, message center, and scheduled jobs
 - Prometheus metrics available at `/metrics` (protected by `METRICS_AUTH_TOKEN` outside development)
 - SlowAPI rate limiting
 - All admin routes use the versioned `/api/v1` prefix.
@@ -1111,7 +1111,7 @@ The base Compose profile binds FastAPI, MySQL, and Redis to localhost. The produ
 | Metrics      | `/metrics`   | Prometheus request count, status, and latency metrics              |
 | File Storage | `/api/v1/file`      | Local or Aliyun OSS upload, download, and deletion                 |
 | System Config| `/api/v1/config`    | Key/value system parameters                                        |
-| Notices      | `/api/v1/notice`    | Announcement CRUD and latest message-center notices                |
+| Message Center| `/api/v1/message`   | Message management, personal messages, unread count, and read state |
 | Jobs         | `/api/v1/job`       | Cron job management, manual run, and execution logs               |
 | External Auth| `/api/v1/auth`      | OIDC/OAuth and LDAP login                                          |
 | Backups      | `/api/v1/ops/backup`| Permission-protected database backup operations                    |
@@ -1293,14 +1293,14 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 
 ### Tenants and permissions
 
-- Users, roles, menus, departments, posts, dictionaries, notices, files, jobs, configs, and logs carry `tenant_id`; reads and writes are filtered by the current tenant.
+- Users, roles, menus, departments, posts, dictionaries, messages, files, jobs, configs, and logs carry `tenant_id`; reads and writes are filtered by the current tenant.
 - Tenant members can switch tenant context through `/api/v1/tenant/switch`; missing tenant context fails closed for protected business queries.
 - Mutating requests may send `Idempotency-Key`; batch user and role changes write before/after snapshots and request transactions roll back on failure.
 - Startup synchronizes routes using `Auth.has_permission(...)` into `api_permission_catalog`.
 - Field permissions use `field:<resource>:<field>` and are bound through the role DTO's `field_permission_codes`. Sensitive user fields are hidden when the actor lacks the field permission.
 - Role and menu permission changes are recorded in `permission_change_versions` with actor, version, and before/after snapshots.
 
-### Files, notices, and operations
+### Files, messages, and operations
 
 - Files support signature detection, optional ClamAV scanning, OSS presigned URLs, local/OSS storage, chunked upload, and text redaction.
 - When `FILE_VIRUS_SCAN_ENABLED=true`, provide a reachable ClamAV service and configure `CLAMAV_HOST`/`CLAMAV_PORT`; the default Compose file does not include a ClamAV container.
@@ -1309,9 +1309,9 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - Text redaction is exposed through `GET /api/v1/file/redacted/{file_id}` and requires `FILE_REDACTION_ENABLED=true`.
 - Users, roles, and dictionaries support Excel import/export. Imports still apply DTO validation, password policy, tenant checks, and duplicate checks.
 - Users, roles, and dictionaries also support persistent asynchronous exports: call `/export/async`, poll `/export/tasks/{task_id}`, and download from `/export/tasks/{task_id}/download` after completion.
-- Notices support recipients, inbox queries, unread filtering, and read state through `GET /api/v1/notice/inbox/list` and `POST /api/v1/notice/{notice_id}/read`.
-- `GET /api/v1/notice/latest` returns up to the five newest system, approval, and alarm notices in separate groups. New and updated notices accept only `system`, `approval`, or `alarm` for `notice_type`.
-- Notices support inbox, webhook, email, and SMS delivery. External delivery failures use a database-backed lease plus bounded exponential backoff using `NOTIFICATION_DELIVERY_LEASE_SECONDS`, `NOTIFICATION_RETRY_MAX_ATTEMPTS`, and `NOTIFICATION_RETRY_BASE_SECONDS`.
+- Message management pagination supports title, content, type, status, and publish-time range filters. Personal messages use `GET /api/v1/message/my/list` with keyword, type, read-status, and time-range filters.
+- `GET /api/v1/message/latest` returns up to the five newest system, approval, and alarm messages in separate groups. `GET /api/v1/message/unread-count`, `POST /api/v1/message/{message_id}/read`, and `POST /api/v1/message/read-all` provide unread and read-state operations.
+- New and updated messages accept only `system`, `approval`, or `alarm` for `message_type`. Messages support in-app, webhook, email, and SMS delivery. External delivery failures use a database-backed lease plus bounded exponential backoff using `NOTIFICATION_DELIVERY_LEASE_SECONDS`, `NOTIFICATION_RETRY_MAX_ATTEMPTS`, and `NOTIFICATION_RETRY_BASE_SECONDS`.
 - Database backups can be created with `poetry run python -m scripts.backup_database backup` or the platform-super-admin-protected `/api/v1/ops/backup/create` endpoint. Run `poetry run python -m scripts.backup_database verify <filename>` or `/api/v1/ops/backup/verify` before `poetry run python -m scripts.backup_database rehearse <filename>` or `/api/v1/ops/backup/rehearse`; rehearsal imports into `BACKUP_REHEARSAL_DATABASE` and removes it afterward. Online restore is disabled by default and requires an explicit maintenance window, operations token, and MFA reauthentication. Backups are Fernet-encrypted and cleaned up according to the retention policy.
 
 ### Jobs and observability

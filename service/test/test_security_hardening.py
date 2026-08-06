@@ -143,9 +143,7 @@ def test_auth_tenant_member_query_checks_tenant_lifecycle() -> None:
                 statements.append(statement)
                 return Result()
 
-        member = await Auth._get_tenant_member(
-            _request(mysql=Mysql()), 7, 9
-        )
+        member = await Auth._get_tenant_member(_request(mysql=Mysql()), 7, 9)
 
         assert member is None
         sql = str(statements[0])
@@ -325,7 +323,9 @@ def test_oidc_start_sets_http_only_binding_cookie(monkeypatch) -> None:
             )
         response = Response()
         await ExternalIdentityService.start_oidc(
-            SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(redis=InMemoryRedis()))),
+            SimpleNamespace(
+                app=SimpleNamespace(state=SimpleNamespace(redis=InMemoryRedis()))
+            ),
             response,
         )
         cookie = response.headers["set-cookie"]
@@ -386,7 +386,9 @@ def test_ldap_service_account_search_escapes_filter_and_rebinds_user(
             link_options.update(kwargs)
             return claims
 
-        monkeypatch.setattr(ExternalIdentityService, "_login_external_user", login_external)
+        monkeypatch.setattr(
+            ExternalIdentityService, "_login_external_user", login_external
+        )
         result = await ExternalIdentityService.login_ldap(
             "alice*)(uid=*)",
             "user-password",
@@ -547,7 +549,7 @@ def test_notification_claim_cancels_pending_and_sending_for_removed_members() ->
         )
 
         assert delivered == 0
-        assert 'notification_deliveries.status IN (__[POSTCOMPILE_status_1])' in str(
+        assert "message_deliveries.status IN (__[POSTCOMPILE_status_1])" in str(
             statements[0]
         )
 

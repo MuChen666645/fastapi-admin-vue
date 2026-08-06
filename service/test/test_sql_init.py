@@ -30,20 +30,22 @@ def test_organization_and_dictionary_seed_data_exists() -> None:
     assert "'sys_yes_no'" in sql
 
 
-def test_notice_seed_data_covers_the_three_message_types() -> None:
+def test_message_seed_data_covers_the_three_message_types() -> None:
     sql = SEED_SQL_PATH.read_text(encoding="utf-8")
-    notices_block = sql[
-        sql.index("INSERT IGNORE INTO notices") : sql.index(
+    messages_block = sql[
+        sql.index("INSERT IGNORE INTO messages") : sql.index(
             "-- ---------------------------------------------------------------------------\n-- 4. 权限目录"
         )
     ]
 
-    assert "tenant_id, notice_title, notice_type" in notices_block
-    assert notices_block.count("'system'") == 5
-    assert notices_block.count("'approval'") == 5
-    assert notices_block.count("'alarm'") == 5
-    assert "(400, @seed_tenant_id" in notices_block
-    assert "(414, @seed_tenant_id" in notices_block
+    assert "tenant_id, message_title, message_type" in messages_block
+    assert messages_block.count("'system'") == 5
+    assert messages_block.count("'approval'") == 5
+    assert messages_block.count("'alarm'") == 5
+    assert "(400, @seed_tenant_id" in messages_block
+    assert "(414, @seed_tenant_id" in messages_block
+    assert "INSERT IGNORE INTO notices" not in sql
+    assert "system:notice:" not in sql
 
 
 def test_foreign_key_upgrade_sql_is_idempotent() -> None:

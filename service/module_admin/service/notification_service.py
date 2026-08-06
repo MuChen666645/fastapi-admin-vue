@@ -1,4 +1,4 @@
-"""通知渠道投递和失败重试服务。"""
+"""消息中心渠道投递和失败重试服务。"""
 
 import asyncio
 import secrets
@@ -14,21 +14,21 @@ from sqlmodel import select
 
 from config.env import Settings, settings
 from module_admin.dao.tenant_scope import tenant_member_clause
-from module_admin.entity.do.notice_do import NoticeDo
-from module_admin.entity.do.notification_do import NotificationDeliveryDo
+from module_admin.entity.do.message_delivery_do import MessageDeliveryDo
+from module_admin.entity.do.message_do import MessageDo
 from module_admin.entity.do.tenant_do import TenantDo, TenantMemberDo
 from module_admin.entity.do.user_do import UserDo
 from utils.time_utils import now_utc8_naive
 
 
 class NotificationService:
-    """创建投递任务，并以有限重试次数发送外部通知。"""
+    """创建消息投递任务，并以有限重试次数发送外部消息。"""
 
     CHANNELS = {"inbox", "webhook", "email", "sms"}
 
     @classmethod
-    async def enqueue(cls, notice: NoticeDo, data, request: Request) -> int:
-        """为公告收件人建立渠道投递记录。"""
+    async def enqueue(cls, message: MessageDo, data, request: Request) -> int:
+        """为消息收件人建立渠道投递记录。"""
         channels = set(data.delivery_channels or ["inbox"]) & cls.CHANNELS
         if not channels:
             raise ValueError("至少需要一个有效通知渠道")
@@ -36,7 +36,7 @@ class NotificationService:
         if not recipient_ids:
             result = await request.state.mysql.execute(
                 select(UserDo.id).where(
-                    tenant_member_clause(UserDo, notice.tenant_id),
+                    tenant_member_clause(UserDo, message.tenant_id),
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )
@@ -47,7 +47,7 @@ class NotificationService:
             user_result = await request.state.mysql.execute(
                 select(UserDo).where(
                     UserDo.id == user_id,
-                    tenant_member_clause(UserDo, notice.tenant_id),
+                    tenant_member_clause(UserDo, message.tenant_id),
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )
@@ -58,9 +58,9 @@ class NotificationService:
             for channel in channels:
                 status = "delivered" if channel == "inbox" else "pending"
                 request.state.mysql.add(
-                    NotificationDeliveryDo(
-                        tenant_id=notice.tenant_id,
-                        notice_id=notice.id,
+                    MessageDeliveryDo(
+                        tenant_id=message.tenant_id,
+                        message_id=message.id,
                         user_id=user.id,
                         channel=channel,
                         destination=cls._destination(channel, user),
@@ -97,8 +97,8 @@ class NotificationService:
                 select(TenantMemberDo.user_id)
                 .join(TenantDo, TenantDo.id == TenantMemberDo.tenant_id)
                 .where(
-                    TenantMemberDo.user_id == NotificationDeliveryDo.user_id,
-                    TenantMemberDo.tenant_id == NotificationDeliveryDo.tenant_id,
+                    TenantMemberDo.user_id == MessageDeliveryDo.user_id,
+                    TenantMemberDo.tenant_id == MessageDeliveryDo.tenant_id,
                     TenantMemberDo.status == "1",
                     TenantMemberDo.deleted_at.is_(None),
                     TenantDo.status == "1",
@@ -106,9 +106,9 @@ class NotificationService:
                 )
             )
             await session.execute(
-                update(NotificationDeliveryDo)
+                update(MessageDeliveryDo)
                 .where(
-                    NotificationDeliveryDo.status.in_(("pending", "sending")),
+                    MessageDeliveryDo.status.in_(("pending", "sending")),
                     ~active_member,
                 )
                 .values(
@@ -119,30 +119,30 @@ class NotificationService:
                 )
             )
             result = await session.execute(
-                select(NotificationDeliveryDo)
+                select(MessageDeliveryDo)
                 .join(
-                    NoticeDo,
-                    NotificationDeliveryDo.notice_id == NoticeDo.id,
+                    MessageDo,
+                    MessageDeliveryDo.message_id == MessageDo.id,
                 )
-                .join(UserDo, NotificationDeliveryDo.user_id == UserDo.id)
+                .join(UserDo, MessageDeliveryDo.user_id == UserDo.id)
                 .join(
                     TenantMemberDo,
                     (TenantMemberDo.user_id == UserDo.id)
-                    & (TenantMemberDo.tenant_id == NotificationDeliveryDo.tenant_id),
+                    & (TenantMemberDo.tenant_id == MessageDeliveryDo.tenant_id),
                 )
-                .join(TenantDo, TenantDo.id == NotificationDeliveryDo.tenant_id)
+                .join(TenantDo, TenantDo.id == MessageDeliveryDo.tenant_id)
                 .where(
                     or_(
                         and_(
-                            NotificationDeliveryDo.status == "pending",
-                            NotificationDeliveryDo.next_attempt_at <= now,
+                            MessageDeliveryDo.status == "pending",
+                            MessageDeliveryDo.next_attempt_at <= now,
                         ),
                         and_(
-                            NotificationDeliveryDo.status == "sending",
-                            NotificationDeliveryDo.lease_until <= now,
+                            MessageDeliveryDo.status == "sending",
+                            MessageDeliveryDo.lease_until <= now,
                         ),
                     ),
-                    NotificationDeliveryDo.tenant_id == NoticeDo.tenant_id,
+                    MessageDeliveryDo.tenant_id == MessageDo.tenant_id,
                     TenantMemberDo.status == "1",
                     TenantMemberDo.deleted_at.is_(None),
                     TenantDo.status == "1",
@@ -150,7 +150,7 @@ class NotificationService:
                     UserDo.status == "1",
                     UserDo.deleted_at.is_(None),
                 )
-                .order_by(NotificationDeliveryDo.id)
+                .order_by(MessageDeliveryDo.id)
                 .limit(limit)
                 .with_for_update(skip_locked=True)
             )
@@ -184,7 +184,7 @@ class NotificationService:
     ) -> int:
         """在租约持有期间发送单条通知，并条件更新最终状态。"""
         async with session_factory() as session:
-            item = await session.get(NotificationDeliveryDo, delivery_id)
+            item = await session.get(MessageDeliveryDo, delivery_id)
             if (
                 item is None
                 or item.status != "sending"
@@ -210,12 +210,12 @@ class NotificationService:
                 item.updated_at = now_utc8_naive()
                 await session.commit()
                 return 0
-            notice = await session.get(NoticeDo, item.notice_id)
+            message = await session.get(MessageDo, item.message_id)
             user = await session.get(UserDo, item.user_id)
             try:
-                if notice is None or user is None:
-                    raise ValueError("通知或用户不存在")
-                await cls._deliver(item, notice, user, app_settings)
+                if message is None or user is None:
+                    raise ValueError("消息或用户不存在")
+                await cls._deliver(item, message, user, app_settings)
             except Exception as exc:
                 attempts = item.attempts + 1
                 values = {
@@ -236,11 +236,11 @@ class NotificationService:
                         * 2 ** min(attempts - 1, 8)
                     )
                 await session.execute(
-                    update(NotificationDeliveryDo)
+                    update(MessageDeliveryDo)
                     .where(
-                        NotificationDeliveryDo.id == delivery_id,
-                        NotificationDeliveryDo.status == "sending",
-                        NotificationDeliveryDo.lease_token == lease_token,
+                        MessageDeliveryDo.id == delivery_id,
+                        MessageDeliveryDo.status == "sending",
+                        MessageDeliveryDo.lease_token == lease_token,
                     )
                     .values(**values)
                 )
@@ -249,11 +249,11 @@ class NotificationService:
                 return 0
 
             await session.execute(
-                update(NotificationDeliveryDo)
+                update(MessageDeliveryDo)
                 .where(
-                    NotificationDeliveryDo.id == delivery_id,
-                    NotificationDeliveryDo.status == "sending",
-                    NotificationDeliveryDo.lease_token == lease_token,
+                    MessageDeliveryDo.id == delivery_id,
+                    MessageDeliveryDo.status == "sending",
+                    MessageDeliveryDo.lease_token == lease_token,
                 )
                 .values(
                     status="delivered",
@@ -269,15 +269,15 @@ class NotificationService:
     @classmethod
     async def _deliver(
         cls,
-        item: NotificationDeliveryDo,
-        notice: NoticeDo,
+        item: MessageDeliveryDo,
+        message: MessageDo,
         user: UserDo,
         app_settings: Settings,
     ) -> None:
         payload = {
-            "notice_id": notice.id,
-            "title": notice.notice_title,
-            "content": notice.notice_content,
+            "message_id": message.id,
+            "title": message.message_title,
+            "content": message.message_content,
             "username": user.username,
         }
         if item.channel == "webhook":
@@ -302,12 +302,12 @@ class NotificationService:
         if item.channel == "email":
             if not user.email or not app_settings.SMTP_HOST:
                 raise ValueError("邮件通知未配置")
-            message = EmailMessage()
-            message["Subject"] = notice.notice_title
-            message["From"] = app_settings.SMTP_FROM or app_settings.SMTP_USERNAME
-            message["To"] = user.email
-            message.set_content(notice.notice_content)
-            await asyncio.to_thread(cls._send_email, message, app_settings)
+            email_message = EmailMessage()
+            email_message["Subject"] = message.message_title
+            email_message["From"] = app_settings.SMTP_FROM or app_settings.SMTP_USERNAME
+            email_message["To"] = user.email
+            email_message.set_content(message.message_content)
+            await asyncio.to_thread(cls._send_email, email_message, app_settings)
             return
         raise ValueError(f"不支持的通知渠道: {item.channel}")
 

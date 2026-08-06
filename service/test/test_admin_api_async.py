@@ -19,8 +19,8 @@ from module_admin.entity.do.dictionary_do import DictDataDo, DictTypeDo
 from module_admin.entity.do.job_do import JobLogDo, ScheduledJobDo
 from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
 from module_admin.entity.do.menu_do import MenuDo
-from module_admin.entity.do.notice_do import NoticeDo
-from module_admin.entity.do.notification_do import NotificationDeliveryDo
+from module_admin.entity.do.message_delivery_do import MessageDeliveryDo
+from module_admin.entity.do.message_do import MessageDo
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo, UserPostDo
 from module_admin.entity.do.permission_audit_do import PermissionChangeVersionDo
 from module_admin.entity.do.permission_do import PermissionDo
@@ -58,7 +58,7 @@ class ApiCase:
     dict_type_ids: list[int] = field(default_factory=list)
     dict_data_ids: list[int] = field(default_factory=list)
     config_ids: list[int] = field(default_factory=list)
-    notice_ids: list[int] = field(default_factory=list)
+    message_ids: list[int] = field(default_factory=list)
     job_ids: list[int] = field(default_factory=list)
     created_admin_role: bool = False
     created_wildcard: bool = False
@@ -304,9 +304,9 @@ async def _cleanup_case(session_factory, case: ApiCase) -> None:
             await session.execute(
                 delete(DictTypeDo).where(DictTypeDo.dict_id.in_(case.dict_type_ids))
             )
-        if case.notice_ids:
+        if case.message_ids:
             await session.execute(
-                delete(NoticeDo).where(NoticeDo.id.in_(case.notice_ids))
+                delete(MessageDo).where(MessageDo.id.in_(case.message_ids))
             )
         if case.config_ids:
             await session.execute(
@@ -591,30 +591,29 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             )
             assert config_value["config_value"] == "after"
 
-            notice_title = f"集成公告-{suffix}"
+            message_title = f"集成消息-{suffix}"
             _assert_success(
                 await client.post(
-                    "/api/v1/notice/add",
+                    "/api/v1/message/add",
                     json={
-                        "notice_title": notice_title,
-                        "notice_content": "集成测试公告内容",
+                        "message_title": message_title,
+                        "message_content": "集成测试消息内容",
                     },
                 )
             )
-            notice_id = await _find_id(
+            message_id = await _find_id(
                 app.state.mysql_session_factory,
-                NoticeDo,
-                NoticeDo.notice_title,
-                notice_title,
+                MessageDo,
+                MessageDo.message_title,
+                message_title,
             )
-            case.notice_ids.append(notice_id)
+            case.message_ids.append(message_id)
             async with app.state.mysql_session_factory() as session:
                 delivery_result = await session.execute(
-                    select(NotificationDeliveryDo).where(
-                        NotificationDeliveryDo.notice_id == notice_id,
-                        NotificationDeliveryDo.tenant_id
-                        == settings.DEFAULT_TENANT_ID,
-                        NotificationDeliveryDo.user_id == case.admin_user_id,
+                    select(MessageDeliveryDo).where(
+                        MessageDeliveryDo.message_id == message_id,
+                        MessageDeliveryDo.tenant_id == settings.DEFAULT_TENANT_ID,
+                        MessageDeliveryDo.user_id == case.admin_user_id,
                     )
                 )
                 deliveries = list(delivery_result.scalars().all())
@@ -622,8 +621,8 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 assert deliveries[0].status == "delivered"
             _assert_success(
                 await client.put(
-                    f"/api/v1/notice/{notice_id}",
-                    json={"notice_content": "公告已更新"},
+                    f"/api/v1/message/{message_id}",
+                    json={"message_content": "消息已更新"},
                 )
             )
 
@@ -668,7 +667,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 "/api/v1/dict/type/list",
                 "/api/v1/dict/data/list",
                 "/api/v1/config/list",
-                "/api/v1/notice/list",
+                "/api/v1/message/list",
                 "/api/v1/job/list",
                 "/api/v1/log/login/list",
                 "/api/v1/log/operation/list",
@@ -711,7 +710,7 @@ def test_real_admin_crud_and_monitoring_api() -> None:
                 item["user_id"] == case.admin_user_id for item in online_users["items"]
             )
 
-            _assert_success(await client.delete(f"/api/v1/notice/{notice_id}"))
+            _assert_success(await client.delete(f"/api/v1/message/{message_id}"))
             _assert_success(await client.delete(f"/api/v1/config/{config_id}"))
             _assert_success(await client.delete(f"/api/v1/job/{job_id}"))
             _assert_success(await client.delete(f"/api/v1/dict/data/{dict_data_id}"))

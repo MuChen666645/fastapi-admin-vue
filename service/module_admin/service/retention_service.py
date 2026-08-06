@@ -6,7 +6,7 @@ from sqlalchemy import and_, delete, or_
 
 from config.env import Settings
 from module_admin.entity.do.log_do import ExceptionLogDo, LoginLogDo, OperationLogDo
-from module_admin.entity.do.notification_do import NotificationDeliveryDo
+from module_admin.entity.do.message_delivery_do import MessageDeliveryDo
 from module_admin.entity.do.operation_do import BatchOperationAuditDo, IdempotencyKeyDo
 from utils.time_utils import now_utc8_naive
 
@@ -42,12 +42,10 @@ class RetentionService:
             "exception_logs": delete(ExceptionLogDo).where(
                 ExceptionLogDo.exception_time < log_cutoff
             ),
-            "notification_deliveries": delete(NotificationDeliveryDo).where(
+            "message_deliveries": delete(MessageDeliveryDo).where(
                 and_(
-                    NotificationDeliveryDo.status.in_(
-                        ("delivered", "failed", "cancelled")
-                    ),
-                    NotificationDeliveryDo.updated_at < notification_cutoff,
+                    MessageDeliveryDo.status.in_(("delivered", "failed", "cancelled")),
+                    MessageDeliveryDo.updated_at < notification_cutoff,
                 )
             ),
         }

@@ -42,6 +42,23 @@ def test_admin_operation_migration_is_present() -> None:
         assert table_name in migration
 
 
+def test_message_center_migration_replaces_notice_resources() -> None:
+    migration = (ROOT / "alembic" / "versions" / "0026_message_center.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'revision = "0026_message_center"' in migration
+    assert 'down_revision = "0025_security_consistency"' in migration
+    assert '_rename_table("notices", "messages")' in migration
+    assert '_rename_table("notice_recipients", "message_recipients")' in migration
+    assert '_rename_table("notification_deliveries", "message_deliveries")' in migration
+    assert "DELETE FROM messages" in migration
+    assert "system:message:list" in migration
+    assert "DELETE source FROM api_permission_catalog AS source" in migration
+    assert "INNER JOIN api_permission_catalog AS target" in migration
+    assert "DELETE duplicate FROM api_permission_catalog AS duplicate" in migration
+
+
 def test_application_startup_does_not_execute_legacy_sql_or_create_tables() -> None:
     main_source = (ROOT / "main.py").read_text(encoding="utf-8")
     mysql_source = (ROOT / "config" / "mysql_serve.py").read_text(encoding="utf-8")

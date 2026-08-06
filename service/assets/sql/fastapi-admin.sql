@@ -154,17 +154,17 @@ WHERE u.username IN ('admin', 'test')
   AND u.tenant_id = @seed_tenant_id;
 
 -- ---------------------------------------------------------------------------
--- 3. 消息中心通知种子
+-- 3. 消息中心种子
 -- ---------------------------------------------------------------------------
 
-INSERT IGNORE INTO notices (
-    id, tenant_id, notice_title, notice_type, notice_content, status,
+INSERT IGNORE INTO messages (
+    id, tenant_id, message_title, message_type, message_content, status,
     publish_time, create_by, create_time, update_time
 ) VALUES
-    (400, @seed_tenant_id, '平台服务升级通知', 'system', '平台将进行例行服务升级，请提前保存正在编辑的内容。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (400, @seed_tenant_id, '平台服务升级', 'system', '平台将进行例行服务升级，请提前保存正在编辑的内容。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (401, @seed_tenant_id, '系统安全策略更新', 'system', '系统安全策略已更新，请按照最新要求完成账号安全设置。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (402, @seed_tenant_id, '数据备份完成通知', 'system', '本次系统数据备份已完成，备份任务运行正常。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (403, @seed_tenant_id, '版本功能更新说明', 'system', '消息中心已支持系统通知、审批消息和报警提醒三类消息。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (402, @seed_tenant_id, '数据备份完成', 'system', '本次系统数据备份已完成，备份任务运行正常。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (403, @seed_tenant_id, '平台功能更新', 'system', '消息中心已支持系统通知、审批消息和报警提醒三类消息。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (404, @seed_tenant_id, '欢迎使用管理平台', 'system', '欢迎使用 FastAPI Admin 管理平台。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (405, @seed_tenant_id, '采购申请待审批', 'approval', '有新的采购申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (406, @seed_tenant_id, '报销申请待审批', 'approval', '有新的报销申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
@@ -172,9 +172,9 @@ INSERT IGNORE INTO notices (
     (408, @seed_tenant_id, '合同申请待审批', 'approval', '有新的合同申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (409, @seed_tenant_id, '用章申请待审批', 'approval', '有新的用章申请等待审批，请及时处理。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (410, @seed_tenant_id, '接口响应时间异常', 'alarm', '检测到接口响应时间异常，请检查相关服务运行状态。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (411, @seed_tenant_id, '磁盘空间不足提醒', 'alarm', '检测到服务器磁盘空间不足，请及时清理或扩容。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (412, @seed_tenant_id, '任务执行失败提醒', 'alarm', '检测到定时任务执行失败，请查看任务日志。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (413, @seed_tenant_id, 'Redis 连接异常提醒', 'alarm', '检测到 Redis 连接异常，请检查基础设施和网络状态。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (411, @seed_tenant_id, '磁盘空间不足', 'alarm', '检测到服务器磁盘空间不足，请及时清理或扩容。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (412, @seed_tenant_id, '任务执行失败', 'alarm', '检测到定时任务执行失败，请查看任务日志。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (413, @seed_tenant_id, 'Redis 连接异常', 'alarm', '检测到 Redis 连接异常，请检查基础设施和网络状态。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     (414, @seed_tenant_id, '数据库连接池预警', 'alarm', '检测到数据库连接池使用率较高，请关注服务负载。', '1', DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ---------------------------------------------------------------------------
@@ -234,11 +234,11 @@ INSERT IGNORE INTO permissions (
     ('配置新增', 'system:config:add', 'system', 'button', '/config/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统配置新增权限'),
     ('配置编辑', 'system:config:edit', 'system', 'button', '/config/{config_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统配置编辑权限'),
     ('配置删除', 'system:config:remove', 'system', 'button', '/config/{config_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统配置删除权限'),
-    ('公告列表', 'system:notice:list', 'system', 'button', '/notice/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告列表权限'),
-    ('公告查询', 'system:notice:query', 'system', 'button', '/notice/{notice_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告查询权限'),
-    ('公告新增', 'system:notice:add', 'system', 'button', '/notice/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告新增权限'),
-    ('公告编辑', 'system:notice:edit', 'system', 'button', '/notice/{notice_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告编辑权限'),
-    ('公告删除', 'system:notice:remove', 'system', 'button', '/notice/{notice_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告删除权限'),
+    ('消息列表', 'system:message:list', 'system', 'button', '/message/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息列表权限'),
+    ('消息查询', 'system:message:query', 'system', 'button', '/message/{message_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息查询权限'),
+    ('消息新增', 'system:message:add', 'system', 'button', '/message/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息新增权限'),
+    ('消息编辑', 'system:message:edit', 'system', 'button', '/message/{message_id}', 'PUT', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息编辑权限'),
+    ('消息删除', 'system:message:remove', 'system', 'button', '/message/{message_id}', 'DELETE', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息删除权限'),
     ('任务列表', 'monitor:job:list', 'monitor', 'button', '/job/list', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '任务列表权限'),
     ('任务查询', 'monitor:job:query', 'monitor', 'button', '/job/{job_id}', 'GET', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '任务查询权限'),
     ('任务新增', 'monitor:job:add', 'monitor', 'button', '/job/add', 'POST', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '任务新增权限'),
@@ -288,7 +288,7 @@ INSERT IGNORE INTO menu (
     (@seed_tenant_id, 202, 200, '在线用户', 'GlobeOutline', 'online', 'monitor/online/index', '0', '1', 'C', 2, NULL, 'monitor:online:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '在线用户菜单'),
     (@seed_tenant_id, 350, 2, '文件管理', 'FolderOpenOutline', 'file', 'system/file/index', '0', '1', 'C', 7, NULL, 'system:file:upload', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '文件管理'),
     (@seed_tenant_id, 351, 2, '系统配置', 'SettingsOutline', 'config', 'system/config/index', '0', '1', 'C', 8, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统配置'),
-    (@seed_tenant_id, 352, 2, '通知公告', 'NotificationsOutline', 'notice', 'system/notice/index', '0', '1', 'C', 9, NULL, 'system:notice:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '通知公告'),
+    (@seed_tenant_id, 352, 2, '消息中心', 'NotificationsOutline', 'message', 'system/message/index', '0', '1', 'C', 9, NULL, 'system:message:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息中心'),
     (@seed_tenant_id, 360, 200, '定时任务', 'TimeOutline', 'job', 'monitor/job/index', '0', '1', 'C', 3, NULL, 'monitor:job:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '定时任务'),
     (@seed_tenant_id, 310, 3, '用户列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:user:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户列表权限'),
     (@seed_tenant_id, 6, 3, '用户新增', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:user:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户新增权限'),
@@ -335,11 +335,11 @@ INSERT IGNORE INTO menu (
     (@seed_tenant_id, 375, 351, '配置新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:config:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置新增权限'),
     (@seed_tenant_id, 376, 351, '配置编辑', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:config:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置编辑权限'),
     (@seed_tenant_id, 377, 351, '配置删除', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:config:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置删除权限'),
-    (@seed_tenant_id, 378, 352, '公告列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:notice:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告列表权限'),
-    (@seed_tenant_id, 379, 352, '公告查询', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:notice:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告查询权限'),
-    (@seed_tenant_id, 380, 352, '公告新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:notice:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告新增权限'),
-    (@seed_tenant_id, 381, 352, '公告编辑', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:notice:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告编辑权限'),
-    (@seed_tenant_id, 382, 352, '公告删除', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:notice:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '公告删除权限'),
+    (@seed_tenant_id, 378, 352, '消息列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:message:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息列表权限'),
+    (@seed_tenant_id, 379, 352, '消息查询', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:message:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息查询权限'),
+    (@seed_tenant_id, 380, 352, '消息新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:message:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息新增权限'),
+    (@seed_tenant_id, 381, 352, '消息编辑', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:message:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息编辑权限'),
+    (@seed_tenant_id, 382, 352, '消息删除', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:message:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息删除权限'),
     (@seed_tenant_id, 383, 360, '任务列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'monitor:job:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '任务列表权限'),
     (@seed_tenant_id, 384, 360, '任务查询', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'monitor:job:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '任务查询权限'),
     (@seed_tenant_id, 385, 360, '任务新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'monitor:job:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '任务新增权限'),

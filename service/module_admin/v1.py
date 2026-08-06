@@ -14,7 +14,7 @@ from module_admin.controller.health_controller import HealthController
 from module_admin.controller.job_controller import JobController
 from module_admin.controller.log_controller import LogController
 from module_admin.controller.menu_contorller import MenuController
-from module_admin.controller.notice_controller import NoticeController
+from module_admin.controller.message_controller import MessageController
 from module_admin.controller.organization_controller import (
     DepartmentController,
     PostController,
@@ -79,6 +79,6 @@ class AdminAPI:
         include(FileController.file, db_dependencies)
         include(SystemConfigController.config, db_dependencies)
         include(SecretController.secret, db_dependencies)
-        include(NoticeController.notice, db_dependencies)
+        include(MessageController.message, db_dependencies)
         include(JobController.job, db_dependencies)
         include(TenantController.tenant, db_dependencies)

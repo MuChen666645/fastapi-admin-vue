@@ -16,8 +16,8 @@ from module_admin.entity.do import file_do as _file_do
 from module_admin.entity.do import job_do as _job_do
 from module_admin.entity.do import log_do as _log_do
 from module_admin.entity.do import menu_do as _menu_do
-from module_admin.entity.do import notice_do as _notice_do
-from module_admin.entity.do import notification_do as _notification_do
+from module_admin.entity.do import message_delivery_do as _message_delivery_do
+from module_admin.entity.do import message_do as _message_do
 from module_admin.entity.do import operation_do as _operation_do
 from module_admin.entity.do import organization_do as _organization_do
 from module_admin.entity.do import permission_do as _permission_do

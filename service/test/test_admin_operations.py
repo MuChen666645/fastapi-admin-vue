@@ -94,9 +94,33 @@ def test_admin_operation_routes_are_registered() -> None:
         "/api/v1/file/download/{file_id}",
         "/api/v1/config/list",
         "/api/v1/config/value/{config_key}",
-        "/api/v1/notice/list",
-        "/api/v1/notice/latest",
+        "/api/v1/message/list",
+        "/api/v1/message/latest",
+        "/api/v1/message/unread-count",
+        "/api/v1/message/my/list",
+        "/api/v1/message/read-all",
         "/api/v1/job/list",
         "/api/v1/job/{job_id}/run",
     } <= paths
     assert "/file/upload" not in paths
+    assert not any(path.startswith("/api/v1/notice") for path in paths)
+
+
+def test_message_list_exposes_complete_search_parameters() -> None:
+    parameter_names = {
+        parameter["name"]
+        for parameter in app.openapi()["paths"]["/api/v1/message/list"]["get"][
+            "parameters"
+        ]
+    }
+
+    assert {
+        "title",
+        "content",
+        "message_type",
+        "status",
+        "start_time",
+        "end_time",
+        "page",
+        "size",
+    } <= parameter_names
