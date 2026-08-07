@@ -16,6 +16,11 @@ const animationContainer = ref<HTMLElement | null>(null)
 useLottie(animationContainer, props.animationData, { loop: true })
 
 const handleRefresh = (): void => {
+  if (typeof window !== 'undefined') {
+    window.location.reload()
+    return
+  }
+
   router.go(0)
 }
 

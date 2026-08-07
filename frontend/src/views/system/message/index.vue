@@ -1,33 +1,16 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref, watch } from 'vue'
-import {
-  AddOutline,
-  AlertCircleOutline,
-  CheckmarkDoneOutline,
-  ClipboardOutline,
-  CreateOutline,
-  EyeOutline,
-  InformationCircleOutline,
-  RefreshOutline,
-  TrashOutline,
-} from '@vicons/ionicons5'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { AddOutline, CheckmarkDoneOutline, RefreshOutline } from '@vicons/ionicons5'
 import {
   NAlert,
   NButton,
-  NDataTable,
-  NDivider,
-  NEmpty,
   NIcon,
-  NModal,
   NPagination,
-  NSpin,
   NRadioButton,
   NRadioGroup,
-  NTag,
   useDialog,
   useMessage,
 } from 'naive-ui'
-import type { DataTableColumns } from 'naive-ui'
 import { useRoute } from 'vue-router'
 
 import {
@@ -40,31 +23,25 @@ import {
   markMessageRead,
   updateMessage,
 } from '@/api'
-import AppForm from '@/components/AppForm/index.vue'
-import AppSearchForm from '@/components/AppSearchForm/index.vue'
 import { useLocale, usePagination, usePermission } from '@/hooks'
 import { useMessageStore } from '@/stores'
+import MessageDetailModal from './components/MessageDetailModal.vue'
+import MessageFormModal from './components/MessageFormModal.vue'
+import MessageSearchPanel from './components/MessageSearchPanel.vue'
+import MessageTable from './components/MessageTable.vue'
 import type {
-  AppFormField,
   MessageCreatePayload,
   MessageDetailView,
+  MessageFormMode,
   MessageFormModel,
   MessageItem,
   MessageListFilters,
   MessageListItem,
-  MessageStatus,
-  MessageType,
   MessageUpdatePayload,
   MessageViewMode,
   MyMessageFilters,
-  TranslationKey,
 } from '@/types'
-import {
-  parseRecipientUserIds,
-  resolveMessageTone,
-  toMessageFormTime,
-  toMessagePublishTime,
-} from '@/utils'
+import { parseRecipientUserIds, toMessageFormTime, toMessagePublishTime } from '@/utils'
 
 defineOptions({ name: 'SystemMessageView' })
 
@@ -113,340 +90,6 @@ const myPagination = usePagination((params) => fetchMyMessageList(params, applie
 const { data: managementData, loading: managementLoading } = messagePagination
 const { data: inboxData, loading: inboxLoading } = myPagination
 
-const messageTypeOptions = computed(() => [
-  { label: t('message.type.system'), value: 'system' as const },
-  { label: t('message.type.approval'), value: 'approval' as const },
-  { label: t('message.type.alarm'), value: 'alarm' as const },
-])
-const statusOptions = computed(() => [
-  { label: t('message.status.all'), value: null },
-  { label: t('message.status.enabled'), value: '1' as const },
-  { label: t('message.status.disabled'), value: '0' as const },
-])
-const formStatusOptions = computed(() => [
-  { label: t('message.status.enabled'), value: '1' as const },
-  { label: t('message.status.disabled'), value: '0' as const },
-])
-const readStatusOptions = computed(() => [
-  { label: t('message.filter.all'), value: 'all' as const },
-  { label: t('message.filter.unread'), value: 'unread' as const },
-  { label: t('message.filter.read'), value: 'read' as const },
-])
-const channelOptions = computed(() => [
-  { label: t('message.form.channel.inbox'), value: 'inbox' as const },
-  { label: t('message.form.channel.webhook'), value: 'webhook' as const },
-  { label: t('message.form.channel.email'), value: 'email' as const },
-  { label: t('message.form.channel.sms'), value: 'sms' as const },
-])
-
-const messageSearchFields = computed<ReadonlyArray<AppFormField<MessageListFilters>>>(() => [
-  {
-    key: 'title',
-    path: 'title',
-    label: t('message.search.title'),
-    componentProps: {
-      clearable: true,
-      placeholder: t('message.search.titlePlaceholder'),
-    },
-  },
-  {
-    key: 'content',
-    path: 'content',
-    label: t('message.search.content'),
-    componentProps: {
-      clearable: true,
-      placeholder: t('message.search.contentPlaceholder'),
-    },
-  },
-  {
-    key: 'message_type',
-    path: 'message_type',
-    label: t('message.search.type'),
-    type: 'select',
-    componentProps: {
-      clearable: true,
-      options: messageTypeOptions.value,
-      placeholder: t('message.search.typePlaceholder'),
-    },
-  },
-  {
-    key: 'status',
-    path: 'status',
-    label: t('message.search.status'),
-    type: 'select',
-    componentProps: {
-      clearable: true,
-      options: statusOptions.value,
-      placeholder: t('message.search.statusPlaceholder'),
-    },
-  },
-  {
-    key: 'publish_time',
-    path: 'publish_time',
-    label: t('message.search.publishTime'),
-    type: 'date',
-    componentProps: {
-      type: 'daterange',
-      clearable: true,
-      format: 'yyyy-MM-dd',
-      startPlaceholder: t('message.search.startDate'),
-      endPlaceholder: t('message.search.endDate'),
-    },
-  },
-])
-
-const mySearchFields = computed<ReadonlyArray<AppFormField<MyMessageFilters>>>(() => [
-  {
-    key: 'keyword',
-    path: 'keyword',
-    label: t('message.search.keyword'),
-    componentProps: {
-      clearable: true,
-      placeholder: t('message.search.titlePlaceholder'),
-    },
-  },
-  {
-    key: 'message_type',
-    path: 'message_type',
-    label: t('message.search.type'),
-    type: 'select',
-    componentProps: {
-      clearable: true,
-      options: messageTypeOptions.value,
-      placeholder: t('message.search.typePlaceholder'),
-    },
-  },
-  {
-    key: 'read_status',
-    path: 'read_status',
-    label: t('message.filter.readStatus'),
-    type: 'select',
-    componentProps: { options: readStatusOptions.value },
-  },
-  {
-    key: 'publish_time',
-    path: 'publish_time',
-    label: t('message.search.publishTime'),
-    type: 'date',
-    componentProps: {
-      type: 'daterange',
-      clearable: true,
-      format: 'yyyy-MM-dd',
-      startPlaceholder: t('message.search.startDate'),
-      endPlaceholder: t('message.search.endDate'),
-    },
-  },
-])
-
-const typeTranslationKeys: Record<MessageType, TranslationKey> = {
-  system: 'message.type.system',
-  approval: 'message.type.approval',
-  alarm: 'message.type.alarm',
-}
-
-const getMessageTypeLabel = (messageType: MessageType): string =>
-  t(typeTranslationKeys[messageType])
-
-const getMessageTagType = (messageType: MessageType) => {
-  const tone = resolveMessageTone(messageType)
-  if (tone === 'danger') {
-    return 'error'
-  }
-
-  if (tone === 'warning') {
-    return 'warning'
-  }
-
-  return 'info'
-}
-
-const getMessageIcon = (messageType: MessageType) => {
-  const tone = resolveMessageTone(messageType)
-  if (tone === 'danger') {
-    return AlertCircleOutline
-  }
-
-  if (tone === 'warning') {
-    return ClipboardOutline
-  }
-
-  return InformationCircleOutline
-}
-
-const renderMessageTypeTag = (messageType: MessageType) =>
-  h(
-    NTag,
-    {
-      class: 'message-type-tag',
-      type: getMessageTagType(messageType),
-      size: 'small',
-      round: true,
-    },
-    {
-      default: () => [
-        h(
-          NIcon,
-          { size: 14, 'aria-hidden': 'true' },
-          { default: () => h(getMessageIcon(messageType)) },
-        ),
-        h('span', { class: 'message-type-label' }, getMessageTypeLabel(messageType)),
-      ],
-    },
-  )
-
-const getStatusLabel = (status: MessageStatus): string =>
-  status === '1' ? t('message.status.enabled') : t('message.status.disabled')
-
-const getReadStatusLabel = (readAt: string | null): string =>
-  readAt ? t('message.read') : t('message.unread')
-
-const formatTimestamp = (value: string | null): string => value ?? t('message.noTime')
-
-const messageColumns = computed<DataTableColumns<MessageListItem>>(() => [
-  {
-    title: t('message.column.title'),
-    key: 'message_title',
-    minWidth: 220,
-    ellipsis: { tooltip: true },
-  },
-  {
-    title: t('message.column.type'),
-    key: 'message_type',
-    width: 140,
-    render: (item) => renderMessageTypeTag(item.message_type),
-  },
-  {
-    title: t('message.column.content'),
-    key: 'message_content',
-    minWidth: 320,
-    ellipsis: { tooltip: true },
-  },
-  {
-    title: t('message.column.status'),
-    key: 'status',
-    width: 110,
-    render: (item) =>
-      h(
-        NTag,
-        { type: item.status === '1' ? 'success' : 'default', size: 'small' },
-        { default: () => getStatusLabel(item.status) },
-      ),
-  },
-  {
-    title: t('message.column.publishTime'),
-    key: 'publish_time',
-    width: 180,
-    render: (item) => formatTimestamp(item.publish_time),
-  },
-  {
-    title: t('message.column.action'),
-    key: 'action',
-    width: 150,
-    render: (item) =>
-      h('div', { class: 'message-row-actions' }, [
-        ...(canQuery.value
-          ? [
-              h(
-                NButton,
-                {
-                  quaternary: true,
-                  circle: true,
-                  'aria-label': t('message.action.detail'),
-                  title: t('message.action.detail'),
-                  onClick: () => void openManageDetail(item),
-                },
-                { icon: () => h(NIcon, null, { default: () => h(EyeOutline) }) },
-              ),
-            ]
-          : []),
-        ...(canEdit.value
-          ? [
-              h(
-                NButton,
-                {
-                  quaternary: true,
-                  circle: true,
-                  'aria-label': t('message.action.edit'),
-                  title: t('message.action.edit'),
-                  onClick: () => openEditMessage(item),
-                },
-                { icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) },
-              ),
-            ]
-          : []),
-        ...(canDelete.value
-          ? [
-              h(
-                NButton,
-                {
-                  quaternary: true,
-                  circle: true,
-                  type: 'error',
-                  'aria-label': t('message.action.delete'),
-                  title: t('message.action.delete'),
-                  onClick: () => confirmDeleteMessage(item),
-                },
-                { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) },
-              ),
-            ]
-          : []),
-      ]),
-  },
-])
-
-const myColumns = computed<DataTableColumns<MessageItem>>(() => [
-   {
-    title: t('message.column.title'),
-    key: 'message_title',
-    minWidth: 220,
-    ellipsis: { tooltip: true },
-  },
-  {
-    title: t('message.column.type'),
-    key: 'message_type',
-    width: 140,
-    render: (item) => renderMessageTypeTag(item.message_type),
-  },
-  {
-    title: t('message.column.content'),
-    key: 'message_content',
-    minWidth: 320,
-    ellipsis: { tooltip: true },
-  },
-  {
-    title: t('message.column.readStatus'),
-    key: 'read_at',
-    width: 110,
-    render: (item) =>
-      h(
-        NTag,
-        { type: item.read_at ? 'default' : 'info', size: 'small' },
-        { default: () => getReadStatusLabel(item.read_at) },
-      ),
-  },
-  {
-    title: t('message.column.publishTime'),
-    key: 'publish_time',
-    width: 180,
-    render: (item) => formatTimestamp(item.publish_time),
-  },
-  {
-    title: t('message.column.action'),
-    key: 'action',
-    width: 150,
-    render: (item) =>
-      h(
-        NButton,
-        {
-          text: true,
-          type: 'primary',
-          onClick: () => void openInboxDetail(item),
-        },
-        { default: () => t('message.action.detail') },
-      ),
-  },
-])
-
 const applyMessageFilters = (nextFilters: MessageListFilters): void => {
   Object.assign(appliedMessageFilters, nextFilters)
 }
@@ -488,84 +131,7 @@ const formModel = reactive<MessageFormModel>(createInitialForm())
 const formVisible = ref(false)
 const formLoading = ref(false)
 const editingMessageId = ref<number | null>(null)
-const formMode = ref<'create' | 'edit'>('create')
-const messageFormFields = computed<ReadonlyArray<AppFormField<MessageFormModel>>>(() => [
-  {
-    key: 'message_title',
-    path: 'message_title',
-    label: t('message.form.title'),
-    required: true,
-    requiredMessage: t('message.form.titlePlaceholder'),
-    componentProps: { placeholder: t('message.form.titlePlaceholder') },
-  },
-  {
-    key: 'message_type',
-    path: 'message_type',
-    label: t('message.form.type'),
-    type: 'select',
-    required: true,
-    requiredMessage: t('message.form.typePlaceholder'),
-    componentProps: {
-      options: messageTypeOptions.value,
-      placeholder: t('message.form.typePlaceholder'),
-    },
-  },
-  {
-    key: 'status',
-    path: 'status',
-    label: t('message.form.status'),
-    type: 'select',
-    required: true,
-    requiredMessage: t('message.form.statusPlaceholder'),
-    componentProps: {
-      options: formStatusOptions.value,
-      placeholder: t('message.form.statusPlaceholder'),
-    },
-  },
-  {
-    key: 'publish_time',
-    path: 'publish_time',
-    label: t('message.form.publishTime'),
-    type: 'date',
-    componentProps: { type: 'datetime', clearable: true },
-  },
-  {
-    key: 'message_content',
-    path: 'message_content',
-    label: t('message.form.content'),
-    type: 'textarea',
-    required: true,
-    requiredMessage: t('message.form.contentPlaceholder'),
-    componentProps: {
-      rows: 6,
-      placeholder: t('message.form.contentPlaceholder'),
-    },
-    span: '1 s:2',
-  },
-  {
-    key: 'recipient_user_ids',
-    path: 'recipient_user_ids',
-    label: t('message.form.recipientIds'),
-    hidden: () => formMode.value !== 'create',
-    feedback: t('message.form.recipientIdsHelp'),
-    componentProps: { placeholder: t('message.form.recipientIdsPlaceholder') },
-    span: '1 s:2',
-  },
-  {
-    key: 'delivery_channels',
-    path: 'delivery_channels',
-    label: t('message.form.channels'),
-    type: 'select',
-    hidden: () => formMode.value !== 'create',
-    required: true,
-    requiredMessage: t('message.form.channels'),
-    rules: [
-      { type: 'array', required: true, message: t('message.form.channels'), trigger: 'change' },
-    ],
-    componentProps: { multiple: true, options: channelOptions.value },
-    span: '1 s:2',
-  },
-])
+const formMode = ref<MessageFormMode>('create')
 
 const detailVisible = ref(false)
 const detailLoading = ref(false)
@@ -706,7 +272,6 @@ const markAllInboxRead = async (): Promise<void> => {
   await myPagination.refresh()
 }
 
-const rowKey = (item: MessageListItem | MessageItem): number => item.id
 const activeLoading = computed(() =>
   viewMode.value === 'manage' ? messagePagination.loading.value : myPagination.loading.value,
 )
@@ -825,48 +390,16 @@ onMounted(() => {
         </div>
       </div>
 
-      <AppSearchForm
-        v-if="viewMode === 'manage'"
-        :model="messageFilters"
-        :initial-values="createInitialMessageFilters()"
-        :fields="messageSearchFields"
-        :loading="managementLoading"
-        default-collapsed
-        :search-text="t('message.search.submit')"
-        :reset-text="t('message.search.reset')"
-        :layout="{
-          labelPlacement: 'top',
-          labelWidth: 'auto',
-          columns: '1 s:2 m:4',
-          responsive: 'screen',
-          xGap: 16,
-          yGap: 4,
-          actionAlign: 'end',
-        }"
-        @search="handleMessageSearch"
-        @reset="handleMessageSearch"
-      />
-
-      <AppSearchForm
-        v-else
-        :model="myFilters"
-        :initial-values="createInitialMyFilters()"
-        :fields="mySearchFields"
-        :loading="inboxLoading"
-        default-collapsed
-        :search-text="t('message.search.submit')"
-        :reset-text="t('message.search.reset')"
-        :layout="{
-          labelPlacement: 'top',
-          labelWidth: 'auto',
-          columns: '1 s:2 m:4',
-          responsive: 'screen',
-          xGap: 16,
-          yGap: 4,
-          actionAlign: 'end',
-        }"
-        @search="handleMySearch"
-        @reset="handleMySearch"
+      <MessageSearchPanel
+        :mode="viewMode"
+        :management-model="messageFilters"
+        :management-initial-values="createInitialMessageFilters()"
+        :inbox-model="myFilters"
+        :inbox-initial-values="createInitialMyFilters()"
+        :management-loading="managementLoading"
+        :inbox-loading="inboxLoading"
+        @manage-search="handleMessageSearch"
+        @inbox-search="handleMySearch"
       />
 
       <div v-if="activeError" class="message-page-error">
@@ -874,27 +407,20 @@ onMounted(() => {
         <NButton size="small" @click="refreshCurrentList">{{ t('message.retry') }}</NButton>
       </div>
 
-      <NDataTable
-        v-if="viewMode === 'manage'"
-        :columns="messageColumns"
-        :data="managementData"
-        :loading="managementLoading"
-        remote
-        :row-key="rowKey"
-      >
-        <template #empty><NEmpty :description="t('message.empty')" /></template>
-      </NDataTable>
-
-      <NDataTable
-        v-else
-        :columns="myColumns"
-        :data="inboxData"
-        :loading="inboxLoading"
-        remote
-        :row-key="rowKey"
-      >
-        <template #empty><NEmpty :description="t('message.empty')" /></template>
-      </NDataTable>
+      <MessageTable
+        :mode="viewMode"
+        :management-data="managementData"
+        :inbox-data="inboxData"
+        :management-loading="managementLoading"
+        :inbox-loading="inboxLoading"
+        :can-query="canQuery"
+        :can-edit="canEdit"
+        :can-delete="canDelete"
+        @manage-detail="openManageDetail"
+        @edit="openEditMessage"
+        @delete="confirmDeleteMessage"
+        @inbox-detail="openInboxDetail"
+      />
 
       <footer class="message-page-footer">
         <NPagination v-bind="activePaginationBinding" />
@@ -902,99 +428,16 @@ onMounted(() => {
       </footer>
     </section>
 
-    <NModal
-      v-model:show="detailVisible"
-      preset="card"
-      class="message-modal message-detail-modal"
-      :title="t('message.detailTitle')"
-    >
-      <NSpin :show="detailLoading">
-        <NEmpty v-if="!detailItem && !detailLoading" :description="t('message.empty')" />
-        <div v-else-if="detailItem" class="message-detail">
-          <header class="message-detail-heading">
-            <span
-              class="message-detail-icon"
-              :class="`message-detail-icon--${getMessageTagType(detailItem.message_type)}`"
-              aria-hidden="true"
-            >
-              <NIcon :size="20"><component :is="getMessageIcon(detailItem.message_type)" /></NIcon>
-            </span>
-            <div class="message-detail-title">
-              <NTag
-                class="message-detail-type"
-                :type="getMessageTagType(detailItem.message_type)"
-                size="small"
-                round
-              >
-                {{ getMessageTypeLabel(detailItem.message_type) }}
-              </NTag>
-              <h3>{{ detailItem.message_title }}</h3>
-            </div>
-          </header>
-          <section class="message-detail-content-section">
-            <span class="message-detail-content-label">{{ t('message.column.content') }}</span>
-            <p class="message-detail-content">{{ detailItem.message_content }}</p>
-          </section>
-          <NDivider />
-          <dl class="message-detail-meta">
-            <div>
-              <dt>{{ t('message.column.publishTime') }}</dt>
-              <dd>{{ formatTimestamp(detailItem.publish_time) }}</dd>
-            </div>
-            <div v-if="'status' in detailItem">
-              <dt>{{ t('message.column.status') }}</dt>
-              <dd>{{ getStatusLabel(detailItem.status) }}</dd>
-            </div>
-            <div v-if="'read_at' in detailItem">
-              <dt>{{ t('message.column.readStatus') }}</dt>
-              <dd>{{ getReadStatusLabel(detailItem.read_at) }}</dd>
-            </div>
-          </dl>
-        </div>
-      </NSpin>
-    </NModal>
+    <MessageDetailModal v-model:show="detailVisible" :loading="detailLoading" :item="detailItem" />
 
-    <NModal
+    <MessageFormModal
       v-model:show="formVisible"
-      preset="card"
-      class="message-modal"
-      :title="formMode === 'create' ? t('message.createTitle') : t('message.editTitle')"
-      :mask-closable="false"
-      @after-leave="resetForm"
-    >
-      <AppForm
-        :model="formModel"
-        :fields="messageFormFields"
-        :loading="formLoading"
-        :show-reset="false"
-        :layout="{
-          labelPlacement: 'top',
-          columns: '1 s:2',
-          responsive: 'screen',
-          xGap: 16,
-          yGap: 4,
-        }"
-        @submit="saveMessage"
-      >
-        <template #actions="{ loading, submit }">
-          <NButton attr-type="button" :disabled="loading" @click="formVisible = false">
-            {{ t('message.form.cancel') }}
-          </NButton>
-          <NButton
-            attr-type="button"
-            type="primary"
-            :loading="loading"
-            :disabled="loading"
-            @click="submit"
-          >
-            <template #icon
-              ><NIcon><CheckmarkDoneOutline /></NIcon
-            ></template>
-            {{ t('message.form.save') }}
-          </NButton>
-        </template>
-      </AppForm>
-    </NModal>
+      :mode="formMode"
+      :model="formModel"
+      :loading="formLoading"
+      @submit="saveMessage"
+      @reset="resetForm"
+    />
   </main>
 </template>
 
@@ -1064,7 +507,7 @@ onMounted(() => {
 }
 
 .message-list-panel :deep(.n-data-table) {
-  margin: 16px  0;
+  margin: 16px 0;
 }
 
 .message-page-error {
@@ -1082,127 +525,6 @@ onMounted(() => {
   min-height: 64px;
   padding: 12px 0;
   border-top: 1px solid var(--app-color-border);
-}
-
-.message-type-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  vertical-align: middle;
-}
-
-.message-type-tag :deep(.n-icon) {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-}
-
-.message-type-label {
-  line-height: 1;
-}
-
-.message-row-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.message-detail {
-  min-width: 0;
-}
-
-.message-detail-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.message-detail-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  border-radius: 10px;
-  background: var(--app-color-fill);
-}
-
-.message-detail-icon--info {
-  color: var(--app-color-primary);
-}
-
-.message-detail-icon--warning {
-  color: var(--app-color-warning);
-}
-
-.message-detail-icon--error {
-  color: var(--app-color-danger);
-}
-
-.message-detail-title {
-  display: grid;
-  min-width: 0;
-  gap: 8px;
-}
-
-.message-detail-type {
-  justify-self: start;
-}
-
-.message-detail-heading h3 {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-size: 20px;
-  line-height: 1.4;
-}
-
-.message-detail-content-section {
-  margin-top: 24px;
-  padding: 16px 18px;
-  border-left: 3px solid var(--app-color-primary);
-  border-radius: 4px;
-  background: var(--app-color-fill);
-}
-
-.message-detail-content-label {
-  display: block;
-  color: var(--app-color-text-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.message-detail-content {
-  margin: 8px 0 0;
-  color: var(--app-color-text);
-  line-height: 1.8;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.message-detail-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 24px;
-  margin: 0;
-}
-
-.message-detail-meta div {
-  min-width: 0;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--app-color-border);
-}
-
-.message-detail-meta dt {
-  color: var(--app-color-text-muted);
-  font-size: 12px;
-}
-
-.message-detail-meta dd {
-  margin: 4px 0 0;
-  color: var(--app-color-text);
-  overflow-wrap: anywhere;
 }
 
 @media (width <= 720px) {
@@ -1231,21 +553,5 @@ onMounted(() => {
     align-items: flex-start;
     flex-direction: column-reverse;
   }
-}
-
-@media (width <= 520px) {
-  .message-detail-meta {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
-
-<style lang="scss">
-.n-card.message-modal {
-  width: min(760px, calc(100vw - 32px));
-}
-
-.n-card.message-detail-modal {
-  width: min(640px, calc(100vw - 32px));
 }
 </style>

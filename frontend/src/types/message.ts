@@ -14,6 +14,8 @@ export type MessageTab = MessageType
 
 export type MessageViewMode = 'inbox' | 'manage'
 
+export type MessageFormMode = 'create' | 'edit'
+
 export interface MessageItem {
   id: number
   message_title: string

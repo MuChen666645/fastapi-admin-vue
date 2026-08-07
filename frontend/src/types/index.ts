@@ -102,6 +102,7 @@ export type {
   MessageDeliveryChannel,
   MessageDetail,
   MessageDetailView,
+  MessageFormMode,
   MessageFormModel,
   MessageItem,
   MessageLatestResult,

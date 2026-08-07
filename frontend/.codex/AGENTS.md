@@ -71,6 +71,14 @@
 - `BasicLayout` 将内容区 Loading、标签页、面包屑、KeepAlive 和路由页面组合在一起。
 - Lottie 封装位于 `src/utils/lottie.ts` 和 `src/hooks/useLottie.ts`，动画组件使用 `src/assets/lottie/car-loading3-data.json`。
 
+## 页面文件规模
+
+- `src/views/**/*.vue` 页面文件的源代码行数上限为 600 行，统计范围包括 `<script>`、`<template>`、`<style>`、注释和空行；`dist/`、缓存和其他生成文件不计入。
+- 新建或修改页面时，若文件超过 600 行，必须在同一任务中完成原因分析和拆分，禁止通过删除空行、压缩代码、合并不相关职责或关闭检查规避限制。
+- 页面文件只保留路由入口、页面级状态编排、查询/分页协调、权限分支和领域 API 调度；列表、表单、详情、弹窗、复杂表格列和重复交互应拆到当前页面的 `components/`，无生命周期的解析/格式化逻辑放到 `src/utils/`，跨页面组件才提升到 `src/components/`。
+- 业务组件拆分后必须保持原有路由、API 契约、权限控制、校验、Loading、错误反馈和提交行为；组件通过 Props、Emits 或 `v-model` 与页面交互，不得把领域 API 写入通用或展示组件。
+- 存量超限页面要在后续修改该业务时优先完成拆分和代码优化；本次未涉及的存量超限页面必须在交付说明中明确记录，不得把超限作为长期例外。
+
 ## 维护规则
 
 当确认了 API、路由、权限、依赖、目录职责、缓存或构建脚本变化时，必须同步更新 `PROJECT.md`、`ARCHITECTURE.md`、`BOUNDARY.md` 或 `WORKFLOW.md` 中受影响的事实。文档不得保留已经删除的路径、变量、脚本或兼容分支。
