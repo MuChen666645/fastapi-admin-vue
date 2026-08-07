@@ -19,6 +19,7 @@ export {
 export { resolveRouteMenuState } from './route-menu'
 export { downloadBlob } from './download'
 export { isProtectedAdminUser } from './user'
+export { isProtectedAdminRole } from './role'
 export {
   findNewUnreadMessages,
   formatMessageRelativeTime,

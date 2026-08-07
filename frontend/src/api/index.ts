@@ -1,5 +1,6 @@
 export { changeCurrentPassword, fetchCaptcha, login, logout, refreshTokens } from './auth'
 export { fetchDepartmentOptions, fetchPostOptions } from './organization'
+export { fetchMenuList } from './menu'
 export {
   createMessage,
   deleteMessage,
@@ -29,4 +30,14 @@ export {
   resetUserPassword,
   updateUser,
 } from './user'
-export { fetchRoleOptions } from './role'
+export {
+  batchUpdateRoleStatus,
+  createRole,
+  deleteRole,
+  exportRoles,
+  fetchRoleDetail,
+  fetchRoleList,
+  fetchRoleOptions,
+  importRoles,
+  updateRole,
+} from './role'

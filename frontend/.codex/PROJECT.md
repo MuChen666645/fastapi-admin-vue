@@ -127,6 +127,15 @@ src/
 | `POST` | `/message/add`                 | 发布消息并创建投递任务 |
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |
+| `GET`  | `/role/list`                  | 当前租户角色分页列表 |
+| `GET`  | `/role/{id}`                  | 角色详情及菜单、部门和字段权限关联 |
+| `POST` | `/role/add`                   | 创建角色 |
+| `PUT`  | `/role/{id}`                  | 修改角色 |
+| `DELETE` | `/role/{id}`                | 删除角色 |
+| `PUT`  | `/role/batch/status`          | 批量修改角色状态 |
+| `GET`  | `/role/export`                | 导出角色 Excel |
+| `POST` | `/role/import`                | 导入角色 Excel |
+| `GET`  | `/menu/list`                  | 查询角色可配置的菜单树 |
 
 认证响应保留后端字段 `access_token`、`refresh_token`、`token_type`、`expires_in`、`must_change_password`。路由响应保留 `path`、`name`、`component`、`redirect`、`hidden`、`meta` 和 `children`。
 
@@ -137,6 +146,7 @@ src/
 - `/` 对应 `app` 和 `BasicLayout`，认证后会注册后端业务路由。
 - `/system/settings` 的路由名为 `system-settings`，是认证后的静态系统设置入口，不显示在后端菜单中。
 - `/system/message` 来自后端消息中心菜单的动态路由，组件路径必须解析到 `src/views/system/message/index.vue`；页面包含当前用户收件箱和具有 `system:message:list` 权限时的租户消息管理模式。
+- `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。
 - `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。
 - `/demo/features/form` 是认证后的表单组件演示页，菜单层级为 `demo -> features -> form`，用于展示通用 `AppForm` 的布局、自定义字段、标准校验、动态分组和规范提交；它不调用后端业务接口。
 - `/demo/features/search-form` 是认证后的搜索表单组件演示页，菜单层级为 `demo -> features -> search-form`，用于展示通用 `AppSearchForm` 的搜索布局、条件折叠、自定义字段、回车策略、重置和查询状态；它不调用后端业务接口。

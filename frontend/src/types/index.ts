@@ -130,7 +130,24 @@ export type {
   PostOption,
   PostPage,
 } from './organization'
-export type { RoleOption, RolePage } from './role'
+export type { MenuItem, MenuType } from './menu'
+export type {
+  RoleBatchStatusPayload,
+  RoleCreatePayload,
+  RoleDataScope,
+  RoleDetail,
+  RoleFormMode,
+  RoleFormModel,
+  RoleImportError,
+  RoleImportResult,
+  RoleListFilters,
+  RoleListItem,
+  RoleListQuery,
+  RoleOption,
+  RolePage,
+  RoleStatus,
+  RoleUpdatePayload,
+} from './role'
 export type {
   UserCreatePayload,
   UserBatchIdsPayload,
