@@ -5,6 +5,7 @@ import { createAuthGuard } from './guards'
 import { errorRoutes, protectedRoutes, publicRoutes } from './modules'
 import { buildDynamicRoutes } from './route-utils'
 import type { UserRoute } from '@/types'
+import { registerAuthSessionExpiredHandler } from '@/utils/request'
 
 const routes: RouteRecordRaw[] = [...publicRoutes, ...protectedRoutes, ...errorRoutes]
 
@@ -39,6 +40,13 @@ export const clearAuthenticatedRoutes = (): void => {
   })
   registeredRouteNames = []
 }
+
+registerAuthSessionExpiredHandler(() => {
+  clearAuthenticatedRoutes()
+  if (router.currentRoute.value.name !== 'login') {
+    void router.replace({ name: 'login' }).catch(() => undefined)
+  }
+})
 
 router.beforeEach(createAuthGuard(router, registerAuthenticatedRoutes))
 

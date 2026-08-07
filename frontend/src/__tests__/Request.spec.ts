@@ -6,6 +6,7 @@ import {
   ApiError,
   configureAuthTransport,
   invalidateAuthSession,
+  registerAuthSessionExpiredHandler,
   registerRefreshTokenRequest,
   requestJson,
 } from '../utils/request'
@@ -103,6 +104,27 @@ describe('request transport', () => {
 
     await expect(request).rejects.toBeInstanceOf(ApiError)
     expect(accessToken).toBeNull()
+  })
+
+  it('clears an expired session and notifies the router when refresh fails', async () => {
+    const sessionExpired = vi.fn()
+    registerAuthSessionExpiredHandler(sessionExpired)
+    registerRefreshTokenRequest(async () => {
+      throw new ApiError('refresh failed', 401)
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(createResponse(401, { message: 'expired' }))),
+    )
+
+    await expect(requestJson('/protected', {}, (value) => value)).rejects.toMatchObject({
+      status: 401,
+    })
+
+    expect(accessToken).toBeNull()
+    expect(refreshToken).toBeNull()
+    expect(sessionExpired).toHaveBeenCalledOnce()
+    registerAuthSessionExpiredHandler(null)
   })
 
   it('normalizes network failures and sends one Message notification', async () => {

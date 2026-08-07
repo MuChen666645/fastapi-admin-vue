@@ -10,6 +10,8 @@ export interface AuthTransportHandlers {
   refreshTokens: ((refreshToken: string) => Promise<TokenResponse>) | null
 }
 
+export type AuthSessionExpiredHandler = () => void
+
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   data?: RequestBody

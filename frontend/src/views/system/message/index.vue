@@ -15,16 +15,11 @@ import {
   NAlert,
   NButton,
   NDataTable,
-  NDatePicker,
   NDivider,
   NEmpty,
-  NForm,
-  NFormItem,
   NIcon,
-  NInput,
   NModal,
   NPagination,
-  NSelect,
   NSpin,
   NRadioButton,
   NRadioGroup,
@@ -32,7 +27,7 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import type { DataTableColumns, FormInst, FormRules } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import { useRoute } from 'vue-router'
 
 import {
@@ -45,6 +40,7 @@ import {
   markMessageRead,
   updateMessage,
 } from '@/api'
+import AppForm from '@/components/AppForm/index.vue'
 import AppSearchForm from '@/components/AppSearchForm/index.vue'
 import { useLocale, usePagination, usePermission } from '@/hooks'
 import { useMessageStore } from '@/stores'
@@ -399,16 +395,11 @@ const messageColumns = computed<DataTableColumns<MessageListItem>>(() => [
 ])
 
 const myColumns = computed<DataTableColumns<MessageItem>>(() => [
-  {
+   {
     title: t('message.column.title'),
     key: 'message_title',
     minWidth: 220,
-    render: (item) =>
-      h(
-        'div',
-        { class: ['message-inbox-title', { 'message-inbox-title--unread': !item.read_at }] },
-        [h('strong', item.message_title)],
-      ),
+    ellipsis: { tooltip: true },
   },
   {
     title: t('message.column.type'),
@@ -442,7 +433,7 @@ const myColumns = computed<DataTableColumns<MessageItem>>(() => [
   {
     title: t('message.column.action'),
     key: 'action',
-    width: 110,
+    width: 150,
     render: (item) =>
       h(
         NButton,
@@ -494,31 +485,87 @@ const createInitialForm = (): MessageFormModel => ({
 })
 
 const formModel = reactive<MessageFormModel>(createInitialForm())
-const formRef = ref<FormInst | null>(null)
 const formVisible = ref(false)
 const formLoading = ref(false)
 const editingMessageId = ref<number | null>(null)
 const formMode = ref<'create' | 'edit'>('create')
-const formRules = computed<FormRules>(() => ({
-  message_title: [
-    {
-      required: true,
-      message: t('message.form.titlePlaceholder'),
-      trigger: ['input', 'blur'],
+const messageFormFields = computed<ReadonlyArray<AppFormField<MessageFormModel>>>(() => [
+  {
+    key: 'message_title',
+    path: 'message_title',
+    label: t('message.form.title'),
+    required: true,
+    requiredMessage: t('message.form.titlePlaceholder'),
+    componentProps: { placeholder: t('message.form.titlePlaceholder') },
+  },
+  {
+    key: 'message_type',
+    path: 'message_type',
+    label: t('message.form.type'),
+    type: 'select',
+    required: true,
+    requiredMessage: t('message.form.typePlaceholder'),
+    componentProps: {
+      options: messageTypeOptions.value,
+      placeholder: t('message.form.typePlaceholder'),
     },
-  ],
-  message_type: [{ required: true, message: t('message.form.type'), trigger: ['change', 'blur'] }],
-  message_content: [
-    {
-      required: true,
-      message: t('message.form.contentPlaceholder'),
-      trigger: ['input', 'blur'],
+  },
+  {
+    key: 'status',
+    path: 'status',
+    label: t('message.form.status'),
+    type: 'select',
+    required: true,
+    requiredMessage: t('message.form.statusPlaceholder'),
+    componentProps: {
+      options: formStatusOptions.value,
+      placeholder: t('message.form.statusPlaceholder'),
     },
-  ],
-  delivery_channels: [
-    { type: 'array', required: true, message: t('message.form.channels'), trigger: 'change' },
-  ],
-}))
+  },
+  {
+    key: 'publish_time',
+    path: 'publish_time',
+    label: t('message.form.publishTime'),
+    type: 'date',
+    componentProps: { type: 'datetime', clearable: true },
+  },
+  {
+    key: 'message_content',
+    path: 'message_content',
+    label: t('message.form.content'),
+    type: 'textarea',
+    required: true,
+    requiredMessage: t('message.form.contentPlaceholder'),
+    componentProps: {
+      rows: 6,
+      placeholder: t('message.form.contentPlaceholder'),
+    },
+    span: '1 s:2',
+  },
+  {
+    key: 'recipient_user_ids',
+    path: 'recipient_user_ids',
+    label: t('message.form.recipientIds'),
+    hidden: () => formMode.value !== 'create',
+    feedback: t('message.form.recipientIdsHelp'),
+    componentProps: { placeholder: t('message.form.recipientIdsPlaceholder') },
+    span: '1 s:2',
+  },
+  {
+    key: 'delivery_channels',
+    path: 'delivery_channels',
+    label: t('message.form.channels'),
+    type: 'select',
+    hidden: () => formMode.value !== 'create',
+    required: true,
+    requiredMessage: t('message.form.channels'),
+    rules: [
+      { type: 'array', required: true, message: t('message.form.channels'), trigger: 'change' },
+    ],
+    componentProps: { multiple: true, options: channelOptions.value },
+    span: '1 s:2',
+  },
+])
 
 const detailVisible = ref(false)
 const detailLoading = ref(false)
@@ -554,19 +601,14 @@ const openEditMessage = (item: MessageListItem): void => {
   formVisible.value = true
 }
 
-const saveMessage = async (): Promise<void> => {
+const saveMessage = async (model: MessageFormModel): Promise<void> => {
   if (formLoading.value) {
-    return
-  }
-
-  const valid = await formRef.value?.validate()
-  if (!valid) {
     return
   }
 
   let recipientUserIds: number[]
   try {
-    recipientUserIds = parseRecipientUserIds(formModel.recipient_user_ids)
+    recipientUserIds = parseRecipientUserIds(model.recipient_user_ids)
   } catch {
     message.error(t('message.form.invalidRecipientIds'))
     return
@@ -576,23 +618,23 @@ const saveMessage = async (): Promise<void> => {
   try {
     if (formMode.value === 'edit' && editingMessageId.value !== null) {
       const payload: MessageUpdatePayload = {
-        message_title: formModel.message_title.trim(),
-        message_type: formModel.message_type,
-        message_content: formModel.message_content.trim(),
-        status: formModel.status,
-        publish_time: toMessagePublishTime(formModel.publish_time),
+        message_title: model.message_title.trim(),
+        message_type: model.message_type,
+        message_content: model.message_content.trim(),
+        status: model.status,
+        publish_time: toMessagePublishTime(model.publish_time),
       }
       await updateMessage(editingMessageId.value, payload)
       message.success(t('message.form.updateSuccess'))
     } else {
       const payload: MessageCreatePayload = {
-        message_title: formModel.message_title.trim(),
-        message_type: formModel.message_type,
-        message_content: formModel.message_content.trim(),
-        status: formModel.status,
-        publish_time: toMessagePublishTime(formModel.publish_time),
+        message_title: model.message_title.trim(),
+        message_type: model.message_type,
+        message_content: model.message_content.trim(),
+        status: model.status,
+        publish_time: toMessagePublishTime(model.publish_time),
         recipient_user_ids: recipientUserIds,
-        delivery_channels: formModel.delivery_channels,
+        delivery_channels: model.delivery_channels,
       }
       await createMessage(payload)
       message.success(t('message.form.createSuccess'))
@@ -839,7 +881,6 @@ onMounted(() => {
         :loading="managementLoading"
         remote
         :row-key="rowKey"
-        :scroll-x="1120"
       >
         <template #empty><NEmpty :description="t('message.empty')" /></template>
       </NDataTable>
@@ -851,7 +892,6 @@ onMounted(() => {
         :loading="inboxLoading"
         remote
         :row-key="rowKey"
-        :scroll-x="1080"
       >
         <template #empty><NEmpty :description="t('message.empty')" /></template>
       </NDataTable>
@@ -922,75 +962,38 @@ onMounted(() => {
       :mask-closable="false"
       @after-leave="resetForm"
     >
-      <NForm ref="formRef" :model="formModel" :rules="formRules" label-placement="top">
-        <div class="message-form-grid">
-          <NFormItem :label="t('message.form.title')" path="message_title">
-            <NInput
-              v-model:value="formModel.message_title"
-              :placeholder="t('message.form.titlePlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('message.form.type')" path="message_type">
-            <NSelect
-              v-model:value="formModel.message_type"
-              :options="messageTypeOptions"
-              :placeholder="t('message.form.typePlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('message.form.status')" path="status">
-            <NSelect
-              v-model:value="formModel.status"
-              :options="formStatusOptions"
-              :placeholder="t('message.form.statusPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('message.form.publishTime')" path="publish_time">
-            <NDatePicker
-              v-model:value="formModel.publish_time"
-              type="datetime"
-              clearable
-              class="message-form-control"
-            />
-          </NFormItem>
-        </div>
-        <NFormItem :label="t('message.form.content')" path="message_content">
-          <NInput
-            v-model:value="formModel.message_content"
-            type="textarea"
-            :rows="6"
-            :placeholder="t('message.form.contentPlaceholder')"
-          />
-        </NFormItem>
-        <NFormItem
-          v-if="formMode === 'create'"
-          :label="t('message.form.recipientIds')"
-          path="recipient_user_ids"
-        >
-          <NInput
-            v-model:value="formModel.recipient_user_ids"
-            :placeholder="t('message.form.recipientIdsPlaceholder')"
-          />
-          <template #feedback>{{ t('message.form.recipientIdsHelp') }}</template>
-        </NFormItem>
-        <NFormItem
-          v-if="formMode === 'create'"
-          :label="t('message.form.channels')"
-          path="delivery_channels"
-        >
-          <NSelect v-model:value="formModel.delivery_channels" multiple :options="channelOptions" />
-        </NFormItem>
-        <div class="message-modal-actions">
-          <NButton :disabled="formLoading" @click="formVisible = false">{{
-            t('message.form.cancel')
-          }}</NButton>
-          <NButton type="primary" :loading="formLoading" @click="saveMessage">
+      <AppForm
+        :model="formModel"
+        :fields="messageFormFields"
+        :loading="formLoading"
+        :show-reset="false"
+        :layout="{
+          labelPlacement: 'top',
+          columns: '1 s:2',
+          responsive: 'screen',
+          xGap: 16,
+          yGap: 4,
+        }"
+        @submit="saveMessage"
+      >
+        <template #actions="{ loading, submit }">
+          <NButton attr-type="button" :disabled="loading" @click="formVisible = false">
+            {{ t('message.form.cancel') }}
+          </NButton>
+          <NButton
+            attr-type="button"
+            type="primary"
+            :loading="loading"
+            :disabled="loading"
+            @click="submit"
+          >
             <template #icon
               ><NIcon><CheckmarkDoneOutline /></NIcon
             ></template>
             {{ t('message.form.save') }}
           </NButton>
-        </div>
-      </NForm>
+        </template>
+      </AppForm>
     </NModal>
   </main>
 </template>
@@ -1061,7 +1064,7 @@ onMounted(() => {
 }
 
 .message-list-panel :deep(.n-data-table) {
-  margin: 16px -24px 0;
+  margin: 16px  0;
 }
 
 .message-page-error {
@@ -1102,21 +1105,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-}
-
-.message-inbox-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.message-inbox-title--unread::before {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: var(--app-color-primary);
-  content: '';
 }
 
 .message-detail {
@@ -1217,23 +1205,6 @@ onMounted(() => {
   overflow-wrap: anywhere;
 }
 
-.message-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 16px;
-}
-
-.message-form-control {
-  width: 100%;
-}
-
-.message-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 8px;
-}
-
 @media (width <= 720px) {
   .message-list-heading {
     align-items: stretch;
@@ -1264,10 +1235,6 @@ onMounted(() => {
 
 @media (width <= 520px) {
   .message-detail-meta {
-    grid-template-columns: 1fr;
-  }
-
-  .message-form-grid {
     grid-template-columns: 1fr;
   }
 }

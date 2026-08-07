@@ -105,7 +105,7 @@ export interface MessageUpdatePayload {
   publish_time?: string | null
 }
 
-export interface MessageFormModel {
+export type MessageFormModel = Record<string, unknown> & {
   message_title: string
   message_type: MessageType
   message_content: string

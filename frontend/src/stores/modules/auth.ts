@@ -12,6 +12,7 @@ import type {
 } from '@/types'
 import { ApiError, configureAuthTransport, invalidateAuthSession } from '@/utils/request'
 import { loadApplicationRoutes } from '@/router/route-source'
+import { findFirstVisibleRouteName } from '@/router/route-utils'
 import { useMessageStore } from './message'
 import { useTabsStore } from './tabs'
 
@@ -98,7 +99,14 @@ export const useAuthStore = defineStore(
         currentUser.value = await fetchCurrentUser()
         permissions.value = currentUser.value.permissions
 
-        routes.value = await loadApplicationRoutes()
+        const loadedRoutes = await loadApplicationRoutes()
+        if (!findFirstVisibleRouteName(loadedRoutes)) {
+          sessionError.value = new Error('当前账号没有可访问的路由')
+          clearSession()
+          return false
+        }
+
+        routes.value = loadedRoutes
         status.value = 'authenticated'
         return true
       } catch (error) {

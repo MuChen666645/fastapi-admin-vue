@@ -82,7 +82,12 @@ export type {
   ThemeMode,
   TranslationKey,
 } from './system-config'
-export type { AuthTransportHandlers, RequestMessageHandler, RequestOptions } from './transport'
+export type {
+  AuthSessionExpiredHandler,
+  AuthTransportHandlers,
+  RequestMessageHandler,
+  RequestOptions,
+} from './transport'
 export type { LottieAnimationHandle, LottieAnimationOptions } from './lottie'
 export type {
   PaginationBinding,

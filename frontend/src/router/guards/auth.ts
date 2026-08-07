@@ -23,6 +23,11 @@ export const createAuthGuard =
         return { name: 'change-password' }
       }
 
+      if (!findFirstVisibleRouteName(auth.routes)) {
+        auth.clearSession()
+        return true
+      }
+
       registerRoutes(auth.routes)
       return { path: '/' }
     }
@@ -35,6 +40,11 @@ export const createAuthGuard =
 
       if (auth.status === 'password-change-required') {
         return { name: 'change-password' }
+      }
+
+      if (!findFirstVisibleRouteName(auth.routes)) {
+        auth.clearSession()
+        return { name: 'login' }
       }
 
       registerRoutes(auth.routes)
@@ -68,9 +78,14 @@ export const createAuthGuard =
     }
 
     if (to.name === 'app') {
-      registerRoutes(auth.routes)
       const firstRouteName = findFirstVisibleRouteName(auth.routes)
-      return firstRouteName ? { name: firstRouteName } : { name: 'forbidden' }
+      if (!firstRouteName) {
+        auth.clearSession()
+        return { name: 'login' }
+      }
+
+      registerRoutes(auth.routes)
+      return { name: firstRouteName }
     }
 
     registerRoutes(auth.routes)

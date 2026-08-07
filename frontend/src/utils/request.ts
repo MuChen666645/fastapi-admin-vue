@@ -1,7 +1,12 @@
 import { createAlova } from 'alova'
 import adapterFetch from 'alova/fetch'
 
-import type { AuthTransportHandlers, RequestOptions, TokenResponse } from '@/types'
+import type {
+  AuthSessionExpiredHandler,
+  AuthTransportHandlers,
+  RequestOptions,
+  TokenResponse,
+} from '@/types'
 import { parseApiResponse } from '@/utils/guards/api'
 import { showRequestMessage } from '@/utils/request-feedback'
 
@@ -34,6 +39,7 @@ const authHandlers: AuthTransportHandlers = {
   refreshTokens: null,
 }
 
+let authSessionExpiredHandler: AuthSessionExpiredHandler | null = null
 let refreshPromise: Promise<boolean> | null = null
 let authSessionVersion = 0
 
@@ -54,9 +60,26 @@ export const registerRefreshTokenRequest = (
   authHandlers.refreshTokens = refreshTokens
 }
 
+export const registerAuthSessionExpiredHandler = (
+  handler: AuthSessionExpiredHandler | null,
+): void => {
+  authSessionExpiredHandler = handler
+}
+
 export const invalidateAuthSession = (): void => {
   authSessionVersion += 1
   refreshPromise = null
+}
+
+const expireAuthSession = (): void => {
+  const hasSession =
+    authHandlers.getAccessToken() !== null || authHandlers.getRefreshToken() !== null
+  if (!hasSession) {
+    return
+  }
+
+  authHandlers.clearSession()
+  authSessionExpiredHandler?.()
 }
 
 const alova = createAlova({
@@ -173,7 +196,7 @@ const refreshAccessToken = async (): Promise<boolean> => {
       return true
     } catch {
       if (sessionVersion === authSessionVersion) {
-        authHandlers.clearSession()
+        expireAuthSession()
       }
 
       return false
@@ -196,13 +219,18 @@ const executeRequest = async <T>(
   const response = await sendRequest(path, options)
   const { response: responseData, payload } = await readResponse(response)
 
+  const unauthorized = responseData.status === 401 || payload.code === 401
   if (
-    responseData.status === 401 &&
+    unauthorized &&
     options.auth !== false &&
     options.skipAuthRefresh !== true &&
     (await refreshAccessToken())
   ) {
     return executeRequest(path, { ...options, skipAuthRefresh: true }, parseData)
+  }
+
+  if (unauthorized && options.auth !== false) {
+    expireAuthSession()
   }
 
   if (!responseData.ok || payload.code < 200 || payload.code >= 300) {
