@@ -111,7 +111,7 @@ const formatTimestamp = (value: string | null): string => value ?? t('message.no
             <dt>{{ t('message.column.status') }}</dt>
             <dd>{{ getStatusLabel(props.item.status) }}</dd>
           </div>
-          <div v-if="'read_at' in props.item">
+          <div v-else>
             <dt>{{ t('message.column.readStatus') }}</dt>
             <dd>{{ getReadStatusLabel(props.item.read_at) }}</dd>
           </div>

@@ -154,7 +154,6 @@ const handleSubmit = (model: MessageFormModel): void => {
     @update:show="handleShowUpdate"
     @after-leave="handleReset"
   >
-    <!-- @vue-generic {MessageFormModel} -->
     <AppForm
       :model="props.model"
       :fields="fields"
@@ -174,6 +173,7 @@ const handleSubmit = (model: MessageFormModel): void => {
           {{ t('message.form.cancel') }}
         </NButton>
         <NButton
+          v-permission="props.mode === 'create' ? 'system:message:add' : 'system:message:edit'"
           attr-type="button"
           type="primary"
           :loading="actionLoading"

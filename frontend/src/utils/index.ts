@@ -17,6 +17,8 @@ export {
   isAppUpdateManifest,
 } from './app-update'
 export { resolveRouteMenuState } from './route-menu'
+export { downloadBlob } from './download'
+export { isProtectedAdminUser } from './user'
 export {
   findNewUnreadMessages,
   formatMessageRelativeTime,

@@ -12,9 +12,25 @@ export interface AuthTransportHandlers {
 
 export type AuthSessionExpiredHandler = () => void
 
-export interface RequestOptions {
+export type RequestParameterValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | ReadonlyArray<string | number | boolean | null | undefined>
+
+export type RequestParameters = Record<string, RequestParameterValue>
+
+export interface RequestFileResponse {
+  blob: Blob
+  filename: string | null
+}
+
+export interface RequestOptions<TParameters extends object = object> {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   data?: RequestBody
+  params?: TParameters
   headers?: Record<string, string>
   auth?: boolean
   skipAuthRefresh?: boolean

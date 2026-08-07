@@ -48,8 +48,17 @@ describe('消息 API', () => {
     await fetchMessageList({ page: 2, size: 50 }, filters)
 
     expect(requestJson).toHaveBeenCalledWith(
-      '/message/list?page=2&size=50&title=maintenance&content=details&message_type=system&status=1',
-      {},
+      '/message/list',
+      {
+        params: {
+          page: 2,
+          size: 50,
+          title: 'maintenance',
+          content: 'details',
+          message_type: 'system',
+          status: '1',
+        },
+      },
       expect.any(Function),
     )
   })

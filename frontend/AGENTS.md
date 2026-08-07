@@ -47,7 +47,7 @@
 ## 类型、图标与安全
 
 - 所有 production 和 test 中的 `type`、`interface`、`enum` 声明都必须放在 `src/types/` 的语义化领域文件中，并通过 `@/types` 统一出口导出；页面目录、组件目录、Hook、Store、Router 和工具文件不得内联声明类型。
-- 新增或修改 CSS 时优先使用 UnoCSS utility class；仅在组件专属复杂选择器、伪元素、关键帧、CSS 变量或第三方覆盖等 utility 不适合表达的场景使用 `<style scoped>`。
+- 新增或修改 CSS 时优先使用 UnoCSS utility class；仅在组件专属复杂选择器、伪元素、关键帧、CSS 变量或第三方覆盖等 utility 不适合表达的场景使用 `<style lang="scss" scoped>`。
 - `src/views/` 下的目录必须使用能表达业务域或页面职责的语义化名称，采用现有的小写 kebab-case 约定；禁止使用 `page`、`view`、`temp`、`common`、`misc`、数字或无意义缩写。页面私有业务组件放在对应页面的 `components/`，公共组件放在 `src/components/`。
 - 禁止 `any`、`@ts-ignore`、无检查的类型断言和用放宽类型掩盖接口不一致。
 - 功能图标必须静态导入 Ionicons 5；禁止混用图标库、手写 SVG、Emoji、Unicode 字符或 CSS 图形表达功能。

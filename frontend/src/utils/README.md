@@ -25,6 +25,28 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 | `request`                                                                                          | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。                       |
 | `guards/api`                                                                                       | `@/utils/guards/api`       | API 响应和值的运行时校验。                                         |
 | `guards/route`                                                                                     | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。                          |
+| `downloadBlob`                                                                                     | `@/utils`                  | 将文件响应转换为浏览器下载动作。                                   |
+| `isProtectedAdminUser`                                                                             | `@/utils`                  | 判断是否为禁止修改的保留 `admin` 账户。                            |
+
+## 请求参数
+
+领域 API 通过 `requestJson` 的 `params` 传递查询参数，由请求层映射到 Alova 的 `params` 配置。参数值支持字符串、数字、布尔值和数组；`undefined` 会按 Alova 规则忽略，其他值的 URL 序列化遵循 Alova 请求适配器。
+
+```ts
+requestJson(
+  '/user/list',
+  {
+    params: {
+      page: 1,
+      size: 20,
+      keyword: undefined,
+    },
+  },
+  parseUserListPage,
+)
+```
+
+API 模块不应再手动拼接 `?page=...` 或调用 `URLSearchParams` 构造请求 URL；已有 URL query 会由 Alova 与 `params` 合并。
 
 ## 图标解析
 

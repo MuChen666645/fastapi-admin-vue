@@ -4,6 +4,11 @@ import { useAuthStore } from '@/stores'
 import type { AuthenticatedRouteRegistrar } from '@/types'
 import { findFirstVisibleRouteName } from '../route-utils'
 
+const createLoginRedirect = (path: string) => ({
+  name: 'login',
+  query: { redirect: path },
+})
+
 export const createAuthGuard =
   (router: Router, registerRoutes: AuthenticatedRouteRegistrar): NavigationGuard =>
   async (to) => {
@@ -23,26 +28,32 @@ export const createAuthGuard =
         return { name: 'change-password' }
       }
 
-      if (!findFirstVisibleRouteName(auth.routes)) {
+      const firstRouteName = findFirstVisibleRouteName(auth.routes)
+      if (!firstRouteName) {
         auth.clearSession()
         return true
       }
 
       registerRoutes(auth.routes)
-      return { path: '/' }
+      return { name: firstRouteName }
+    }
+
+    if (to.meta.public === true && to.name !== 'not-found') {
+      return true
+    }
+
+    const initialized = await auth.initializeSession()
+    if (!initialized || !auth.accessToken) {
+      return createLoginRedirect(to.fullPath)
+    }
+
+    if (auth.status === 'password-change-required' && to.name !== 'change-password') {
+      return { name: 'change-password' }
     }
 
     if (to.name === 'not-found') {
-      const initialized = await auth.initializeSession()
-      if (!initialized || !auth.accessToken) {
-        return true
-      }
-
-      if (auth.status === 'password-change-required') {
-        return { name: 'change-password' }
-      }
-
-      if (!findFirstVisibleRouteName(auth.routes)) {
+      const firstRouteName = findFirstVisibleRouteName(auth.routes)
+      if (!firstRouteName) {
         auth.clearSession()
         return { name: 'login' }
       }
@@ -59,22 +70,6 @@ export const createAuthGuard =
       }
 
       return true
-    }
-
-    if (to.meta.public === true) {
-      return true
-    }
-
-    const initialized = await auth.initializeSession()
-    if (!initialized || !auth.accessToken) {
-      return {
-        name: 'login',
-        query: { redirect: to.fullPath },
-      }
-    }
-
-    if (auth.status === 'password-change-required' && to.name !== 'change-password') {
-      return { name: 'change-password' }
     }
 
     if (to.name === 'app') {

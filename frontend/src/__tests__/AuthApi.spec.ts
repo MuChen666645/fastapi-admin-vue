@@ -29,7 +29,13 @@ describe('认证接口', () => {
     await fetchCaptcha()
     await fetchCaptcha()
 
-    expect(requestJson.mock.calls[0]?.[0]).toBe('/captcha/image?timestamp=1700000000000')
-    expect(requestJson.mock.calls[1]?.[0]).toBe('/captcha/image?timestamp=1700000001000')
+    expect(requestJson.mock.calls[0]?.[0]).toBe('/captcha/image')
+    expect(requestJson.mock.calls[0]?.[1]).toEqual({
+      params: { timestamp: 1700000000000 },
+    })
+    expect(requestJson.mock.calls[1]?.[0]).toBe('/captcha/image')
+    expect(requestJson.mock.calls[1]?.[1]).toEqual({
+      params: { timestamp: 1700000001000 },
+    })
   })
 })

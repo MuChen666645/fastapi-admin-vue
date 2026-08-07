@@ -8,6 +8,7 @@ import {
   invalidateAuthSession,
   registerAuthSessionExpiredHandler,
   registerRefreshTokenRequest,
+  requestBlob,
   requestJson,
 } from '../utils/request'
 import { configureRequestMessage } from '../utils/request-feedback'
@@ -141,5 +142,49 @@ describe('request transport', () => {
     })
     expect(showMessage).toHaveBeenCalledOnce()
     expect(showMessage).toHaveBeenCalledWith('网络请求失败，请检查网络连接')
+  })
+
+  it('reads a binary response and extracts its filename', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response('users', {
+            status: 200,
+            headers: { 'Content-Disposition': 'attachment; filename="users.xlsx"' },
+          }),
+        ),
+      ),
+    )
+
+    const result = await requestBlob('/user/export', {})
+
+    expect(result.filename).toBe('users.xlsx')
+    await expect(result.blob.text()).resolves.toBe('users')
+  })
+
+  it('passes typed parameters to Alova and preserves existing query parameters', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(createResponse(200, { code: 200, message: 'ok', data: { ok: true } })),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await requestJson(
+      '/resource?existing=1',
+      {
+        params: {
+          page: 2,
+          enabled: true,
+          tags: ['system', 'admin'],
+          skipped: undefined,
+        },
+      },
+      (value) => value,
+    )
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/resource?existing=1&page=2&enabled=true&tags=system,admin',
+      expect.objectContaining({ method: 'GET' }),
+    )
   })
 })

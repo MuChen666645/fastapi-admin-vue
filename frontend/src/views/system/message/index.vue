@@ -23,7 +23,7 @@ import {
   markMessageRead,
   updateMessage,
 } from '@/api'
-import { useLocale, usePagination, usePermission } from '@/hooks'
+import { useLocale, usePagination } from '@/hooks'
 import { useMessageStore } from '@/stores'
 import MessageDetailModal from './components/MessageDetailModal.vue'
 import MessageFormModal from './components/MessageFormModal.vue'
@@ -50,14 +50,8 @@ const messageStore = useMessageStore()
 const dialog = useDialog()
 const message = useMessage()
 const { t } = useLocale()
-const { hasPermission } = usePermission()
 
 const viewMode = ref<MessageViewMode>('inbox')
-const canManage = computed(() => hasPermission('system:message:list'))
-const canCreate = computed(() => hasPermission('system:message:add'))
-const canQuery = computed(() => hasPermission('system:message:query'))
-const canEdit = computed(() => hasPermission('system:message:edit'))
-const canDelete = computed(() => hasPermission('system:message:remove'))
 
 const createInitialMessageFilters = (): MessageListFilters => ({
   title: '',
@@ -182,7 +176,11 @@ const saveMessage = async (model: MessageFormModel): Promise<void> => {
 
   formLoading.value = true
   try {
-    if (formMode.value === 'edit' && editingMessageId.value !== null) {
+    if (formMode.value === 'edit') {
+      if (editingMessageId.value === null) {
+        return
+      }
+
       const payload: MessageUpdatePayload = {
         message_title: model.message_title.trim(),
         message_type: model.message_type,
@@ -304,7 +302,7 @@ const pageInfo = computed(() =>
 )
 
 watch(viewMode, (nextMode) => {
-  if (nextMode === 'manage' && canManage.value && messagePagination.data.value.length === 0) {
+  if (nextMode === 'manage' && messagePagination.data.value.length === 0) {
     void messagePagination.load()
   }
 })
@@ -345,7 +343,7 @@ onMounted(() => {
         <div class="message-page-actions">
           <NRadioGroup v-model:value="viewMode" name="message-view-mode" size="medium">
             <NRadioButton value="inbox">{{ t('message.mode.inbox') }}</NRadioButton>
-            <NRadioButton v-if="canManage" value="manage">{{
+            <NRadioButton v-permission="'system:message:list'" value="manage">{{
               t('message.mode.manage')
             }}</NRadioButton>
           </NRadioGroup>
@@ -363,7 +361,8 @@ onMounted(() => {
             {{ t('message.action.markAllRead') }}
           </NButton>
           <NButton
-            v-if="viewMode === 'manage' && canCreate"
+            v-if="viewMode === 'manage'"
+            v-permission="'system:message:add'"
             type="primary"
             size="medium"
             @click="openCreateMessage"
@@ -404,7 +403,9 @@ onMounted(() => {
 
       <div v-if="activeError" class="message-page-error">
         <NAlert type="error" :show-icon="false">{{ t('message.loadFailed') }}</NAlert>
-        <NButton size="small" @click="refreshCurrentList">{{ t('message.retry') }}</NButton>
+        <NButton size="small" @click="refreshCurrentList">
+          {{ t('message.retry') }}
+        </NButton>
       </div>
 
       <MessageTable
@@ -413,9 +414,6 @@ onMounted(() => {
         :inbox-data="inboxData"
         :management-loading="managementLoading"
         :inbox-loading="inboxLoading"
-        :can-query="canQuery"
-        :can-edit="canEdit"
-        :can-delete="canDelete"
         @manage-detail="openManageDetail"
         @edit="openEditMessage"
         @delete="confirmDeleteMessage"

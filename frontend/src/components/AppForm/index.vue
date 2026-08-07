@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import {
   NButton,
+  NCascader,
   NDatePicker,
   NDivider,
   NEmpty,
@@ -223,6 +224,8 @@ const resolveFieldComponent = (field: AppFormField<T>): Component => {
       return NInputNumber
     case 'select':
       return NSelect
+    case 'cascader':
+      return NCascader
     case 'switch':
       return NSwitch
     case 'date':

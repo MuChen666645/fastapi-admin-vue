@@ -44,7 +44,12 @@ export const clearAuthenticatedRoutes = (): void => {
 registerAuthSessionExpiredHandler(() => {
   clearAuthenticatedRoutes()
   if (router.currentRoute.value.name !== 'login') {
-    void router.replace({ name: 'login' }).catch(() => undefined)
+    void router
+      .replace({
+        name: 'login',
+        query: { redirect: router.currentRoute.value.fullPath },
+      })
+      .catch(() => undefined)
   }
 })
 

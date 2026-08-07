@@ -1,4 +1,16 @@
-import type { CurrentUserResponse, UserRoute } from '@/types'
+import type {
+  CurrentUserResponse,
+  PaginationResult,
+  UserDetail,
+  UserImportError,
+  UserImportResult,
+  UserListItem,
+  UserRoleOption,
+  UserPostOption,
+  UserOption,
+  UserRoute,
+  UserSex,
+} from '@/types'
 import {
   isRecord,
   readBoolean,
@@ -13,6 +25,117 @@ import {
   isSafeRoutePath,
   isUserRouteMenuType,
 } from '@/utils/guards/route'
+
+const parseStatus = (value: unknown): '0' | '1' => {
+  const status = readString(value)
+  if (status !== '0' && status !== '1') {
+    throw new Error('接口字段 status 无效')
+  }
+
+  return status
+}
+
+const parseSex = (value: unknown): UserSex | null => {
+  const sex = readString(value)
+  if (sex === null) {
+    return null
+  }
+
+  if (sex !== '0' && sex !== '1') {
+    throw new Error('接口字段 sex 无效')
+  }
+
+  return sex
+}
+
+const parsePageNumber = (value: unknown, fieldName: string, minimum: number): number => {
+  const number = requireNumber(value, fieldName)
+  if (!Number.isInteger(number) || number < minimum) {
+    throw new Error(`接口字段 ${fieldName} 无效`)
+  }
+
+  return number
+}
+
+const parseUserImportError = (value: unknown): UserImportError => {
+  if (!isRecord(value)) {
+    throw new Error('用户导入错误数据无效')
+  }
+
+  return {
+    row: parsePageNumber(value.row, 'errors.row', 2),
+    message: requireString(value.message, 'errors.message'),
+  }
+}
+
+const parseUserListItem = (value: unknown): UserListItem => {
+  if (!isRecord(value)) {
+    throw new Error('用户数据无效')
+  }
+
+  return {
+    id: parsePageNumber(value.id, 'id', 1),
+    create_time: requireString(value.create_time, 'create_time'),
+    username: requireString(value.username, 'username'),
+    email: readString(value.email),
+    phone: readString(value.phone),
+    role_id: readNumber(value.role_id),
+    dept_id: readNumber(value.dept_id),
+    nickname: readString(value.nickname),
+    sex: parseSex(value.sex),
+    avatar: readString(value.avatar),
+    update_time: readString(value.update_time),
+    status: parseStatus(value.status),
+    version: readNumber(value.version),
+  }
+}
+
+const parseUserOption = (value: unknown): UserOption => {
+  if (!isRecord(value)) {
+    throw new Error('用户下拉数据无效')
+  }
+
+  return {
+    id: requireNumber(value.id, 'id'),
+    username: requireString(value.username, 'username'),
+    nickname: readString(value.nickname),
+  }
+}
+
+export const parseUserOptions = (value: unknown): UserOption[] => {
+  if (!Array.isArray(value)) {
+    throw new Error('用户下拉列表响应无效')
+  }
+
+  return value.map(parseUserOption)
+}
+
+const parseUserRole = (value: unknown): UserRoleOption => {
+  if (!isRecord(value)) {
+    throw new Error('用户角色数据无效')
+  }
+
+  return {
+    id: parsePageNumber(value.id, 'role.id', 1),
+    name: requireString(value.name, 'role.name'),
+    code: requireString(value.code, 'role.code'),
+    description: readString(value.description),
+    status: parseStatus(value.status),
+  }
+}
+
+const parseUserPost = (value: unknown): UserPostOption => {
+  if (!isRecord(value)) {
+    throw new Error('用户岗位数据无效')
+  }
+
+  return {
+    post_id: parsePageNumber(value.post_id, 'post.post_id', 1),
+    post_code: requireString(value.post_code, 'post.post_code'),
+    post_name: requireString(value.post_name, 'post.post_name'),
+    status: parseStatus(value.status),
+  }
+}
 
 const parseUserRoute = (value: unknown): UserRoute => {
   if (!isRecord(value)) {
@@ -116,6 +239,50 @@ export const parseCurrentUserResponse = (value: unknown): CurrentUserResponse =>
       const parsedPermission = readString(permission)
       return parsedPermission === null ? [] : [parsedPermission]
     }),
+  }
+}
+
+export const parseUserListPage = (value: unknown): PaginationResult<UserListItem> => {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    throw new Error('用户分页响应无效')
+  }
+
+  return {
+    items: value.items.map(parseUserListItem),
+    total: parsePageNumber(value.total, 'total', 0),
+    page: parsePageNumber(value.page, 'page', 1),
+    size: parsePageNumber(value.size, 'size', 1),
+    pages: parsePageNumber(value.pages, 'pages', 0),
+  }
+}
+
+export const parseUserDetail = (value: unknown): UserDetail => {
+  if (!isRecord(value) || !isRecord(value.user)) {
+    throw new Error('用户详情响应无效')
+  }
+
+  return {
+    user: parseUserListItem(value.user),
+    roles: Array.isArray(value.roles) ? value.roles.map(parseUserRole) : [],
+    posts: Array.isArray(value.posts) ? value.posts.map(parseUserPost) : [],
+    permissions: Array.isArray(value.permissions)
+      ? value.permissions.flatMap((permission) => {
+          const parsedPermission = readString(permission)
+          return parsedPermission === null ? [] : [parsedPermission]
+        })
+      : [],
+  }
+}
+
+export const parseUserImportResult = (value: unknown): UserImportResult => {
+  if (!isRecord(value) || !Array.isArray(value.errors)) {
+    throw new Error('用户导入响应无效')
+  }
+
+  return {
+    imported: parsePageNumber(value.imported, 'imported', 0),
+    failed: parsePageNumber(value.failed, 'failed', 0),
+    errors: value.errors.map(parseUserImportError),
   }
 }
 

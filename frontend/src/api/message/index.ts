@@ -13,6 +13,7 @@ import type {
   MessageListItem,
   MessageReadAllResult,
   MessageUnreadCountResult,
+  RequestParameters,
 } from '@/types'
 import { DEFAULT_DATETIME_FORMAT, getDateRange } from '@/utils'
 import { requestJson } from '@/utils/request'
@@ -27,69 +28,71 @@ import {
   parseMyMessageListPage,
 } from './parsers'
 
-const appendDateRange = (query: URLSearchParams, publishTime: [number, number] | null): void => {
+const getDateRangeParameters = (publishTime: [number, number] | null): RequestParameters => {
   if (!publishTime) {
-    return
+    return {}
   }
 
   const [start, end] = publishTime
   const startRange = getDateRange(start)
   const endRange = getDateRange(end)
   if (startRange && endRange) {
-    query.set('start_time', startRange.start.format(DEFAULT_DATETIME_FORMAT))
-    query.set('end_time', endRange.end.format(DEFAULT_DATETIME_FORMAT))
+    return {
+      start_time: startRange.start.format(DEFAULT_DATETIME_FORMAT),
+      end_time: endRange.end.format(DEFAULT_DATETIME_FORMAT),
+    }
   }
+
+  return {}
 }
 
-const createMessageListQuery = (params: MessageListQuery, filters: MessageListFilters): string => {
-  const query = new URLSearchParams({
-    page: String(params.page),
-    size: String(params.size),
-  })
+const createMessageListParameters = (
+  params: MessageListQuery,
+  filters: MessageListFilters,
+): RequestParameters => {
+  const parameters: RequestParameters = { page: params.page, size: params.size }
   const title = filters.title.trim()
   const content = filters.content.trim()
 
   if (title) {
-    query.set('title', title)
+    parameters.title = title
   }
 
   if (content) {
-    query.set('content', content)
+    parameters.content = content
   }
 
   if (filters.message_type) {
-    query.set('message_type', filters.message_type)
+    parameters.message_type = filters.message_type
   }
 
   if (filters.status) {
-    query.set('status', filters.status)
+    parameters.status = filters.status
   }
 
-  appendDateRange(query, filters.publish_time)
-  return query.toString()
+  return { ...parameters, ...getDateRangeParameters(filters.publish_time) }
 }
 
-const createMyMessageQuery = (params: MyMessageQuery, filters: MyMessageFilters): string => {
-  const query = new URLSearchParams({
-    page: String(params.page),
-    size: String(params.size),
-  })
+const createMyMessageParameters = (
+  params: MyMessageQuery,
+  filters: MyMessageFilters,
+): RequestParameters => {
+  const parameters: RequestParameters = { page: params.page, size: params.size }
   const keyword = filters.keyword.trim()
 
   if (keyword) {
-    query.set('keyword', keyword)
+    parameters.keyword = keyword
   }
 
   if (filters.message_type) {
-    query.set('message_type', filters.message_type)
+    parameters.message_type = filters.message_type
   }
 
   if (filters.read_status) {
-    query.set('read_status', filters.read_status)
+    parameters.read_status = filters.read_status
   }
 
-  appendDateRange(query, filters.publish_time)
-  return query.toString()
+  return { ...parameters, ...getDateRangeParameters(filters.publish_time) }
 }
 
 const silentRequest: Pick<RequestOptions, 'showMessage'> = { showMessage: false }
@@ -100,8 +103,8 @@ export const fetchMessageList = (
   requestOptions: Pick<RequestOptions, 'showMessage'> = {},
 ): Promise<PaginationResult<MessageListItem>> =>
   requestJson(
-    `/message/list?${createMessageListQuery(params, filters)}`,
-    requestOptions,
+    '/message/list',
+    { ...requestOptions, params: createMessageListParameters(params, filters) },
     parseMessageListPage,
   )
 
@@ -128,8 +131,8 @@ export const fetchMyMessageList = (
   filters: MyMessageFilters,
 ): Promise<PaginationResult<MessageItem>> =>
   requestJson(
-    `/message/my/list?${createMyMessageQuery(params, filters)}`,
-    {},
+    '/message/my/list',
+    { params: createMyMessageParameters(params, filters) },
     parseMyMessageListPage,
   )
 

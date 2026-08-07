@@ -4,6 +4,7 @@ import adapterFetch from 'alova/fetch'
 import type {
   AuthSessionExpiredHandler,
   AuthTransportHandlers,
+  RequestFileResponse,
   RequestOptions,
   TokenResponse,
 } from '@/types'
@@ -96,11 +97,15 @@ const alova = createAlova({
   },
 })
 
-const sendRequest = async (path: string, options: RequestOptions): Promise<Response> => {
+const sendRequest = async <TParameters extends object>(
+  path: string,
+  options: RequestOptions<TParameters>,
+): Promise<Response> => {
   const method = alova.Request<Response>({
     url: path,
     method: options.method ?? 'GET',
     data: options.data,
+    params: options.params ? { ...options.params } : undefined,
     headers: options.headers,
     timeout: requestTimeout,
     cacheFor: 0,
@@ -162,6 +167,28 @@ const readResponse = async (response: Response) => {
   }
 }
 
+const getFilename = (contentDisposition: string | null): string | null => {
+  if (!contentDisposition) {
+    return null
+  }
+
+  const encodedFilename = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  if (encodedFilename) {
+    try {
+      return decodeURIComponent(encodedFilename)
+    } catch {
+      return encodedFilename
+    }
+  }
+
+  const quotedFilename = contentDisposition.match(/filename="([^"]+)"/i)?.[1]
+  if (quotedFilename) {
+    return quotedFilename
+  }
+
+  return contentDisposition.match(/filename=([^;]+)/i)?.[1]?.trim() ?? null
+}
+
 const refreshAccessToken = async (): Promise<boolean> => {
   if (!authHandlers.refreshTokens) {
     return false
@@ -211,9 +238,9 @@ const refreshAccessToken = async (): Promise<boolean> => {
   return refreshPromise
 }
 
-const executeRequest = async <T>(
+const executeRequest = async <T, TParameters extends object>(
   path: string,
-  options: RequestOptions,
+  options: RequestOptions<TParameters>,
   parseData: (value: unknown) => T,
 ): Promise<T> => {
   const response = await sendRequest(path, options)
@@ -250,6 +277,36 @@ const executeRequest = async <T>(
   }
 }
 
+const executeFileRequest = async <TParameters extends object>(
+  path: string,
+  options: RequestOptions<TParameters>,
+): Promise<RequestFileResponse> => {
+  const response = await sendRequest(path, options)
+  if (
+    response.status === 401 &&
+    options.auth !== false &&
+    options.skipAuthRefresh !== true &&
+    (await refreshAccessToken())
+  ) {
+    return executeFileRequest(path, { ...options, skipAuthRefresh: true })
+  }
+
+  if (!response.ok) {
+    const { response: responseData, payload } = await readResponse(response)
+    throw new ApiError(
+      payload.message || '请求失败',
+      responseData.status,
+      payload.code,
+      payload.error_code ?? null,
+    )
+  }
+
+  return {
+    blob: await response.blob(),
+    filename: getFilename(response.headers.get('content-disposition')),
+  }
+}
+
 const normalizeRequestError = (error: unknown): ApiError => {
   if (error instanceof ApiError) {
     return error
@@ -258,13 +315,29 @@ const normalizeRequestError = (error: unknown): ApiError => {
   return new ApiError('网络请求失败，请检查网络连接', 0)
 }
 
-export const requestJson = async <T>(
+export const requestJson = async <T, TParameters extends object = object>(
   path: string,
-  options: RequestOptions,
+  options: RequestOptions<TParameters>,
   parseData: (value: unknown) => T,
 ): Promise<T> => {
   try {
     return await executeRequest(path, options, parseData)
+  } catch (error) {
+    const normalizedError = normalizeRequestError(error)
+    if (options.showMessage !== false) {
+      showRequestMessage(normalizedError.message)
+    }
+
+    throw normalizedError
+  }
+}
+
+export const requestBlob = async <TParameters extends object = object>(
+  path: string,
+  options: RequestOptions<TParameters>,
+): Promise<RequestFileResponse> => {
+  try {
+    return await executeFileRequest(path, options)
   } catch (error) {
     const normalizedError = normalizeRequestError(error)
     if (options.showMessage !== false) {

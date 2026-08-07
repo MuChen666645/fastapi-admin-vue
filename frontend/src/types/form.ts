@@ -9,7 +9,15 @@ export type AppFormLabelPlacement = 'left' | 'top'
 export type AppFormLabelAlign = 'left' | 'center' | 'right'
 export type AppFormResponsive = 'self' | 'screen'
 export type AppFormFieldType =
-  'input' | 'password' | 'textarea' | 'number' | 'select' | 'switch' | 'date' | 'custom'
+  | 'input'
+  | 'password'
+  | 'textarea'
+  | 'number'
+  | 'select'
+  | 'cascader'
+  | 'switch'
+  | 'date'
+  | 'custom'
 
 export interface AppFormFieldContext<T extends object = AppFormRecord> {
   model: T

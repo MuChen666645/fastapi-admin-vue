@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed, h, withDirectives } from 'vue'
+import type { VNode } from 'vue'
 import {
   AlertCircleOutline,
   ClipboardOutline,
@@ -12,6 +13,7 @@ import { NButton, NDataTable, NEmpty, NIcon, NTag } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 import { useLocale } from '@/hooks'
+import { permissionDirective } from '@/directives'
 import type { MessageItem, MessageListItem, MessageType, MessageViewMode } from '@/types'
 import { resolveMessageTone } from '@/utils'
 
@@ -23,9 +25,6 @@ interface MessageTableProps {
   inboxData: MessageItem[]
   managementLoading: boolean
   inboxLoading: boolean
-  canQuery: boolean
-  canEdit: boolean
-  canDelete: boolean
 }
 
 const props = defineProps<MessageTableProps>()
@@ -103,6 +102,9 @@ const getReadStatusLabel = (readAt: string | null): string =>
 
 const formatTimestamp = (value: string | null): string => value ?? t('message.noTime')
 
+const withPermission = (node: VNode, permission: string): VNode =>
+  withDirectives(node, [[permissionDirective, permission]])
+
 const managementColumns = computed<DataTableColumns<MessageListItem>>(() => [
   {
     title: t('message.column.title'),
@@ -145,52 +147,49 @@ const managementColumns = computed<DataTableColumns<MessageListItem>>(() => [
     width: 150,
     render: (item) =>
       h('div', { class: 'message-row-actions' }, [
-        ...(props.canQuery
-          ? [
-              h(
-                NButton,
-                {
-                  quaternary: true,
-                  circle: true,
-                  'aria-label': t('message.action.detail'),
-                  title: t('message.action.detail'),
-                  onClick: () => emit('manage-detail', item),
-                },
-                { icon: () => h(NIcon, null, { default: () => h(EyeOutline) }) },
-              ),
-            ]
-          : []),
-        ...(props.canEdit
-          ? [
-              h(
-                NButton,
-                {
-                  quaternary: true,
-                  circle: true,
-                  'aria-label': t('message.action.edit'),
-                  title: t('message.action.edit'),
-                  onClick: () => emit('edit', item),
-                },
-                { icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) },
-              ),
-            ]
-          : []),
-        ...(props.canDelete
-          ? [
-              h(
-                NButton,
-                {
-                  quaternary: true,
-                  circle: true,
-                  type: 'error',
-                  'aria-label': t('message.action.delete'),
-                  title: t('message.action.delete'),
-                  onClick: () => emit('delete', item),
-                },
-                { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) },
-              ),
-            ]
-          : []),
+        withPermission(
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              'aria-label': t('message.action.detail'),
+              title: t('message.action.detail'),
+              onClick: () => emit('manage-detail', item),
+            },
+            { icon: () => h(NIcon, null, { default: () => h(EyeOutline) }) },
+          ),
+          'system:message:query',
+        ),
+        withPermission(
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              'aria-label': t('message.action.edit'),
+              title: t('message.action.edit'),
+              onClick: () => emit('edit', item),
+            },
+            { icon: () => h(NIcon, null, { default: () => h(CreateOutline) }) },
+          ),
+          'system:message:edit',
+        ),
+        withPermission(
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              type: 'error',
+              'aria-label': t('message.action.delete'),
+              title: t('message.action.delete'),
+              onClick: () => emit('delete', item),
+            },
+            { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) },
+          ),
+          'system:message:remove',
+        ),
       ]),
   },
 ])

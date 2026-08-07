@@ -16,7 +16,7 @@ const createLoginBody = (credentials: LoginCredentials): URLSearchParams => {
 }
 
 export const fetchCaptcha = (): Promise<CaptchaImageResponse> =>
-  requestJson(`/captcha/image?timestamp=${Date.now()}`, {}, parseCaptchaImageResponse)
+  requestJson('/captcha/image', { params: { timestamp: Date.now() } }, parseCaptchaImageResponse)
 
 export const login = (credentials: LoginCredentials): Promise<TokenResponse> =>
   requestJson(

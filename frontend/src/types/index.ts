@@ -85,7 +85,10 @@ export type {
 export type {
   AuthSessionExpiredHandler,
   AuthTransportHandlers,
+  RequestFileResponse,
   RequestMessageHandler,
+  RequestParameterValue,
+  RequestParameters,
   RequestOptions,
 } from './transport'
 export type { LottieAnimationHandle, LottieAnimationOptions } from './lottie'
@@ -121,6 +124,36 @@ export type {
   MyMessageFilters,
   MyMessageQuery,
 } from './message'
+export type {
+  DepartmentCascaderOption,
+  DepartmentOption,
+  PostOption,
+  PostPage,
+} from './organization'
+export type { RoleOption, RolePage } from './role'
+export type {
+  UserCreatePayload,
+  UserBatchIdsPayload,
+  UserBatchStatusPayload,
+  UserDepartmentOption,
+  UserDetail,
+  UserFormMode,
+  UserFormModel,
+  UserImportError,
+  UserImportResult,
+  UserListFilters,
+  UserListItem,
+  UserListQuery,
+  UserPostOption,
+  UserResetPasswordModel,
+  UserResetPasswordPayload,
+  UserRoleOption,
+  UserRolePayload,
+  UserSex,
+  UserStatus,
+  UserOption,
+  UserUpdatePayload,
+} from './user'
 export type {
   HooksDemoCategory,
   HooksDemoQuery,
