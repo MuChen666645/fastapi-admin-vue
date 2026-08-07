@@ -77,6 +77,17 @@ class RoleListDto(RoleDto):
     data_scope: str = Field(default="5", pattern="^[1-5]$", description="数据权限范围")
 
 
+class RoleOptionDto(BaseModel):
+    """角色下拉选项响应模型。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="角色ID")
+    name: str = Field(description="角色名称")
+    code: str = Field(description="角色编码")
+    status: str = Field(description="角色状态")
+
+
 class RoleDetailDto(RoleListDto):
     field_permission_codes: list[str] = Field(
         default_factory=list,

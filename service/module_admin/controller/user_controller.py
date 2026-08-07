@@ -38,6 +38,7 @@ from module_admin.entity.dto.user_dto import (
     UpdateUserRequestDto,
     UserInfoDto,
     UserInfoUserDto,
+    UserOptionDto,
     UserRouteDto,
 )
 from module_admin.service.excel_service import ExcelService
@@ -341,6 +342,16 @@ class UserController:
             end_time,
             params,
         )
+
+    @staticmethod
+    @user.get(
+        "/options",
+        summary="获取用户下拉选项",
+        dependencies=[Depends(Auth.has_permission("system:user:list"))],
+        responses={200: {"model": ApiResponseDto[list[UserOptionDto]]}},
+    )
+    async def list_user_options(request: Request):
+        return await UserService.list_user_options_services(request)
 
     @staticmethod
     @user.get(

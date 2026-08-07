@@ -1,10 +1,13 @@
 """部门和岗位业务层。"""
 
+from typing import List
+
 from fastapi import HTTPException, Request
 from fastapi_pagination import Params
 
 from module_admin.dao.organization_dao import OrganizationDao
 from module_admin.entity.do.organization_do import DepartmentDo, PostDo
+from module_admin.entity.dto.organization_dto import PostOptionDto
 from utils.fastapi_admin import FastApiAdmin
 
 
@@ -57,6 +60,11 @@ class PostService:
     ):
         """分页返回岗位列表。"""
         return await OrganizationDao.list_posts(request, name, status, params)
+
+    @staticmethod
+    async def options(request: Request) -> List[PostOptionDto]:
+        posts = await OrganizationDao.list_post_options(request)
+        return [PostOptionDto.model_validate(post) for post in posts]
 
     @staticmethod
     async def detail(post_id: int, request: Request):

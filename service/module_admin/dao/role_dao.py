@@ -3,9 +3,10 @@ from typing import Union
 from fastapi import Request
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import paginate
-from sqlalchemy import false, update
+from sqlalchemy import false, func, update
 from sqlmodel import delete, select
 
+from config.env import settings
 from module_admin.dao.tenant_scope import (
     current_tenant_id,
     require_tenant_id,
@@ -241,6 +242,21 @@ class RoleDao:
         statement = statement.where(tenant_clause(request, RoleDo))
         statement = statement.where(RoleDo.deleted_at.is_(None))
         result = await request.state.mysql.execute(statement)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_role_options(request: Request) -> list[RoleDo]:
+        query = (
+            select(RoleDo)
+            .where(
+                tenant_clause(request, RoleDo),
+                RoleDo.deleted_at.is_(None),
+                RoleDo.status == "1",
+                func.lower(RoleDo.code) != settings.ADMIN_ROLE_CODE.strip().casefold(),
+            )
+            .order_by(RoleDo.name, RoleDo.id)
+        )
+        result = await request.state.mysql.execute(query)
         return list(result.scalars().all())
 
     @staticmethod

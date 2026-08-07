@@ -75,6 +75,7 @@ class RegisterUserRequestByUsernameDto(RegisterUserRequestDto):
 
     dept_id: int | None = Field(default=None, description="部门ID")
     post_ids: list[int] = Field(default_factory=list, description="岗位ID列表")
+    role_ids: list[int] = Field(default_factory=list, description="角色ID列表")
 
     username: str = Field(description="用户名")
 
@@ -257,6 +258,16 @@ class UserInfoUserDto(BaseModel):
     avatar: str | None = Field(default=None, description="头像")
     update_time: datetime | None = Field(default=None, description="更新时间")
     status: str = Field(description="状态")
+
+
+class UserOptionDto(BaseModel):
+    """用户下拉选项响应模型。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="用户ID")
+    username: str = Field(description="用户名")
+    nickname: str | None = Field(default=None, description="用户昵称")
 
 
 class UserInfoRoleDto(BaseModel):

@@ -317,7 +317,7 @@ def test_non_admin_cannot_mutate_admin_user_through_any_user_write_service(
     anyio.run(run)
 
 
-def test_admin_can_manage_admin_user(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admin_cannot_manage_admin_user(monkeypatch: pytest.MonkeyPatch) -> None:
     async def run() -> None:
         mutation_called = False
 
@@ -325,7 +325,7 @@ def test_admin_can_manage_admin_user(monkeypatch: pytest.MonkeyPatch) -> None:
             return [make_role(1, "admin")]
 
         async def get_admin_user_ids(*args, **kwargs):
-            raise AssertionError("Admin actors do not require target role lookup")
+            return {20}
 
         async def update_user(*args, **kwargs):
             nonlocal mutation_called
@@ -335,12 +335,16 @@ def test_admin_can_manage_admin_user(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(UserDao, "get_admin_user_ids", get_admin_user_ids)
         monkeypatch.setattr(UserDao, "update_user_by_id", update_user)
 
-        await UserService.update_user_by_id_services(
-            20,
-            UpdateUserRequestDto(nickname="admin"),
-            make_request(user_id=1),
-        )
-        assert mutation_called is True
+        with pytest.raises(HTTPException) as exception:
+            await UserService.update_user_by_id_services(
+                20,
+                UpdateUserRequestDto(nickname="admin"),
+                make_request(user_id=1),
+            )
+
+        assert exception.value.status_code == 403
+        assert exception.value.detail == UserService.ADMIN_USER_PROTECTION_MESSAGE
+        assert mutation_called is False
 
     anyio.run(run)
 
@@ -385,6 +389,9 @@ def test_admin_can_assign_any_enabled_role(
         async def get_user_roles(*args, **kwargs):
             return [make_role(1, "admin")]
 
+        async def get_admin_user_ids(*args, **kwargs):
+            return set()
+
         async def bind_roles(user_id, role_ids, request):
             nonlocal assigned_role_ids
             assigned_role_ids = role_ids
@@ -392,6 +399,7 @@ def test_admin_can_assign_any_enabled_role(
         monkeypatch.setattr(UserDao, "get_user_by_id", get_user)
         monkeypatch.setattr(UserDao, "get_roles_by_ids", get_roles_by_ids)
         monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(UserDao, "get_admin_user_ids", get_admin_user_ids)
         monkeypatch.setattr(UserDao, "bind_user_roles", bind_roles)
 
         await UserService.bind_user_roles_services(
@@ -401,6 +409,48 @@ def test_admin_can_assign_any_enabled_role(
         )
 
         assert assigned_role_ids == [3]
+
+    anyio.run(run)
+
+
+def test_admin_cannot_grant_admin_role(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        bind_called = False
+
+        async def get_user(*args, **kwargs):
+            return SimpleNamespace(id=20)
+
+        async def get_roles_by_ids(*args, **kwargs):
+            return [make_role(1, "admin")]
+
+        async def get_user_roles(*args, **kwargs):
+            return [make_role(1, "admin")]
+
+        async def get_admin_user_ids(*args, **kwargs):
+            return set()
+
+        async def bind_roles(*args, **kwargs):
+            nonlocal bind_called
+            bind_called = True
+
+        monkeypatch.setattr(UserDao, "get_user_by_id", get_user)
+        monkeypatch.setattr(UserDao, "get_roles_by_ids", get_roles_by_ids)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        monkeypatch.setattr(UserDao, "get_admin_user_ids", get_admin_user_ids)
+        monkeypatch.setattr(UserDao, "bind_user_roles", bind_roles)
+
+        with pytest.raises(HTTPException) as exception:
+            await UserService.bind_user_roles_services(
+                20,
+                BindUserRolesDto(role_ids=[1]),
+                make_request(user_id=10),
+            )
+
+        assert exception.value.status_code == 403
+        assert exception.value.detail == "禁止授予超级管理员角色"
+        assert bind_called is False
 
     anyio.run(run)
 

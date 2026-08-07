@@ -99,3 +99,14 @@ class PostDto(PostCreateDto):
     post_id: int
     create_time: datetime
     update_time: datetime
+
+
+class PostOptionDto(BaseModel):
+    """岗位下拉选项响应模型。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    post_id: int = Field(description="岗位ID")
+    post_code: str = Field(description="岗位编码")
+    post_name: str = Field(description="岗位名称")
+    status: str = Field(description="岗位状态")

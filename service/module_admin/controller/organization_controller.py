@@ -10,6 +10,7 @@ from module_admin.entity.dto.organization_dto import (
     DepartmentUpdateDto,
     PostCreateDto,
     PostDto,
+    PostOptionDto,
     PostUpdateDto,
 )
 from module_admin.entity.dto.response_dto import ApiResponseDto
@@ -109,6 +110,15 @@ class PostController:
     ):
         """分页查询岗位。"""
         return await PostService.list(request, name, status, params)
+
+    @post.get(
+        "/options",
+        summary="查询岗位下拉选项",
+        dependencies=permission("system:post:list"),
+        responses={200: {"model": ApiResponseDto[list[PostOptionDto]]}},
+    )
+    async def list_post_options(request: Request):
+        return await PostService.options(request)
 
     @post.get(
         "/{post_id}",

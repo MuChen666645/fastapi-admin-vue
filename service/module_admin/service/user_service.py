@@ -25,6 +25,7 @@ from module_admin.entity.dto.user_dto import (
     TokenDto,
     UpdateUserPasswordRequestDto,
     UpdateUserRequestDto,
+    UserOptionDto,
 )
 from module_admin.service.code_service import CodeService
 from module_admin.service.idempotency_service import IdempotencyService
@@ -42,8 +43,8 @@ from utils.time_utils import now_utc8_naive
 class UserService:
     """编排用户认证、资料管理、角色绑定和路由生成业务。"""
 
-    # 非超级管理员触发保护时统一返回该提示，避免不同入口行为不一致。
-    ADMIN_USER_PROTECTION_MESSAGE = "禁止非超级管理员操作超级管理员用户"
+    # 所有操作者都不能修改保留的超级管理员用户。
+    ADMIN_USER_PROTECTION_MESSAGE = "禁止操作超级管理员用户"
     INVALID_LOGIN_MESSAGE = "用户名或密码错误"
 
     @staticmethod
@@ -62,21 +63,17 @@ class UserService:
         request: Request,
         actor_roles: list | None = None,
     ) -> bool:
-        """拒绝非超级管理员修改任何超级管理员用户。"""
+        """拒绝所有操作者修改保留的超级管理员用户。"""
         roles = actor_roles
         if roles is None:
             roles = await UserService._get_actor_roles(request)
-        actor_is_admin = UserService._has_admin_role(roles)
-        if actor_is_admin:
-            return True
-
         admin_user_ids = await UserDao.get_admin_user_ids(user_ids, request)
         if admin_user_ids:
             raise HTTPException(
                 status_code=403,
                 detail=UserService.ADMIN_USER_PROTECTION_MESSAGE,
             )
-        return False
+        return UserService._has_admin_role(roles)
 
     @staticmethod
     def _menu_to_route(menu: dict) -> dict:
@@ -309,7 +306,19 @@ class UserService:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         users.password = FastApiAdmin.password_hash(users.password)
         try:
-            await UserDao.create_user_by_username(users, request)
+            if users.role_ids:
+                actor_user_id = getattr(request.state, "user_id", None)
+                if actor_user_id is None or not await PermissionDao.has_permission(
+                    int(actor_user_id), "system:role:edit", request
+                ):
+                    raise HTTPException(status_code=403, detail="无权绑定用户角色")
+            user = await UserDao.create_user_by_username(users, request)
+            if users.role_ids:
+                await UserService.bind_user_roles_services(
+                    user.id,
+                    BindUserRolesDto(role_ids=list(dict.fromkeys(users.role_ids))),
+                    request,
+                )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return None
@@ -526,6 +535,11 @@ class UserService:
         return page.model_copy(update={"items": items})
 
     @staticmethod
+    async def list_user_options_services(request: Request) -> list[UserOptionDto]:
+        users = await UserDao.list_user_options(request)
+        return [UserOptionDto.model_validate(user) for user in users]
+
+    @staticmethod
     async def update_user_by_id_services(
         user_id: int, users: UpdateUserRequestDto, request: Request
     ) -> None:
@@ -648,10 +662,10 @@ class UserService:
                 status_code=400, detail=f"角色已停用: {disabled_role_ids}"
             )
 
-        if not actor_is_admin:
-            if UserService._has_admin_role(requested_roles):
-                raise HTTPException(status_code=403, detail="禁止授予超级管理员角色")
+        if UserService._has_admin_role(requested_roles):
+            raise HTTPException(status_code=403, detail="禁止授予超级管理员角色")
 
+        if not actor_is_admin:
             actor_role_ids = {role.id for role in actor_roles}
             unauthorized_role_ids = [
                 role_id

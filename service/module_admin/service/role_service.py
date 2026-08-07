@@ -15,6 +15,7 @@ from module_admin.entity.dto.role_dto import (
     BatchUpdateRoleStatusDto,
     CreateRoleDto,
     RoleListDto,
+    RoleOptionDto,
     UpdataRoleDto,
 )
 from module_admin.service.idempotency_service import IdempotencyService
@@ -150,6 +151,11 @@ class RoleService:
         if role is None:
             raise HTTPException(status_code=404, detail="角色不存在")
         return role
+
+    @staticmethod
+    async def get_role_options_services(request: Request) -> list[RoleOptionDto]:
+        roles = await RoleDao.list_role_options(request)
+        return [RoleOptionDto.model_validate(role) for role in roles]
 
     @staticmethod
     async def get_role_by_name_services(role_name: str, request: Request) -> RoleDao:

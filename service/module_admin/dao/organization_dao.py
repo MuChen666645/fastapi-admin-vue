@@ -197,6 +197,21 @@ class OrganizationDao:
         return await paginate(request.state.mysql, query, params=params)
 
     @staticmethod
+    async def list_post_options(request: Request) -> list[PostDo]:
+        scope = await DataScopeService.resolve(request)
+        query = (
+            select(PostDo)
+            .where(
+                scope.post_id_clause(PostDo.post_id),
+                OrganizationDao._tenant_filter(PostDo, request),
+                PostDo.status == "1",
+            )
+            .order_by(PostDo.post_sort, PostDo.post_id)
+        )
+        result = await request.state.mysql.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
     async def create_post(data, request: Request):
         """新增岗位。"""
         mysql = request.state.mysql

@@ -10,6 +10,7 @@ from module_admin.entity.dto.role_dto import (
     CreateRoleDto,
     RoleDetailDto,
     RoleListDto,
+    RoleOptionDto,
     UpdataRoleDto,
 )
 from module_admin.service.excel_service import ExcelService
@@ -112,6 +113,16 @@ class RoleController:
     ):
         """获取角色列表."""
         return await RoleService.get_role_by_all_services(request, name, code, params)
+
+    @staticmethod
+    @role.get(
+        "/options",
+        summary="获取角色下拉选项",
+        dependencies=[Depends(Auth.has_permission("system:role:list"))],
+        responses={200: {"model": ApiResponseDto[list[RoleOptionDto]]}},
+    )
+    async def get_role_options(request: Request):
+        return await RoleService.get_role_options_services(request)
 
     @staticmethod
     @role.put(

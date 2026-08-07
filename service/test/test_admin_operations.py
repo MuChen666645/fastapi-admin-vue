@@ -101,6 +101,9 @@ def test_admin_operation_routes_are_registered() -> None:
         "/api/v1/message/read-all",
         "/api/v1/job/list",
         "/api/v1/job/{job_id}/run",
+        "/api/v1/role/options",
+        "/api/v1/user/options",
+        "/api/v1/post/options",
     } <= paths
     assert "/file/upload" not in paths
     assert not any(path.startswith("/api/v1/notice") for path in paths)
@@ -124,3 +127,11 @@ def test_message_list_exposes_complete_search_parameters() -> None:
         "page",
         "size",
     } <= parameter_names
+
+
+def test_option_route_summaries_are_readable() -> None:
+    openapi = app.openapi()
+
+    assert openapi["paths"]["/api/v1/role/options"]["get"]["summary"] == "获取角色下拉选项"
+    assert openapi["paths"]["/api/v1/user/options"]["get"]["summary"] == "获取用户下拉选项"
+    assert openapi["paths"]["/api/v1/post/options"]["get"]["summary"] == "查询岗位下拉选项"

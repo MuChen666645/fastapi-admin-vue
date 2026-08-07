@@ -6,7 +6,7 @@ from typing import Union
 from fastapi import Request
 from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
-from sqlalchemy import or_, update
+from sqlalchemy import func, or_, union, update
 from sqlmodel import delete, select
 
 from config.env import settings
@@ -40,6 +40,8 @@ from utils.time_utils import now_utc8_naive
 class UserDao:
     """用户数据访问对象。"""
 
+    RESERVED_ADMIN_USERNAME = "admin"
+
     @staticmethod
     def _tenant_filter(request: Request, model):
         """为用户相关查询生成当前租户过滤条件。"""
@@ -61,7 +63,7 @@ class UserDao:
 
         """
         mysql = request.state.mysql
-        user_data = users.model_dump(exclude={"post_ids"})
+        user_data = users.model_dump(exclude={"post_ids", "role_ids"})
         user_data.setdefault(
             "tenant_id",
             require_tenant_id(request),
@@ -305,7 +307,7 @@ class UserDao:
 
     @staticmethod
     async def get_admin_user_ids(user_ids: list[int], request: Request) -> set[int]:
-        """返回通过任一关联方式拥有保留管理员角色的用户 ID。"""
+        """返回保留 admin 账户或超级管理员角色用户的 ID。"""
         unique_user_ids = list(dict.fromkeys(user_ids))
         if not unique_user_ids:
             return set()
@@ -330,7 +332,14 @@ class UserDao:
                 UserDao._tenant_filter(request, RoleDo),
             )
         )
-        result = await request.state.mysql.execute(assigned_admins.union(legacy_admins))
+        reserved_admin = select(UserDo.id).where(
+            UserDo.id.in_(unique_user_ids),
+            func.lower(UserDo.username) == UserDao.RESERVED_ADMIN_USERNAME,
+            UserDao._tenant_filter(request, UserDo),
+        )
+        result = await request.state.mysql.execute(
+            union(assigned_admins, legacy_admins, reserved_admin)
+        )
         return set(result.scalars().all())
 
     @staticmethod
@@ -450,6 +459,22 @@ class UserDao:
             params=params,
             transformer=lambda rows: [dict(row._mapping) for row in rows],
         )
+
+    @staticmethod
+    async def list_user_options(request: Request) -> list[UserDo]:
+        scope = await DataScopeService.resolve(request)
+        query = (
+            select(UserDo)
+            .where(
+                scope.user_id_clause(UserDo.id),
+                UserDao._tenant_filter(request, UserDo),
+                UserDo.deleted_at.is_(None),
+                UserDo.status == "1",
+            )
+            .order_by(UserDo.username, UserDo.id)
+        )
+        result = await request.state.mysql.execute(query)
+        return list(result.scalars().all())
 
     @staticmethod
     async def get_user_route_menus(user_id: int, request: Request) -> list[MenuDo]:
