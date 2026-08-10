@@ -62,6 +62,7 @@ export const protectedRoutes: RouteRecordRaw[] = [
           menu: false,
           hideBreadcrumb: false,
           requiresAuth: true,
+          permission: ['system:dict:list'],
           noCache: false,
           icon: 'ListOutline',
           menuType: 'C',

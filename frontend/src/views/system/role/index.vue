@@ -15,13 +15,11 @@ import { useLocale, usePagination } from '@/hooks'
 import type {
   DepartmentOption,
   MenuItem,
-  RoleCreatePayload,
   RoleDetail,
   RoleFormMode,
   RoleFormModel,
   RoleListFilters,
   RoleListItem,
-  RoleUpdatePayload,
 } from '@/types'
 import { isProtectedAdminRole } from '@/utils'
 import RoleBatchActions from './components/RoleBatchActions.vue'
@@ -30,6 +28,7 @@ import RoleFormModal from './components/RoleFormModal.vue'
 import RolePageHeader from './components/RolePageHeader.vue'
 import RoleSearchPanel from './components/RoleSearchPanel.vue'
 import RoleTable from './components/RoleTable.vue'
+import { createRolePayload, createRoleUpdatePayload } from './payloads'
 import { useRoleBatchActions } from './useRoleBatchActions'
 import { useRoleFileActions } from './useRoleFileActions'
 
@@ -192,32 +191,6 @@ const openEdit = async (item: RoleListItem): Promise<void> => {
   }
 }
 
-const toNullableText = (value: string): string | null => value.trim() || null
-
-const normalizeDepartmentIds = (model: RoleFormModel): number[] =>
-  model.data_scope === '2' ? [...model.dept_ids] : []
-
-const createPayload = (model: RoleFormModel): RoleCreatePayload => ({
-  name: model.name.trim(),
-  code: model.code.trim(),
-  description: toNullableText(model.description),
-  data_scope: model.data_scope,
-  menu_ids: [...model.menu_ids],
-  dept_ids: normalizeDepartmentIds(model),
-  field_permission_codes: [...model.field_permission_codes],
-})
-
-const updatePayload = (model: RoleFormModel): RoleUpdatePayload => ({
-  name: model.name.trim(),
-  description: toNullableText(model.description),
-  data_scope: model.data_scope,
-  status: model.status,
-  version: model.version ?? undefined,
-  menu_ids: [...model.menu_ids],
-  dept_ids: normalizeDepartmentIds(model),
-  field_permission_codes: [...model.field_permission_codes],
-})
-
 const saveRole = async (model: RoleFormModel): Promise<void> => {
   if (formLoading.value) {
     return
@@ -226,10 +199,10 @@ const saveRole = async (model: RoleFormModel): Promise<void> => {
   formLoading.value = true
   try {
     if (formMode.value === 'create') {
-      await createRole(createPayload(model))
+      await createRole(createRolePayload(model))
       message.success(t('role.form.createSuccess'))
     } else if (editTarget.value && !isProtectedAdminRole(editTarget.value.code)) {
-      await updateRole(editTarget.value.id, updatePayload(model))
+      await updateRole(editTarget.value.id, createRoleUpdatePayload(model))
       message.success(t('role.form.updateSuccess'))
     } else {
       return

@@ -38,6 +38,7 @@ describe('dynamic routes', () => {
 
     expect(settingsRoute?.path).toBe('system/settings')
     expect(settingsRoute?.meta?.requiresAuth).toBe(true)
+    expect(settingsRoute?.meta?.permission).toBeUndefined()
     expect(settingsRoute?.meta?.menu).toBe(false)
   })
 
@@ -50,6 +51,7 @@ describe('dynamic routes', () => {
     expect(dictionaryDataRoute?.path).toBe('system/dict/data')
     expect(dictionaryDataRoute?.meta?.title).toBe('字典数据')
     expect(dictionaryDataRoute?.meta?.requiresAuth).toBe(true)
+    expect(dictionaryDataRoute?.meta?.permission).toEqual(['system:dict:list'])
     expect(dictionaryDataRoute?.meta?.menu).toBe(false)
   })
 

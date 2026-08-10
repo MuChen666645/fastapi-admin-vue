@@ -67,7 +67,11 @@ describe('角色 API', () => {
       dept_ids: [],
       field_permission_codes: [],
     })
-    await updateRole(2, { version: 3, status: '0' })
+    await updateRole(2, {
+      version: 3,
+      status: '0',
+      field_permission_codes: ['field:user:email'],
+    })
     await batchUpdateRoleStatus({ role_ids: [2], status: '1' })
     await deleteRole(2)
     await exportRoles()
@@ -83,7 +87,14 @@ describe('角色 API', () => {
     expect(requestJson).toHaveBeenNthCalledWith(
       3,
       '/role/2',
-      { method: 'PUT', data: { version: 3, status: '0' } },
+      {
+        method: 'PUT',
+        data: {
+          version: 3,
+          status: '0',
+          field_permission_codes: ['field:user:email'],
+        },
+      },
       expect.any(Function),
     )
     expect(requestJson).toHaveBeenNthCalledWith(
@@ -106,8 +117,18 @@ describe('角色 API', () => {
 
   it('解析角色详情、菜单树和导入结果', () => {
     expect(
-      parseRoleDetail({ ...role, menu_ids: [4], dept_ids: [7], field_permission_codes: [] }),
-    ).toMatchObject({ id: 2, menu_ids: [4], dept_ids: [7] })
+      parseRoleDetail({
+        ...role,
+        menu_ids: [4],
+        dept_ids: [7],
+        field_permission_codes: ['field:user:email'],
+      }),
+    ).toMatchObject({
+      id: 2,
+      menu_ids: [4],
+      dept_ids: [7],
+      field_permission_codes: ['field:user:email'],
+    })
     expect(
       parseMenuList([
         {

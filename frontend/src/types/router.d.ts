@@ -7,6 +7,7 @@ declare module 'vue-router' {
     hideBreadcrumb?: boolean
     public?: boolean
     requiresAuth?: boolean
+    permission?: string | readonly string[]
     allowPasswordChange?: boolean
     dynamic?: boolean
     menuType?: import('./api/router').UserRouteMenuType

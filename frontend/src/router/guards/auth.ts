@@ -2,12 +2,31 @@ import type { NavigationGuard, Router } from 'vue-router'
 
 import { useAuthStore } from '@/stores'
 import type { AuthenticatedRouteRegistrar } from '@/types'
+import { hasPermission } from '@/utils/permissions'
 import { findFirstVisibleRouteName } from '../route-utils'
 
 const createLoginRedirect = (path: string) => ({
   name: 'login',
   query: { redirect: path },
 })
+
+const normalizeRoutePermissions = (value: unknown): string[] | null => {
+  if (value === undefined || value === null) {
+    return []
+  }
+
+  const values = Array.isArray(value) ? value : [value]
+  if (!values.every((permission) => typeof permission === 'string')) {
+    return null
+  }
+
+  const permissions = values.map((permission) => permission.trim())
+  if (permissions.some((permission) => !permission)) {
+    return null
+  }
+
+  return [...new Set(permissions)]
+}
 
 export const createAuthGuard =
   (router: Router, registerRoutes: AuthenticatedRouteRegistrar): NavigationGuard =>
@@ -49,6 +68,14 @@ export const createAuthGuard =
 
     if (auth.status === 'password-change-required' && to.name !== 'change-password') {
       return { name: 'change-password' }
+    }
+
+    const routePermissions = normalizeRoutePermissions(to.meta.permission)
+    if (
+      routePermissions === null ||
+      !routePermissions.every((permission) => hasPermission(auth.permissions, permission))
+    ) {
+      return { name: 'forbidden' }
     }
 
     if (to.name === 'not-found') {

@@ -62,7 +62,7 @@ export interface RoleUpdatePayload {
   version?: number
   menu_ids?: number[]
   dept_ids?: number[]
-  field_permission_codes?: string[]
+  field_permission_codes: string[]
 }
 
 export interface RoleBatchStatusPayload {

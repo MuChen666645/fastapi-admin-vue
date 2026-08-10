@@ -145,7 +145,7 @@ src/
 - `/change-password` 需要认证，并允许密码变更状态访问。
 - `/` 对应 `app` 和 `BasicLayout`，认证后会注册后端业务路由。
 - `/system/settings` 的路由名为 `system-settings`，是认证后的静态系统设置入口，不显示在后端菜单中。
-- `/system/dict/data` 的路由名为 `system-dict-data`，是认证后的隐藏静态字典数据页，仅由字典类型页携带 `dict_type` 查询参数跳转，不显示在菜单中。
+- `/system/dict/data` 的路由名为 `system-dict-data`，是认证后的隐藏静态字典数据页，仅由字典类型页携带 `dict_type` 查询参数跳转，不显示在菜单中；守卫要求当前用户具有 `system:dict:list`。
 - `/system/message` 来自后端消息中心菜单的动态路由，组件路径必须解析到 `src/views/system/message/index.vue`；页面包含当前用户收件箱和具有 `system:message:list` 权限时的租户消息管理模式。
 - `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。
 - `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。

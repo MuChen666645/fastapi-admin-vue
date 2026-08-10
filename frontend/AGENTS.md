@@ -30,7 +30,7 @@
 - 静态路由位于 `src/router/modules/`，当前分为 `public.ts`、`protected.ts`、`error.ts`。
 - `protected.ts` 提供登录后的 `app` 布局、修改密码页、`system-settings` 系统设置入口和隐藏的 `system-dict-data` 字典数据页；后端业务路由由 `registerAuthenticatedRoutes()` 添加到 `app` 下。
 - 动态路由的 `component` 只能经过 `src/router/route-utils.ts` 的本地 `import.meta.glob('../views/**/*.vue')` 白名单解析。路径不安全或组件不存在时过滤该路由并输出一次警告。
-- 路由守卫位于 `src/router/guards/auth.ts`，只负责会话初始化、密码变更重定向、动态路由注册和安全导航，不实现业务授权。
+- 路由守卫位于 `src/router/guards/auth.ts`，负责会话初始化、密码变更重定向、动态路由注册、安全导航，以及对静态路由 `meta.permission` 的前端访问校验；该字段可为权限字符串或权限列表，列表要求全部满足；当前权限包含超级权限 `*:*:*` 时匹配任意权限码；后端仍是业务授权的最终权威。
 
 ### Store 与页面
 
