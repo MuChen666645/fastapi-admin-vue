@@ -138,6 +138,7 @@ const fields = computed<ReadonlyArray<AppFormField<RoleFormModel>>>(() => [
       defaultExpandAll: true,
       filterable: true,
       multiple: true,
+      checkStrategy:'parent',
       options: departmentTreeOptions.value,
       placeholder:
         departmentTreeOptions.value.length > 0

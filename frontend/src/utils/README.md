@@ -22,6 +22,7 @@ import { findAccentColor, resolveIconComponent, translateMenuTitle } from '@/uti
 | `resolveMessageTab` / `resolveMessageTone` / `findNewUnreadMessages` / `formatMessageRelativeTime` | `@/utils`                  | 消息类型展示、新未读消息识别、风险色调、相对时间和消息表单值转换。 |
 | `isAppUpdateManifest`、`fetchAppUpdateManifest`、`forceReloadApp`                                  | `@/utils`                  | 校验同源构建清单、读取版本和执行整页刷新。                         |
 | `loginPreferences`                                                                                 | `@/utils/loginPreferences` | 记住登录偏好；存在敏感数据持久化风险。                             |
+| `validatePhone`、`validateEmail`、`validatePassword`、`getPasswordValidationMessageKey`            | `@/utils`                  | 校验表单联系方式、密码策略并将密码错误码映射到本地化文案键。       |
 | `request`                                                                                          | `@/utils/request`          | Alova 传输、令牌刷新、响应解析和错误归一化。                       |
 | `guards/api`                                                                                       | `@/utils/guards/api`       | API 响应和值的运行时校验。                                         |
 | `guards/route`                                                                                     | `@/utils/guards/route`     | 后端路由安全校验，亦通过 `@/utils` 导出。                          |
@@ -70,6 +71,19 @@ const validLink = isSafeExternalLink('https://example.com/docs')
 ```
 
 这些方法只校验路由输入的格式和协议安全性，不能替代后端的认证、授权和业务校验。
+
+## 表单校验
+
+手机号、邮箱和密码校验不依赖 Vue 生命周期或表单组件，统一从 `@/utils` 使用：
+
+```ts
+import { validatePassword, validatePhone } from '@/utils'
+
+const phoneValid = validatePhone(value)
+const passwordResult = validatePassword(value, username)
+```
+
+`validatePassword` 默认与后端 `password_policy` 保持一致：至少 12 位，必须包含大写字母、小写字母、数字和 ASCII 特殊字符，且不能包含用户名。函数返回 `valid` 和失败 `code`，页面负责使用当前语言转换提示；后端校验仍是最终边界。
 
 ## 本地化和主题选项
 

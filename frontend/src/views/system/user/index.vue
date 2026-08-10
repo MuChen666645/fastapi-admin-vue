@@ -427,6 +427,7 @@ onMounted(() => {
       v-model:show="passwordVisible"
       :model="passwordModel"
       :loading="passwordLoading"
+      :username="passwordTarget?.username ?? ''"
       @submit="savePassword"
       @reset="Object.assign(passwordModel, createInitialPasswordModel())"
     />

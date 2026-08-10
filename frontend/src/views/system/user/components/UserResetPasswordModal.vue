@@ -7,6 +7,7 @@ import type { FormItemRule } from 'naive-ui'
 
 import AppForm from '@/components/AppForm/index.vue'
 import { useLocale } from '@/hooks'
+import { getPasswordValidationMessageKey, validatePassword } from '@/utils'
 import type { AppFormField, UserResetPasswordModel } from '@/types'
 
 defineOptions({ name: 'UserResetPasswordModal' })
@@ -15,6 +16,7 @@ interface UserResetPasswordModalProps {
   show: boolean
   model: UserResetPasswordModel
   loading: boolean
+  username: string
 }
 
 const props = defineProps<UserResetPasswordModalProps>()
@@ -27,12 +29,9 @@ const emit = defineEmits<{
 
 const { t } = useLocale()
 
-const validatePassword = (_rule: FormItemRule, value: unknown): boolean | Error => {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    return new Error(t('user.form.passwordPlaceholder'))
-  }
-
-  return value.length >= 8 ? true : new Error(t('user.form.passwordTooShort'))
+const validatePasswordField = (_rule: FormItemRule, value: unknown): boolean | Error => {
+  const result = validatePassword(value, props.username)
+  return result.valid ? true : new Error(t(getPasswordValidationMessageKey(result.code)))
 }
 
 const fields = computed<ReadonlyArray<AppFormField<UserResetPasswordModel>>>(() => [
@@ -43,7 +42,7 @@ const fields = computed<ReadonlyArray<AppFormField<UserResetPasswordModel>>>(() 
     type: 'password',
     required: true,
     requiredMessage: t('user.form.passwordPlaceholder'),
-    rules: [{ required: true, validator: validatePassword, trigger: ['input', 'blur'] }],
+    rules: [{ required: true, validator: validatePasswordField, trigger: ['input', 'blur'] }],
   },
 ])
 

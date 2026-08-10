@@ -93,6 +93,7 @@ export type {
   RequestOptions,
 } from './transport'
 export type { LottieAnimationHandle, LottieAnimationOptions } from './lottie'
+export type { PasswordPolicy, PasswordValidationCode, PasswordValidationResult } from './validation'
 export type {
   PaginationBinding,
   PaginationFetcher,

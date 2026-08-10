@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NText } from 'naive-ui'
-import type { FormInst, FormRules } from 'naive-ui'
+import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
 import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores'
+import { useLocale } from '@/hooks'
+import { getPasswordValidationMessageKey, validatePassword } from '@/utils'
 
 defineOptions({ name: 'ChangePasswordView' })
 
@@ -14,13 +16,18 @@ const formRef = ref<FormInst | null>(null)
 const form = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const errorMessage = ref('')
 const submitting = ref(false)
+const { t } = useLocale()
+
+const validateNewPassword = (_rule: FormItemRule, value: unknown): boolean | Error => {
+  const result = validatePassword(value, auth.currentUser?.user.username)
+  return result.valid ? true : new Error(t(getPasswordValidationMessageKey(result.code)))
+}
 
 const rules: FormRules = {
   oldPassword: { required: true, message: '请输入当前密码', trigger: ['input', 'blur'] },
   newPassword: {
     required: true,
-    min: 8,
-    message: '新密码至少需要 8 位',
+    validator: validateNewPassword,
     trigger: ['input', 'blur'],
   },
   confirmPassword: {

@@ -6,6 +6,12 @@ import type { FormItemRule } from 'naive-ui'
 
 import AppForm from '@/components/AppForm/index.vue'
 import { useLocale } from '@/hooks'
+import {
+  getPasswordValidationMessageKey,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+} from '@/utils'
 import type {
   AppFormField,
   DepartmentCascaderOption,
@@ -67,30 +73,25 @@ const roleOptions = computed(() =>
     })),
 )
 
-const validatePhone = (_rule: FormItemRule, value: unknown): boolean | Error => {
+const validatePhoneField = (_rule: FormItemRule, value: unknown): boolean | Error => {
   if (typeof value !== 'string' || value.trim().length === 0) {
     return props.mode === 'create' ? new Error(t('user.form.phonePlaceholder')) : true
   }
 
-  return /^1[3-9]\d{9}$/.test(value.trim()) ? true : new Error(t('user.form.invalidPhone'))
+  return validatePhone(value) ? true : new Error(t('user.form.invalidPhone'))
 }
 
-const validateEmail = (_rule: FormItemRule, value: unknown): boolean | Error => {
+const validateEmailField = (_rule: FormItemRule, value: unknown): boolean | Error => {
   if (typeof value !== 'string' || value.trim().length === 0) {
     return true
   }
 
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
-    ? true
-    : new Error(t('user.form.invalidEmail'))
+  return validateEmail(value) ? true : new Error(t('user.form.invalidEmail'))
 }
 
-const validatePassword = (_rule: FormItemRule, value: unknown): boolean | Error => {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    return new Error(t('user.form.passwordPlaceholder'))
-  }
-
-  return value.length >= 8 ? true : new Error(t('user.form.passwordTooShort'))
+const validatePasswordField = (_rule: FormItemRule, value: unknown): boolean | Error => {
+  const result = validatePassword(value, props.model.username)
+  return result.valid ? true : new Error(t(getPasswordValidationMessageKey(result.code)))
 }
 
 const sexOptions = computed(() => [
@@ -119,7 +120,7 @@ const fields = computed<ReadonlyArray<AppFormField<UserFormModel>>>(() => [
     type: 'password',
     required: props.mode === 'create',
     hidden: () => props.mode !== 'create',
-    rules: [{ validator: validatePassword, trigger: ['input', 'blur'] }],
+    rules: [{ validator: validatePasswordField, trigger: ['input', 'blur'] }],
     componentProps: { placeholder: t('user.form.passwordPlaceholder'), showPasswordOn: 'click' },
   },
   {
@@ -127,14 +128,14 @@ const fields = computed<ReadonlyArray<AppFormField<UserFormModel>>>(() => [
     path: 'phone',
     label: t('user.form.phone'),
     required: props.mode === 'create',
-    rules: [{ validator: validatePhone, trigger: ['input', 'blur'] }],
+    rules: [{ validator: validatePhoneField, trigger: ['input', 'blur'] }],
     componentProps: { clearable: true, placeholder: t('user.form.phonePlaceholder') },
   },
   {
     key: 'email',
     path: 'email',
     label: t('user.form.email'),
-    rules: [{ validator: validateEmail, trigger: ['input', 'blur'] }],
+    rules: [{ validator: validateEmailField, trigger: ['input', 'blur'] }],
     componentProps: { clearable: true, placeholder: t('user.form.emailPlaceholder') },
   },
   {

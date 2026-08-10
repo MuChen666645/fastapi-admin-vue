@@ -21,6 +21,13 @@ export { downloadBlob } from './download'
 export { isProtectedAdminUser } from './user'
 export { isProtectedAdminRole } from './role'
 export {
+  DEFAULT_PASSWORD_POLICY,
+  getPasswordValidationMessageKey,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+} from './validation'
+export {
   findNewUnreadMessages,
   formatMessageRelativeTime,
   isMessageType,
