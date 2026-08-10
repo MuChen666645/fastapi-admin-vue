@@ -1,7 +1,7 @@
-import type { MenuItem, MenuType } from '@/types'
+import type { MenuDetail, MenuFlag, MenuItem, MenuStatus, MenuType } from '@/types'
 import { isRecord, readString, requireNumber, requireString } from '@/utils/guards/api'
 
-const parseStatus = (value: unknown): '0' | '1' => {
+const parseStatus = (value: unknown): MenuStatus => {
   const status = requireString(value, 'status')
   if (status !== '0' && status !== '1') {
     throw new Error('接口字段 status 无效')
@@ -10,7 +10,7 @@ const parseStatus = (value: unknown): '0' | '1' => {
   return status
 }
 
-const parseFlag = (value: unknown, fieldName: string): '0' | '1' | null => {
+const parseFlag = (value: unknown, fieldName: string): MenuFlag | null => {
   if (value === null || value === undefined) {
     return null
   }
@@ -40,12 +40,11 @@ const parseNullableNumber = (value: unknown, fieldName: string): number | null =
   return requireNumber(value, fieldName)
 }
 
-const parseMenu = (value: unknown): MenuItem => {
+const parseMenuFields = (value: unknown): Omit<MenuItem, 'children'> => {
   if (!isRecord(value)) {
     throw new Error('菜单数据无效')
   }
 
-  const children = Array.isArray(value.children) ? value.children.map(parseMenu) : []
   return {
     menu_id: requireNumber(value.menu_id, 'menu_id'),
     menu_name: requireString(value.menu_name, 'menu_name'),
@@ -63,8 +62,16 @@ const parseMenu = (value: unknown): MenuItem => {
     status: parseStatus(value.status),
     update_time: requireString(value.update_time, 'update_time'),
     remark: readString(value.remark),
-    children,
   }
+}
+
+const parseMenu = (value: unknown): MenuItem => {
+  if (!isRecord(value)) {
+    throw new Error('菜单数据无效')
+  }
+
+  const children = Array.isArray(value.children) ? value.children.map(parseMenu) : []
+  return { ...parseMenuFields(value), children }
 }
 
 export const parseMenuList = (value: unknown): MenuItem[] => {
@@ -74,3 +81,5 @@ export const parseMenuList = (value: unknown): MenuItem[] => {
 
   return value.map(parseMenu)
 }
+
+export const parseMenuDetail = (value: unknown): MenuDetail => parseMenuFields(value)

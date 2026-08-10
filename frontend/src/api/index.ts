@@ -1,6 +1,6 @@
 export { changeCurrentPassword, fetchCaptcha, login, logout, refreshTokens } from './auth'
 export { fetchDepartmentOptions, fetchPostOptions } from './organization'
-export { fetchMenuList } from './menu'
+export { createMenu, deleteMenu, fetchMenuDetail, fetchMenuList, updateMenu } from './menu'
 export {
   createMessage,
   deleteMessage,

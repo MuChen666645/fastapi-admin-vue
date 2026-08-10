@@ -132,7 +132,22 @@ export type {
   PostOption,
   PostPage,
 } from './organization'
-export type { MenuItem, MenuType } from './menu'
+export type {
+  CreateButtonMenuPayload,
+  CreateIframeMenuPayload,
+  CreateLinkMenuPayload,
+  CreateRouterMenuPayload,
+  MenuCreatePayload,
+  MenuDetail,
+  MenuFlag,
+  MenuFormMode,
+  MenuFormModel,
+  MenuItem,
+  MenuListFilters,
+  MenuStatus,
+  MenuType,
+  MenuUpdatePayload,
+} from './menu'
 export type {
   RoleBatchStatusPayload,
   RoleCreatePayload,
