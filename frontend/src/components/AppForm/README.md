@@ -48,24 +48,36 @@ const handleSubmit = async (model: UserForm): Promise<void> => {
 
 ## 字段配置
 
-| 属性                       | 说明                                                                                |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| `key`                      | 字段渲染和插槽使用的唯一标识。                                                      |
-| `path`                     | model 中的字段路径，支持 `user.name` 或路径数组。                                   |
-| `label`                    | 表单项标签。                                                                        |
-| `type`                     | `input`、`password`、`textarea`、`number`、`select`、`switch`、`date` 或 `custom`。 |
-| `component`                | 自定义 Vue 组件；默认使用 `value` 和 `update:value`。                               |
-| `componentProps`           | 控件属性或根据字段上下文生成属性。`select` 的 options 等配置放在这里。              |
-| `valueProp` / `valueEvent` | 自定义组件的值属性和更新事件，例如 `modelValue` / `update:modelValue`。             |
-| `rules`                    | Naive UI `FormItemRule` 或规则数组。                                                |
-| `required`                 | 自动生成必填规则；`requiredMessage` 可覆盖提示文案。                                |
-| `hidden` / `disabled`      | 布尔值或根据字段上下文计算的状态。隐藏字段不会参与当前渲染和校验。                  |
-| `span`                     | 当前字段在栅格布局中的占位列数。                                                    |
+| 属性                       | 说明                                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `key`                      | 字段渲染和插槽使用的唯一标识。                                                                                 |
+| `path`                     | model 中的字段路径，支持 `user.name` 或路径数组。                                                              |
+| `label`                    | 表单项标签。                                                                                                   |
+| `type`                     | `input`、`password`、`textarea`、`number`、`select`、`cascader`、`tree-select`、`switch`、`date` 或 `custom`。 |
+| `component`                | 自定义 Vue 组件；默认使用 `value` 和 `update:value`。                                                          |
+| `componentProps`           | 控件属性或根据字段上下文生成属性。`select` 的 options 等配置放在这里。                                         |
+| `valueTransform`           | 在写回 model 前转换控件值，适合将 `tree-select` 清空后的 `null` 归一化为数组。                                 |
+| `valueProp` / `valueEvent` | 自定义组件的值属性和更新事件，例如 `modelValue` / `update:modelValue`。                                        |
+| `rules`                    | Naive UI `FormItemRule` 或规则数组。                                                                           |
+| `required`                 | 自动生成必填规则；`requiredMessage` 可覆盖提示文案。                                                           |
+| `hidden` / `disabled`      | 布尔值或根据字段上下文计算的状态。隐藏字段不会参与当前渲染和校验。                                             |
+| `span`                     | 当前字段在栅格布局中的占位列数。                                                                               |
 
 内置控件会根据 `type` 自动选择：
 
 ```ts
 const fields: AppFormField[] = [
+  {
+    key: 'departments',
+    path: 'departments',
+    label: '部门',
+    type: 'tree-select',
+    componentProps: {
+      multiple: true,
+      options: [{ key: 1, label: '总部' }],
+    },
+    valueTransform: (value) => (Array.isArray(value) ? value : []),
+  },
   { key: 'title', path: 'title', label: '标题', required: true },
   {
     key: 'priority',

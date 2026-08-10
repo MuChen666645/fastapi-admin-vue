@@ -61,7 +61,7 @@ const { t } = useLocale()
   padding: 8px 12px;
   border: 1px solid var(--app-color-border);
   border-radius: 6px;
-  background: var(--app-color-surface-soft);
+  background: var(--app-color-surface-muted);
   color: var(--app-color-text-muted);
   font-size: 13px;
 }

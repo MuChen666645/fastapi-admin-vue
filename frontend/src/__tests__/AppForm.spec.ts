@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive, h } from 'vue'
 import { describe, expect, it } from 'vitest'
+import { NTreeSelect } from 'naive-ui'
 
 import AppForm from '../components/AppForm/index.vue'
 import type { AppFormField, AppFormGroup } from '../types'
@@ -112,6 +113,38 @@ describe('AppForm', () => {
 
     await wrapper.get('[data-testid="custom-description"]').setValue('自定义内容')
     expect(model.description).toBe('自定义内容')
+
+    wrapper.unmount()
+  })
+
+  it('supports tree-select fields and transforms cleared values', async () => {
+    const model = reactive({ departments: [] as number[] })
+    const fields: AppFormField[] = [
+      {
+        key: 'departments',
+        path: 'departments',
+        label: 'Departments',
+        type: 'tree-select',
+        componentProps: {
+          multiple: true,
+          options: [{ key: 1, label: 'Headquarters' }],
+        },
+        valueTransform: (value) =>
+          Array.isArray(value) ? value.filter((key): key is number => typeof key === 'number') : [],
+      },
+    ]
+    const wrapper = mount(AppForm, { props: { model, fields } })
+    const treeSelect = wrapper.findComponent(NTreeSelect)
+
+    expect(treeSelect.exists()).toBe(true)
+
+    treeSelect.vm.$emit('update:value', [1])
+    await flushPromises()
+    expect(model.departments).toEqual([1])
+
+    treeSelect.vm.$emit('update:value', null)
+    await flushPromises()
+    expect(model.departments).toEqual([])
 
     wrapper.unmount()
   })

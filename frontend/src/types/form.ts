@@ -15,6 +15,7 @@ export type AppFormFieldType =
   | 'number'
   | 'select'
   | 'cascader'
+  | 'tree-select'
   | 'switch'
   | 'date'
   | 'custom'
@@ -34,6 +35,11 @@ export type AppFormFieldResolver<T extends object = AppFormRecord> =
 export type AppFormFieldPropsResolver<T extends object = AppFormRecord> =
   Record<string, unknown> | ((context: AppFormFieldContext<T>) => Record<string, unknown>)
 
+export type AppFormFieldValueTransformer<T extends object = AppFormRecord> = (
+  value: unknown,
+  context: AppFormFieldContext<T>,
+) => unknown
+
 export interface AppFormField<T extends object = AppFormRecord> {
   key: string
   path: AppFormPath
@@ -41,6 +47,7 @@ export interface AppFormField<T extends object = AppFormRecord> {
   type?: AppFormFieldType
   component?: Component
   componentProps?: AppFormFieldPropsResolver<T>
+  valueTransform?: AppFormFieldValueTransformer<T>
   valueProp?: string
   valueEvent?: string
   rules?: FormItemRule | FormItemRule[]

@@ -103,10 +103,6 @@ const replaceFormModel = (model: RoleFormModel): void => {
   Object.assign(formModel, model)
 }
 
-const updateFormModel = (value: Partial<RoleFormModel>): void => {
-  Object.assign(formModel, value)
-}
-
 const createFormModelFromRole = (item: RoleListItem): RoleFormModel => ({
   ...createInitialFormModel(),
   name: item.name,
@@ -331,7 +327,6 @@ const resetForm = (): void => {
       :menus="menus"
       :departments="departments"
       @submit="saveRole"
-      @update:model="updateFormModel"
       @reset="resetForm"
     />
   </main>

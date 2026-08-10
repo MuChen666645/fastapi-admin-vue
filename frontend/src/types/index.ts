@@ -18,6 +18,7 @@ export type {
   AppFormFieldPropsResolver,
   AppFormFieldResolver,
   AppFormFieldType,
+  AppFormFieldValueTransformer,
   AppFormGroup,
   AppFormGroupMutation,
   AppFormLabelAlign,

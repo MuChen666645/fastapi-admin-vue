@@ -15,6 +15,7 @@ import {
   NInputNumber,
   NSelect,
   NSwitch,
+  NTreeSelect,
 } from 'naive-ui'
 import type { Component } from 'vue'
 import type { FormInst, FormItemRule, FormValidationError } from 'naive-ui'
@@ -226,6 +227,8 @@ const resolveFieldComponent = (field: AppFormField<T>): Component => {
       return NSelect
     case 'cascader':
       return NCascader
+    case 'tree-select':
+      return NTreeSelect
     case 'switch':
       return NSwitch
     case 'date':
@@ -265,7 +268,10 @@ const getComponentBindings = (context: AppFormFieldContext<T>): Record<string, u
 })
 
 const updateFieldValue = (context: AppFormFieldContext<T>, value: unknown): void => {
-  setPathValue(props.model, context.path, value)
+  const nextValue = context.field.valueTransform
+    ? context.field.valueTransform(value, context)
+    : value
+  setPathValue(props.model, context.path, nextValue)
 }
 
 const getFieldListeners = (

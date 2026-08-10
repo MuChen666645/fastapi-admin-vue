@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { CheckmarkDoneOutline } from '@vicons/ionicons5'
-import { NButton, NDivider, NEmpty, NFormItem, NIcon, NModal, NTag, NTreeSelect } from 'naive-ui'
+import { NButton, NDivider, NIcon, NModal, NTag } from 'naive-ui'
 import type { FormItemRule, TreeSelectOption } from 'naive-ui'
 
 import AppForm from '@/components/AppForm/index.vue'
@@ -22,7 +22,6 @@ interface RoleFormModalProps {
 const props = defineProps<RoleFormModalProps>()
 const emit = defineEmits<{
   'update:show': [value: boolean]
-  'update:model': [value: Partial<RoleFormModel>]
   submit: [model: RoleFormModel]
   reset: []
 }>()
@@ -41,6 +40,48 @@ const statusOptions = computed(() => [
   { label: t('role.status.enabled'), value: '1' as const },
   { label: t('role.status.disabled'), value: '0' as const },
 ])
+
+const toMenuTreeOptions = (items: MenuItem[]): TreeSelectOption[] =>
+  items.map((item) => {
+    const children = toMenuTreeOptions(item.children)
+    return {
+      key: item.menu_id,
+      label: item.menu_name,
+      disabled: item.status !== '1',
+      ...(children.length > 0 ? { children } : {}),
+    }
+  })
+
+const toDepartmentTreeOptions = (items: DepartmentOption[]): TreeSelectOption[] =>
+  items.map((item) => {
+    const children = toDepartmentTreeOptions(item.children)
+    return {
+      key: item.dept_id,
+      label: item.dept_name,
+      disabled: item.status !== '1',
+      ...(children.length > 0 ? { children } : {}),
+    }
+  })
+
+const menuTreeOptions = computed(() => toMenuTreeOptions(props.menus))
+const departmentTreeOptions = computed(() => toDepartmentTreeOptions(props.departments))
+
+const departmentRules = computed<FormItemRule>(() => ({
+  required: props.model.data_scope === '2',
+  validator: (_rule, value: unknown) => {
+    if (props.model.data_scope !== '2') {
+      return true
+    }
+
+    return Array.isArray(value) && value.length > 0
+      ? true
+      : new Error(t('role.form.customDepartmentRequired'))
+  },
+  trigger: ['change'],
+}))
+
+const normalizeTreeKeys = (value: unknown): number[] =>
+  Array.isArray(value) ? value.filter((key): key is number => typeof key === 'number') : []
 
 const fields = computed<ReadonlyArray<AppFormField<RoleFormModel>>>(() => [
   {
@@ -83,6 +124,31 @@ const fields = computed<ReadonlyArray<AppFormField<RoleFormModel>>>(() => [
     },
   },
   {
+    key: 'dept_ids',
+    path: 'dept_ids',
+    label: t('role.form.department'),
+    type: 'tree-select',
+    hidden: () => props.model.data_scope !== '2',
+    disabled: () => props.loading,
+    rules: departmentRules.value,
+    valueTransform: normalizeTreeKeys,
+    componentProps: {
+      checkable: true,
+      clearable: true,
+      defaultExpandAll: true,
+      filterable: true,
+      multiple: true,
+      options: departmentTreeOptions.value,
+      placeholder:
+        departmentTreeOptions.value.length > 0
+          ? t('role.form.department')
+          : t('role.form.noOptions'),
+      showPath: true,
+      class: 'role-tree-select',
+    },
+    feedback: t('role.form.departmentDescription'),
+  },
+  {
     key: 'status',
     path: 'status',
     label: t('role.form.status'),
@@ -93,56 +159,31 @@ const fields = computed<ReadonlyArray<AppFormField<RoleFormModel>>>(() => [
       placeholder: t('role.form.statusPlaceholder'),
     },
   },
-])
-
-const toMenuTreeOptions = (items: MenuItem[]): TreeSelectOption[] =>
-  items.map((item) => {
-    const children = toMenuTreeOptions(item.children)
-    return {
-      key: item.menu_id,
-      label: item.menu_name,
-      disabled: item.status !== '1',
-      ...(children.length > 0 ? { children } : {}),
-    }
-  })
-
-const toDepartmentTreeOptions = (items: DepartmentOption[]): TreeSelectOption[] =>
-  items.map((item) => {
-    const children = toDepartmentTreeOptions(item.children)
-    return {
-      key: item.dept_id,
-      label: item.dept_name,
-      disabled: item.status !== '1',
-      ...(children.length > 0 ? { children } : {}),
-    }
-  })
-
-const menuTreeOptions = computed(() => toMenuTreeOptions(props.menus))
-const departmentTreeOptions = computed(() => toDepartmentTreeOptions(props.departments))
-const departmentRules = computed<FormItemRule>(() => ({
-  required: props.model.data_scope === '2',
-  validator: (_rule, value: unknown) => {
-    if (props.model.data_scope !== '2') {
-      return true
-    }
-
-    return Array.isArray(value) && value.length > 0
-      ? true
-      : new Error(t('role.form.customDepartmentRequired'))
+  {
+    key: 'menu_ids',
+    path: 'menu_ids',
+    label: t('role.form.menu'),
+    type: 'tree-select',
+    disabled: () => props.loading,
+    valueTransform: normalizeTreeKeys,
+    componentProps: {
+      cascade: true,
+      checkable: true,
+      clearable: true,
+      defaultExpandAll: true,
+      filterable: true,
+      multiple: true,
+      options: menuTreeOptions.value,
+      checkStrategy:'parent',
+      placeholder:
+        menuTreeOptions.value.length > 0 ? t('role.form.menu') : t('role.form.noOptions'),
+      showPath: true,
+      class: 'role-tree-select',
+    },
+    feedback: t('role.form.menuDescription'),
+    span: '1 s:2',
   },
-  trigger: ['change'],
-}))
-
-const toNumberKeys = (keys: Array<string | number> | null): number[] =>
-  keys?.filter((key): key is number => typeof key === 'number') ?? []
-
-const handleMenuKeys = (keys: Array<string | number> | null): void => {
-  emit('update:model', { menu_ids: toNumberKeys(keys) })
-}
-
-const handleDepartmentKeys = (keys: Array<string | number> | null): void => {
-  emit('update:model', { dept_ids: toNumberKeys(keys) })
-}
+])
 
 const handleShowUpdate = (value: boolean): void => emit('update:show', value)
 const handleCancel = (): void => emit('update:show', false)
@@ -174,77 +215,21 @@ const handleSubmit = (model: RoleFormModel): void => emit('submit', model)
       @submit="handleSubmit"
     >
       <template #after>
-        <NDivider />
-        <section class="role-permission-section">
-          <div class="role-section-heading">
-            <div>
-              <h3>{{ t('role.form.menu') }}</h3>
-              <p>{{ t('role.form.menuDescription') }}</p>
+        <template v-if="props.model.field_permission_codes.length > 0">
+          <NDivider />
+          <section class="role-permission-section">
+            <div class="role-section-heading">
+              <div>
+                <h3>{{ t('role.form.fieldPermissions') }}</h3>
+              </div>
             </div>
-          </div>
-          <NFormItem>
-            <NTreeSelect
-              v-if="menuTreeOptions.length > 0"
-              cascade
-              checkable
-              clearable
-              default-expand-all
-              :disabled="props.loading"
-              filterable
-              multiple
-              :options="menuTreeOptions"
-              :placeholder="t('role.form.menu')"
-              show-path
-              class="role-tree-select"
-              :value="props.model.menu_ids"
-              @update:value="handleMenuKeys"
-            />
-            <NEmpty v-else size="small" :description="t('role.form.noOptions')" />
-          </NFormItem>
-        </section>
-
-        <section class="role-permission-section">
-          <div class="role-section-heading">
-            <div>
-              <h3>{{ t('role.form.department') }}</h3>
-              <p>{{ t('role.form.departmentDescription') }}</p>
+            <div class="role-field-permissions">
+              <NTag v-for="code in props.model.field_permission_codes" :key="code" size="small">
+                {{ code }}
+              </NTag>
             </div>
-          </div>
-          <NFormItem path="dept_ids" :rule="departmentRules">
-            <NTreeSelect
-              v-if="props.model.data_scope === '2' && departmentTreeOptions.length > 0"
-              checkable
-              clearable
-              default-expand-all
-              :disabled="props.loading"
-              filterable
-              multiple
-              :options="departmentTreeOptions"
-              :placeholder="t('role.form.department')"
-              show-path
-              class="role-tree-select"
-              :value="props.model.dept_ids"
-              @update:value="handleDepartmentKeys"
-            />
-            <NEmpty v-else size="small" :description="t('role.form.noOptions')" />
-          </NFormItem>
-        </section>
-
-        <section
-          v-if="props.model.field_permission_codes.length > 0"
-          class="role-permission-section"
-        >
-          <div class="role-section-heading">
-            <div>
-              <h3>{{ t('role.form.fieldPermissions') }}</h3>
-            </div>
-          </div>
-          <div class="role-field-permissions">
-            <NTag v-for="code in props.model.field_permission_codes" :key="code" size="small">
-              {{ code }}
-            </NTag>
-          </div>
-        </section>
+          </section>
+        </template>
       </template>
       <template #actions="{ loading: actionLoading, submit }">
         <NButton attr-type="button" :disabled="actionLoading" @click="handleCancel">
@@ -297,10 +282,6 @@ const handleSubmit = (model: RoleFormModel): void => emit('submit', model)
   margin-top: 4px;
   color: var(--app-color-text-muted);
   font-size: 12px;
-}
-
-.role-permission-section .n-form-item {
-  margin-top: 12px;
 }
 
 .role-tree-select {
