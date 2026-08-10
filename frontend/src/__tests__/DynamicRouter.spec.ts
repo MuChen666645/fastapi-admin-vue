@@ -11,6 +11,7 @@ vi.mock('@/views/demo/form/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/hooks/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/search-form/index.vue', () => ({ default: {} }))
 vi.mock('@/views/demo/utils/index.vue', () => ({ default: {} }))
+vi.mock('@/views/system/dict/data.vue', () => ({ default: {} }))
 
 import { buildDynamicRoutes, resolveRouteComponent } from '../router/route-utils'
 import { errorRoutes, protectedRoutes, publicRoutes } from '../router/modules'
@@ -38,6 +39,18 @@ describe('dynamic routes', () => {
     expect(settingsRoute?.path).toBe('system/settings')
     expect(settingsRoute?.meta?.requiresAuth).toBe(true)
     expect(settingsRoute?.meta?.menu).toBe(false)
+  })
+
+  it('keeps dictionary data available as a hidden static authenticated child route', () => {
+    const appRoute = protectedRoutes.find((route) => route.name === 'app')
+    const dictionaryDataRoute = appRoute?.children?.find(
+      (route) => route.name === 'system-dict-data',
+    )
+
+    expect(dictionaryDataRoute?.path).toBe('system/dict/data')
+    expect(dictionaryDataRoute?.meta?.title).toBe('字典数据')
+    expect(dictionaryDataRoute?.meta?.requiresAuth).toBe(true)
+    expect(dictionaryDataRoute?.meta?.menu).toBe(false)
   })
 
   it('registers the default pages demo as a nested static menu tree', () => {

@@ -133,6 +133,26 @@ export type {
   PostPage,
 } from './organization'
 export type {
+  DictDataCreatePayload,
+  DictDataDetail,
+  DictDataFormModel,
+  DictDataListFilters,
+  DictDataListItem,
+  DictDataPage,
+  DictDataUpdatePayload,
+  DictTypeCreatePayload,
+  DictTypeDetail,
+  DictTypeFormModel,
+  DictTypeListFilters,
+  DictTypeListItem,
+  DictTypePage,
+  DictTypeUpdatePayload,
+  DictionaryFormMode,
+  DictionaryImportError,
+  DictionaryImportResult,
+  DictionaryStatus,
+} from './dictionary'
+export type {
   CreateButtonMenuPayload,
   CreateIframeMenuPayload,
   CreateLinkMenuPayload,

@@ -1,5 +1,19 @@
 export { changeCurrentPassword, fetchCaptcha, login, logout, refreshTokens } from './auth'
 export { fetchDepartmentOptions, fetchPostOptions } from './organization'
+export {
+  createDictData,
+  createDictType,
+  deleteDictData,
+  deleteDictType,
+  exportDictionary,
+  fetchDictDataDetail,
+  fetchDictDataList,
+  fetchDictTypeDetail,
+  fetchDictTypeList,
+  importDictionary,
+  updateDictData,
+  updateDictType,
+} from './dictionary'
 export { createMenu, deleteMenu, fetchMenuDetail, fetchMenuList, updateMenu } from './menu'
 export {
   createMessage,

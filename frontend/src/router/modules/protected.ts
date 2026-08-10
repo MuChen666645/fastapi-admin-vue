@@ -11,6 +11,7 @@ import FormDemoView from '@/views/demo/form/index.vue'
 import HooksDemoView from '@/views/demo/hooks/index.vue'
 import SearchFormDemoView from '@/views/demo/search-form/index.vue'
 import SystemConfigView from '@/views/system/config/index.vue'
+import DictionaryDataView from '@/views/system/dict/data.vue'
 import UtilsDemoView from '@/views/demo/utils/index.vue'
 
 export const protectedRoutes: RouteRecordRaw[] = [
@@ -48,6 +49,21 @@ export const protectedRoutes: RouteRecordRaw[] = [
           requiresAuth: true,
           noCache: false,
           icon: 'SettingsOutline',
+          menuType: 'C',
+          link: null,
+        },
+      },
+      {
+        path: 'system/dict/data',
+        name: 'system-dict-data',
+        component: DictionaryDataView,
+        meta: {
+          title: '字典数据',
+          menu: false,
+          hideBreadcrumb: false,
+          requiresAuth: true,
+          noCache: false,
+          icon: 'ListOutline',
           menuType: 'C',
           link: null,
         },

@@ -14,7 +14,7 @@
 - Vue 3、`<script setup lang="ts">`、TypeScript strict、Vite、Vue Router、Pinia、Alova、Naive UI、UnoCSS。
 - 包管理器为 pnpm，Node 版本以 `package.json` 的 `engines` 为准。
 - 路径别名 `@` 指向 `src/`；图标统一使用 `@vicons/ionicons5`。
-- 路由统一从后端 `GET /api/v1/user/routes` 获取；项目不再使用 `VITE_ROUTE_MODE`，也不维护前端静态业务路由清单。
+- 业务菜单统一从后端 `GET /api/v1/user/routes` 获取；项目不再使用 `VITE_ROUTE_MODE`，仅保留不显示菜单、用于字典类型页跳转的静态 `system-dict-data` 路由。
 
 ## 分层约束
 
@@ -28,7 +28,7 @@
 ### 路由
 
 - 静态路由位于 `src/router/modules/`，当前分为 `public.ts`、`protected.ts`、`error.ts`。
-- `protected.ts` 提供登录后的 `app` 布局、修改密码页和 `system-settings` 系统设置入口；后端业务路由由 `registerAuthenticatedRoutes()` 添加到 `app` 下。
+- `protected.ts` 提供登录后的 `app` 布局、修改密码页、`system-settings` 系统设置入口和隐藏的 `system-dict-data` 字典数据页；后端业务路由由 `registerAuthenticatedRoutes()` 添加到 `app` 下。
 - 动态路由的 `component` 只能经过 `src/router/route-utils.ts` 的本地 `import.meta.glob('../views/**/*.vue')` 白名单解析。路径不安全或组件不存在时过滤该路由并输出一次警告。
 - 路由守卫位于 `src/router/guards/auth.ts`，只负责会话初始化、密码变更重定向、动态路由注册和安全导航，不实现业务授权。
 

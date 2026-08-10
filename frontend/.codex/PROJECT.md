@@ -50,7 +50,7 @@ src/
 └── __tests__/
 ```
 
-`src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；`src/views/system/message/` 是后端消息中心动态路由的收件箱和消息管理页面；顶栏 `useMessagePopover` 每 30 秒轮询最新消息并对新增未读站内信显示 `Notification`；类型声明统一位于 `src/types/` 的语义化领域文件中。
+`src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；`src/views/system/dict/data.vue` 是不显示菜单、由字典类型页跳转的认证静态页面；`src/views/system/message/` 是后端消息中心动态路由的收件箱和消息管理页面；顶栏 `useMessagePopover` 每 30 秒轮询最新消息并对新增未读站内信显示 `Notification`；类型声明统一位于 `src/types/` 的语义化领域文件中。
 
 公共代码文档与源码保持同目录维护：`src/components/README.md` 记录公共组件索引和提交边界，组件组 README 记录各自公开 API；`src/hooks/README.md` 记录 Hook 的上下文依赖、返回值和清理行为；`src/utils/README.md` 记录公共工具入口、基础设施边界和安全校验。新增或迁移代码时，目录、公共出口、类型、测试和 README 必须同步。
 
@@ -145,6 +145,7 @@ src/
 - `/change-password` 需要认证，并允许密码变更状态访问。
 - `/` 对应 `app` 和 `BasicLayout`，认证后会注册后端业务路由。
 - `/system/settings` 的路由名为 `system-settings`，是认证后的静态系统设置入口，不显示在后端菜单中。
+- `/system/dict/data` 的路由名为 `system-dict-data`，是认证后的隐藏静态字典数据页，仅由字典类型页携带 `dict_type` 查询参数跳转，不显示在菜单中。
 - `/system/message` 来自后端消息中心菜单的动态路由，组件路径必须解析到 `src/views/system/message/index.vue`；页面包含当前用户收件箱和具有 `system:message:list` 权限时的租户消息管理模式。
 - `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。
 - `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。
