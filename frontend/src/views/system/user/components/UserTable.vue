@@ -5,19 +5,13 @@ import { CreateOutline, EyeOutline, KeyOutline, TrashOutline } from '@vicons/ion
 import { NButton, NDataTable, NEmpty, NIcon, NTag } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 
+import DictTag from '@/components/DictTag/index.vue'
 import { useLocale } from '@/hooks'
 import { permissionDirective } from '@/directives'
-import type { UserListItem } from '@/types'
+import type { UserListItem, UserTableProps } from '@/types'
 import { formatDateTime, isProtectedAdminUser } from '@/utils'
 
 defineOptions({ name: 'UserTable' })
-
-interface UserTableProps {
-  data: UserListItem[]
-  loading: boolean
-  departmentNames: Readonly<Record<number, string>>
-  selectedRowKeys: number[]
-}
 
 const props = defineProps<UserTableProps>()
 
@@ -121,6 +115,15 @@ const columns = computed<DataTableColumns<UserListItem>>(() => {
       render: (item) => displayValue(item.nickname),
     },
     {
+      title: t('user.column.sex'),
+      key: 'sex',
+      width: 100,
+      render: (item) =>
+        item.sex === null
+          ? t('user.noValue')
+          : h(DictTag, { options: props.sexOptions, value: item.sex }),
+    },
+    {
       title: t('user.column.phone'),
       key: 'phone',
       width: 150,
@@ -186,7 +189,7 @@ const handleCheckedRowKeys = (keys: DataTableRowKey[]): void => {
     :columns="columns"
     :data="props.data"
     :loading="props.loading"
-    :scroll-x="1320"
+    :scroll-x="1420"
     :checked-row-keys="props.selectedRowKeys"
     remote
     :row-key="rowKey"

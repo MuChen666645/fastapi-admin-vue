@@ -18,7 +18,7 @@ export {
 } from './app-update'
 export { resolveRouteMenuState } from './route-menu'
 export { downloadBlob } from './download'
-export { isProtectedAdminUser } from './user'
+export { isProtectedAdminUser, toUserSexSelectOptions } from './user'
 export { isProtectedAdminRole } from './role'
 export {
   DEFAULT_PASSWORD_POLICY,

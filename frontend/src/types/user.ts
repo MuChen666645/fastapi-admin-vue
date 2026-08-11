@@ -1,10 +1,18 @@
+import type { DictDataListItem } from './dictionary'
+import type { DepartmentOption, PostOption } from './organization'
 import type { PaginationRequest } from './pagination'
+import type { RoleOption } from './role'
 
 export type UserStatus = '0' | '1'
 
 export type UserSex = '0' | '1'
 
 export type UserFormMode = 'create' | 'edit'
+
+export interface UserSexSelectOption {
+  label: string
+  value: UserSex
+}
 
 export interface UserOption {
   id: number
@@ -142,4 +150,23 @@ export type UserFormModel = Record<string, unknown> & {
 
 export type UserResetPasswordModel = Record<string, unknown> & {
   password: string
+}
+
+export interface UserTableProps {
+  data: UserListItem[]
+  loading: boolean
+  departmentNames: Readonly<Record<number, string>>
+  sexOptions: ReadonlyArray<DictDataListItem>
+  selectedRowKeys: number[]
+}
+
+export interface UserFormModalProps {
+  show: boolean
+  mode: UserFormMode
+  model: UserFormModel
+  loading: boolean
+  departments: DepartmentOption[]
+  posts: PostOption[]
+  roles: RoleOption[]
+  sexOptions: ReadonlyArray<DictDataListItem>
 }

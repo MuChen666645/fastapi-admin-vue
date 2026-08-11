@@ -8,6 +8,7 @@ import AppForm from '@/components/AppForm/index.vue'
 import { useLocale } from '@/hooks'
 import {
   getPasswordValidationMessageKey,
+  toUserSexSelectOptions,
   validateEmail,
   validatePassword,
   validatePhone,
@@ -16,23 +17,11 @@ import type {
   AppFormField,
   DepartmentCascaderOption,
   DepartmentOption,
-  PostOption,
-  RoleOption,
-  UserFormMode,
+  UserFormModalProps,
   UserFormModel,
 } from '@/types'
 
 defineOptions({ name: 'UserFormModal' })
-
-interface UserFormModalProps {
-  show: boolean
-  mode: UserFormMode
-  model: UserFormModel
-  loading: boolean
-  departments: DepartmentOption[]
-  posts: PostOption[]
-  roles: RoleOption[]
-}
 
 const props = defineProps<UserFormModalProps>()
 
@@ -94,10 +83,7 @@ const validatePasswordField = (_rule: FormItemRule, value: unknown): boolean | E
   return result.valid ? true : new Error(t(getPasswordValidationMessageKey(result.code)))
 }
 
-const sexOptions = computed(() => [
-  { label: t('user.sex.male'), value: '0' as const },
-  { label: t('user.sex.female'), value: '1' as const },
-])
+const sexOptions = computed(() => toUserSexSelectOptions(props.sexOptions))
 
 const statusOptions = computed(() => [
   { label: t('user.status.enabled'), value: '1' as const },

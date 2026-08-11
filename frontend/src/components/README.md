@@ -48,8 +48,9 @@ const handleSubmit = async (model: FormModel): Promise<void> => {
 | `AppUpload`            | 标准文件上传          | [AppUpload/README.md](./AppUpload/README.md)                       |
 | `AppUpdatePrompt`      | 前端更新提示          | [AppUpdatePrompt/README.md](./AppUpdatePrompt/README.md)           |
 | `ContentLoading`       | 布局内容区 Loading    | [ContentLoading/README.md](./ContentLoading/README.md)             |
+| `DictTag`              | 字典值标签            | [DictTag/README.md](./DictTag/README.md)                           |
 | `GlobalLoading`        | 全屏导航 Loading      | [GlobalLoading/README.md](./GlobalLoading/README.md)               |
-| `MessageCenter`        | 消息中心列表展示      | [MessageCenter/README.md](./MessageCenter/README.md)              |
+| `MessageCenter`        | 消息中心列表展示      | [MessageCenter/README.md](./MessageCenter/README.md)               |
 | `RequestMessageBridge` | 请求错误 Message 桥接 | [RequestMessageBridge/README.md](./RequestMessageBridge/README.md) |
 | `RouterLoadingBar`     | 路由顶部进度条        | [RouterLoadingBar/README.md](./RouterLoadingBar/README.md)         |
 | `WatermarkOverlay`     | 登录用户水印          | [WatermarkOverlay/README.md](./WatermarkOverlay/README.md)         |

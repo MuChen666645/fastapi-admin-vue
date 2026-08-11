@@ -2,6 +2,7 @@ import type {
   DictDataCreatePayload,
   DictDataDetail,
   DictDataListFilters,
+  DictDataListItem,
   DictDataPage,
   DictDataUpdatePayload,
   DictTypeCreatePayload,
@@ -18,6 +19,7 @@ import { requestBlob, requestJson } from '@/utils/request'
 
 import {
   parseDictDataDetail,
+  parseDictDataItems,
   parseDictDataPage,
   parseDictTypeDetail,
   parseDictTypePage,
@@ -89,6 +91,19 @@ export const fetchDictDataList = (
 
 export const fetchDictDataDetail = (dictCode: number): Promise<DictDataDetail> =>
   requestJson(`/dict/data/${dictCode}`, {}, parseDictDataDetail)
+
+export const fetchDictDataByType = async (dictType: string): Promise<DictDataListItem[]> => {
+  const normalizedType = dictType.trim()
+  if (!normalizedType) {
+    throw new Error('字典类型编码不能为空')
+  }
+
+  return await requestJson(
+    `/dict/data/type/${encodeURIComponent(normalizedType)}`,
+    {},
+    parseDictDataItems,
+  )
+}
 
 export const createDictData = (payload: DictDataCreatePayload): Promise<null> =>
   requestJson('/dict/data/add', { method: 'POST', data: payload }, () => null)

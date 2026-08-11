@@ -40,6 +40,7 @@ src/
 │   └── index.ts
 ├── stores/modules/
 │   ├── auth.ts、tabs.ts、route-loading.ts、preferences.ts、layout-settings.ts
+│   ├── dictionary.ts
 │   └── index.ts
 ├── types/
 ├── utils/
@@ -124,6 +125,7 @@ src/
 | `POST` | `/message/read-all`            | 标记全部可见消息已读 |
 | `GET`  | `/message/list`                | 当前租户消息管理分页 |
 | `GET`  | `/message/{id}`                | 管理端消息详情       |
+| `GET`  | `/dict/data/type/{dict_type}`  | 当前租户可用字典数据 |
 | `POST` | `/message/add`                 | 发布消息并创建投递任务 |
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |
@@ -169,6 +171,7 @@ src/
 - `useAuthStore` 管理访问令牌、刷新令牌、当前用户、权限、后端路由和 `AuthStatus`。
 - auth Store 仅用 Pinia persisted state 的 `sessionStorage` 持久化 `refreshToken` 和 `rememberedUsername`。
 - `useTabsStore` 用 `sessionStorage` 持久化 `tabs`，负责增加、关闭当前/其他/全部标签页。
+- `useDictionaryStore` 按类型缓存业务字典数据并合并并发请求；缓存不持久化，空数组也视为命中，退出登录和字典管理写操作会使其失效。
 - `usePreferencesStore` 用 `localStorage` 持久化外观、通用和布局偏好；`useLayoutSettingsStore` 是兼容旧调用方的别名，默认固定布局并仅允许内容区内部滚动。
 - `meta.noCache === false` 表示页面可缓存。`useRouteCache` 使用 `RouteTab_<route-key>` 包装组件，避免不同路由实例共享 KeepAlive 名称。
 - `BasicLayout` 通过 `KeepAlive :include="cachedComponentNames"` 管理缓存；刷新当前标签会增加视图 key，保持标签列表但重新创建页面实例。

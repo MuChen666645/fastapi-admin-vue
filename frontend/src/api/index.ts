@@ -6,6 +6,7 @@ export {
   deleteDictData,
   deleteDictType,
   exportDictionary,
+  fetchDictDataByType,
   fetchDictDataDetail,
   fetchDictDataList,
   fetchDictTypeDetail,

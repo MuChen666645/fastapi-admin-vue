@@ -11,6 +11,7 @@ import {
   deleteDictData,
   deleteDictType,
   exportDictionary,
+  fetchDictDataByType,
   fetchDictDataDetail,
   fetchDictDataList,
   fetchDictTypeDetail,
@@ -20,6 +21,7 @@ import {
   updateDictType,
 } from '@/api/dictionary'
 import {
+  parseDictDataItems,
   parseDictDataPage,
   parseDictTypePage,
   parseDictionaryImportResult,
@@ -71,6 +73,13 @@ describe('字典 API', () => {
       { params: { page: 1, size: 50, dict_type: 'sys_user_sex' } },
       expect.any(Function),
     )
+  })
+
+  it('按类型查询登录用户可使用的字典数据', async () => {
+    await fetchDictDataByType(' sys_user_sex ')
+
+    expect(requestJson).toHaveBeenCalledWith('/dict/data/type/sys_user_sex', {}, parseDictDataItems)
+    await expect(fetchDictDataByType('  ')).rejects.toThrow('字典类型编码不能为空')
   })
 
   it('调用字典类型、字典数据 CRUD 以及导入导出接口', async () => {
@@ -148,6 +157,8 @@ describe('字典 API', () => {
     expect(
       parseDictDataPage({ items: [dictData], total: 1, page: 1, size: 20, pages: 1 }),
     ).toMatchObject({ items: [{ dict_code: 2 }] })
+    expect(parseDictDataItems([dictData])).toEqual([dictData])
+    expect(() => parseDictDataItems({ items: [dictData] })).toThrow('字典数据列表无效')
     expect(
       parseDictionaryImportResult({
         imported: 2,

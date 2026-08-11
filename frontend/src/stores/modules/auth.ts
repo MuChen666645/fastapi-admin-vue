@@ -13,6 +13,7 @@ import type {
 import { ApiError, configureAuthTransport, invalidateAuthSession } from '@/utils/request'
 import { loadApplicationRoutes } from '@/router/route-source'
 import { findFirstVisibleRouteName } from '@/router/route-utils'
+import { useDictionaryStore } from './dictionary'
 import { useMessageStore } from './message'
 import { useTabsStore } from './tabs'
 
@@ -51,6 +52,7 @@ export const useAuthStore = defineStore(
       invalidateAuthSession()
       useTabsStore().reset()
       useMessageStore().reset()
+      useDictionaryStore().clear()
       accessToken.value = null
       refreshToken.value = null
       mustChangePassword.value = false

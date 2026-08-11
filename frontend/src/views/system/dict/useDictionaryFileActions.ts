@@ -3,12 +3,8 @@ import { useMessage } from 'naive-ui'
 
 import { exportDictionary, importDictionary } from '@/api'
 import { useLocale } from '@/hooks'
-import type { DictionaryImportResult } from '@/types'
+import type { DictionaryFileActionsOptions, DictionaryImportResult } from '@/types'
 import { downloadBlob } from '@/utils'
-
-interface DictionaryFileActionsOptions {
-  refresh: () => Promise<unknown>
-}
 
 export const useDictionaryFileActions = (options: DictionaryFileActionsOptions) => {
   const { t } = useLocale()
@@ -57,6 +53,7 @@ export const useDictionaryFileActions = (options: DictionaryFileActionsOptions) 
     importLoading.value = true
     try {
       showImportResult(await importDictionary(file))
+      options.invalidateCache()
       await options.refresh()
     } finally {
       importLoading.value = false

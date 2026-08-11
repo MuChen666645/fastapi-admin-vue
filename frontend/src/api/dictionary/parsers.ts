@@ -89,6 +89,14 @@ export const parseDictDataPage = (value: unknown): PaginationResult<DictDataList
 
 export const parseDictDataDetail = (value: unknown): DictDataDetail => parseDictData(value)
 
+export const parseDictDataItems = (value: unknown): DictDataListItem[] => {
+  if (!Array.isArray(value)) {
+    throw new Error('字典数据列表无效')
+  }
+
+  return value.map(parseDictData)
+}
+
 export const parseDictionaryImportResult = (value: unknown): DictionaryImportResult => {
   if (!isRecord(value)) {
     throw new Error('字典导入结果无效')

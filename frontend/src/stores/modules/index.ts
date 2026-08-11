@@ -1,4 +1,5 @@
 export { useAuthStore } from './auth'
+export { useDictionaryStore } from './dictionary'
 export { useLayoutSettingsStore } from './layout-settings'
 export { useMessageStore } from './message'
 export { usePreferencesStore } from './preferences'

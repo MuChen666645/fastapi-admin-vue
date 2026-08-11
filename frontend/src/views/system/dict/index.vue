@@ -11,6 +11,7 @@ import {
   updateDictType,
 } from '@/api'
 import { useLocale, usePagination } from '@/hooks'
+import { useDictionaryStore } from '@/stores'
 import type {
   DictTypeCreatePayload,
   DictTypeDetail,
@@ -34,6 +35,7 @@ const { t } = useLocale()
 const dialog = useDialog()
 const message = useMessage()
 const router = useRouter()
+const dictionaryStore = useDictionaryStore()
 
 const createInitialFilters = (): DictTypeListFilters => ({ name: '', status: null })
 
@@ -56,7 +58,10 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailItem = ref<DictTypeDetail | null>(null)
 
-const fileActions = useDictionaryFileActions({ refresh: pagination.refresh })
+const fileActions = useDictionaryFileActions({
+  refresh: pagination.refresh,
+  invalidateCache: () => dictionaryStore.clear(),
+})
 const totalLabel = computed(() =>
   t('dict.total').replace('{count}', String(pagination.total.value)),
 )
@@ -144,6 +149,7 @@ const save = async (model: DictTypeFormModel): Promise<void> => {
       message.success(t('dict.type.form.updateSuccess'))
     }
 
+    dictionaryStore.clear()
     formVisible.value = false
     await pagination.refresh()
   } finally {
@@ -159,6 +165,7 @@ const confirmDelete = (item: DictTypeListItem): void => {
     negativeText: t('dict.form.cancel'),
     onPositiveClick: async () => {
       await deleteDictType(item.dict_id)
+      dictionaryStore.remove(item.dict_type)
       message.success(t('dict.type.form.deleteSuccess'))
       await pagination.refresh()
     },

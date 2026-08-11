@@ -67,6 +67,7 @@
 ## 当前状态事实
 
 - `auth` Store 管理 Token、当前用户、权限、后端路由和初始化状态；仅持久化刷新 Token 与记住的用户名。
+- `dictionary` Store 管理当前会话内的业务字典缓存，`useDict` 缓存优先加载，Vue 插件全局注册 `DictTag` 并注入 `$dict`/`useDict`；退出登录时清空缓存。
 - `tabs` Store 使用 `sessionStorage` 持久化标签页；`route-loading` Store 管理 `screen`/`content` 两种 Loading 范围，并保持最短可见时间。
 - `BasicLayout` 将内容区 Loading、标签页、面包屑、KeepAlive 和路由页面组合在一起。
 - Lottie 封装位于 `src/utils/lottie.ts` 和 `src/hooks/useLottie.ts`，动画组件使用 `src/assets/lottie/car-loading3-data.json`。

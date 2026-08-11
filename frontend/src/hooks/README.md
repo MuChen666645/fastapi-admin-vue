@@ -5,7 +5,15 @@
 ## 公共入口
 
 ```ts
-import { useAppUpdate, useECharts, useLocale, useLottie, useRouteCache, useTheme } from '@/hooks'
+import {
+  useAppUpdate,
+  useDict,
+  useECharts,
+  useLocale,
+  useLottie,
+  useRouteCache,
+  useTheme,
+} from '@/hooks'
 ```
 
 `useDocumentTitle` 通常只在 `App.vue` 调用；`useRouteCache` 只在 `BasicLayout` 使用。纯函数不放在 hooks 中，图标解析已迁移到 [工具包](../utils/README.md)。
@@ -15,6 +23,7 @@ import { useAppUpdate, useECharts, useLocale, useLottie, useRouteCache, useTheme
 | Hook               | 参数                                              | 返回值                                                   | 适用场景                           |
 | ------------------ | ------------------------------------------------- | -------------------------------------------------------- | ---------------------------------- |
 | `useDocumentTitle` | 无                                                | `void`                                                   | 监听路由和语言，更新浏览器标题。   |
+| `useDict`          | 一个或多个字典类型编码                            | 与类型编码同名的字典 Ref                                 | 缓存优先加载业务字典数据。         |
 | `useAppUpdate`     | 可选启用 Ref、检查间隔和立即检查配置              | 更新状态、检查、启停和刷新方法                           | 轮询构建版本清单并协调整页刷新。   |
 | `useECharts`       | `Ref<HTMLElement \| null>`、`() => EChartsOption` | `renderChart`                                            | 初始化、更新和销毁 ECharts。       |
 | `useLocale`        | 无                                                | `language`、`t`                                          | 读取界面语言和类型安全的词典文案。 |
@@ -41,6 +50,16 @@ const canPublishAndEdit = hasAllPermissions(['system:message:add', 'system:messa
 ```ts
 const canCreate = computed(() => hasPermission('system:message:add'))
 ```
+
+## useDict
+
+`useDict` 在组件挂载后从字典 Store 读取指定类型。Store 已缓存该类型（包括空数组）时直接复用；未命中时调用 `GET /dict/data/type/{dict_type}`，同一类型的并发请求会合并。
+
+```ts
+const { sys_user_sex, sys_normal_disable } = useDict('sys_user_sex', 'sys_normal_disable')
+```
+
+返回对象的 key 与类型编码一致，值是只读 `ComputedRef`，可直接传给全局 `DictTag`。插件同时将 `useDict` 和 `$dict` 注入 Vue；Composition API 代码优先从 `@/hooks` 显式导入，手动读取、刷新或清除缓存时使用 `$dict` 服务。字典缓存不持久化，退出登录时清空，避免跨用户或租户复用。
 
 ## usePagination
 

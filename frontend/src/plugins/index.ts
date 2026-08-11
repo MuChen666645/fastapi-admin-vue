@@ -1,0 +1,1 @@
+export { createDictionaryPlugin } from './dictionary'

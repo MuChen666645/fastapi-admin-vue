@@ -1,5 +1,6 @@
 export {
   useAuthStore,
+  useDictionaryStore,
   useLayoutSettingsStore,
   useMessageStore,
   usePreferencesStore,

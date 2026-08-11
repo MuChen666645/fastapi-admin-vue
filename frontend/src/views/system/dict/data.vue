@@ -12,6 +12,7 @@ import {
   updateDictData,
 } from '@/api'
 import { useLocale, usePagination } from '@/hooks'
+import { useDictionaryStore } from '@/stores'
 import type {
   DictDataCreatePayload,
   DictDataDetail,
@@ -35,6 +36,7 @@ const { t } = useLocale()
 const dialog = useDialog()
 const message = useMessage()
 const route = useRoute()
+const dictionaryStore = useDictionaryStore()
 
 const getDictTypeQuery = (value: LocationQueryValue | LocationQueryValue[] | undefined) =>
   typeof value === 'string' && value.trim() ? value.trim() : null
@@ -194,6 +196,7 @@ const save = async (model: DictDataFormModel): Promise<void> => {
       message.success(t('dict.data.form.updateSuccess'))
     }
 
+    dictionaryStore.clear()
     formVisible.value = false
     await refreshData()
   } finally {
@@ -209,6 +212,7 @@ const confirmDelete = (item: DictDataListItem): void => {
     negativeText: t('dict.form.cancel'),
     onPositiveClick: async () => {
       await deleteDictData(item.dict_code)
+      dictionaryStore.remove(item.dict_type)
       message.success(t('dict.data.form.deleteSuccess'))
       await refreshData()
     },

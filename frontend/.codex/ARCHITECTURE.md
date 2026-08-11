@@ -44,6 +44,7 @@ main.ts
 | `src/router/route-utils.ts`           | 后端路由校验后的组件解析、容器重定向和 RouteRecord 转换            |
 | `src/router/route-source.ts`          | 统一从后端获取用户路由                                             |
 | `src/stores/modules/auth.ts`          | Token、用户、权限、路由和会话状态                                  |
+| `src/stores/modules/dictionary.ts`    | 按类型缓存业务字典、合并并发回源并管理失效                          |
 | `src/stores/modules/tabs.ts`          | 标签页列表和缓存标签名                                             |
 | `src/stores/modules/route-loading.ts` | 全屏/内容区 Loading 状态和最短显示时间                             |
 | `src/stores/modules/preferences.ts` | 外观、布局、通用偏好和 `localStorage` 持久化                   |
@@ -51,6 +52,7 @@ main.ts
 | `src/hooks`                           | Lottie、主题、语言、ECharts、路由缓存和版本检查等依赖上下文的可复用行为 |
 | `src/utils/index.ts`                  | 无生命周期的公共工具包入口：图标、本地化、主题选项、Lottie 和 Moment 日期函数 |
 | `src/components`                      | 全局 Loading、请求 Message 桥、路由进度条、面包屑、上传和更新提示等跨页面组件 |
+| `src/plugins/dictionary.ts`           | 注册全局 DictTag，并向 Vue 注入 useDict 和 $dict 缓存服务           |
 | `src/layouts/BasicLayout`             | 侧边栏、头部、标签页、内容区、ContentLoading、KeepAlive 和页脚     |
 | `src/views`                           | 语义化路由级页面；页面私有业务组件放在对应页面的 `components/`     |
 | `src/types`                           | API DTO、路由、Store、传输、页面和测试类型；所有类型声明的唯一归属 |
@@ -74,12 +76,21 @@ main.ts
     -> 公共组件
     -> Hooks / Pinia Store
     -> @/api
-
 公共组件 -> Hooks / Utils
 Hooks     -> Utils / Pinia / Router
 API parser -> Utils guards
 Utils     -/-> 页面、组件、Router 实例和领域 Store
 ```
+
+业务字典的数据流为：
+
+```text
+页面 -> useDict -> useDictionaryStore
+                       -> 缓存命中：直接返回
+                       -> 缓存未命中：@/api/dictionary -> GET /dict/data/type/{dict_type}
+```
+
+字典 Store 缓存空数组并合并同一类型的并发请求；缓存只存在于当前前端会话内，退出登录或字典管理写入后清理，不能跨租户复用。
 
 组件、Hook 和工具的公开合同必须同时由源码、`src/types/` 类型、所属 README 和测试表达。组件 README 记录 Props、Emits、Slots、暴露方法、校验与状态；Hook README 记录依赖上下文、返回值和清理行为；工具 README 记录公共入口、副作用边界、失败处理和安全限制。
 

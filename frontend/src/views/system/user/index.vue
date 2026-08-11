@@ -14,7 +14,7 @@ import {
   resetUserPassword,
   updateUser,
 } from '@/api'
-import { useLocale, usePagination } from '@/hooks'
+import { useDict, useLocale, usePagination } from '@/hooks'
 import type {
   DepartmentOption,
   PostOption,
@@ -66,6 +66,8 @@ const createInitialFormModel = (): UserFormModel => ({
 const createInitialPasswordModel = (): UserResetPasswordModel => ({ password: '' })
 
 const { t } = useLocale()
+const dictionaries = useDict('sys_user_sex')
+const sexOptions = computed(() => dictionaries.sys_user_sex?.value ?? [])
 const dialog = useDialog()
 const message = useMessage()
 
@@ -392,6 +394,7 @@ onMounted(() => {
         :data="pagination.data.value"
         :loading="pagination.loading.value"
         :department-names="departmentNames"
+        :sex-options="sexOptions"
         :selected-row-keys="selectedUserIds"
         @detail="openDetail"
         @edit="openEdit"
@@ -420,6 +423,7 @@ onMounted(() => {
       :departments="departments"
       :posts="posts"
       :roles="roles"
+      :sex-options="sexOptions"
       @submit="saveUser"
       @reset="resetForm"
     />

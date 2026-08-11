@@ -1,4 +1,5 @@
 export { useDocumentTitle } from './useDocumentTitle'
+export { useDict } from './useDict'
 export { useECharts } from './useECharts'
 export { useAppUpdate } from './useAppUpdate'
 export { useLottie } from './useLottie'
