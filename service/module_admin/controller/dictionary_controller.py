@@ -160,6 +160,23 @@ class DictionaryController:
         return await DictionaryService.list_data(request, dict_type, status, params)
 
     @dictionary.get(
+        "/data/type/{dict_type}",
+        summary="按类型查询可用字典数据",
+        dependencies=[Depends(Auth.login_status)],
+        responses={200: {"model": ApiResponseDto[list[DictDataDto]]}},
+    )
+    async def list_usable_data(
+        request: Request,
+        dict_type: str = Path(
+            min_length=1,
+            max_length=100,
+            description="字典类型编码",
+        ),
+    ):
+        """返回当前租户中可用于业务展示的启用字典数据。"""
+        return await DictionaryService.list_usable_data(dict_type, request)
+
+    @dictionary.get(
         "/data/{dict_code}",
         summary="查询字典数据详情",
         dependencies=permission("system:dict:query"),

@@ -84,6 +84,7 @@ static/                  应用静态资源
 - JSON 响应通常由 `ResponseInterceptor` 包装为 `code`、`message`、`data`；需要返回文件、流、HTML 或原始 JSON 时，使用现有的跳过包装机制。
 - API 字段和参数名必须与 DTO 保持一致。模型字段使用 `Field(title=...)`，查询、路径和文件参数使用 `description=...`，路由提供明确的 `summary`。
 - 分页使用 `fastapi-pagination`，不要自行发明分页字段；以现有 `Page` 响应结构和测试断言为准。
+- 业务页面通过 `GET /api/v1/dict/data/type/{dict_type}` 读取当前租户中启用类型下的启用字典数据；该接口只要求 `Auth.login_status`，不要求字典管理权限，空结果返回空数组。
 
 ## 前后端协作契约
 

@@ -3,6 +3,7 @@
 from fastapi import Request
 from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlmodel import paginate
+from sqlalchemy import and_
 from sqlmodel import select
 
 from module_admin.dao.tenant_scope import require_tenant_id, tenant_clause
@@ -116,6 +117,30 @@ class DictionaryDao:
         if status is not None:
             query = query.where(DictDataDo.status == status)
         return await paginate(request.state.mysql, query, params=params)
+
+    @staticmethod
+    async def list_usable_data(dict_type: str, request: Request):
+        """查询当前租户下启用类型中的启用字典数据。"""
+        query = (
+            select(DictDataDo)
+            .join(
+                DictTypeDo,
+                and_(
+                    DictTypeDo.dict_type == DictDataDo.dict_type,
+                    DictTypeDo.tenant_id == DictDataDo.tenant_id,
+                ),
+            )
+            .where(
+                DictDataDo.dict_type == dict_type,
+                DictDataDo.status == "1",
+                DictTypeDo.status == "1",
+                DictionaryDao._tenant_filter(DictDataDo, request),
+                DictionaryDao._tenant_filter(DictTypeDo, request),
+            )
+            .order_by(DictDataDo.dict_sort, DictDataDo.dict_code)
+        )
+        result = await request.state.mysql.execute(query)
+        return result.scalars().all()
 
     @staticmethod
     async def create_data(data, request: Request):

@@ -55,6 +55,11 @@ class DictionaryService:
         return await DictionaryDao.list_data(request, dict_type, status, params)
 
     @staticmethod
+    async def list_usable_data(dict_type: str, request: Request):
+        """返回当前租户下指定类型的启用字典数据。"""
+        return await DictionaryDao.list_usable_data(dict_type, request)
+
+    @staticmethod
     async def data_detail(dict_code: int, request: Request):
         """返回一条字典数据，不存在时抛出 404 异常。"""
         item = await DictionaryDao.get_by_id(DictDataDo, dict_code, request)
