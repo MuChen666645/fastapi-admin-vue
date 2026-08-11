@@ -137,6 +137,10 @@ src/
 | `POST` | `/post/add`                   | 新增岗位 |
 | `PUT`  | `/post/{post_id}`             | 修改岗位 |
 | `DELETE` | `/post/{post_id}`           | 删除未分配用户的岗位 |
+| `GET`  | `/log/login/list`             | 按用户名、状态和时间范围分页查询登录日志 |
+| `GET`  | `/log/operation/list`         | 按用户名、路径和时间范围分页查询操作日志 |
+| `GET`  | `/log/exception/list`         | 按用户名、路径和时间范围分页查询异常日志 |
+| `DELETE` | `/log/{log_type}/batch`     | 按 `login`、`operation` 或 `exception` 批量删除日志 |
 | `POST` | `/message/add`                 | 发布消息并创建投递任务 |
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |
@@ -162,6 +166,7 @@ src/
 - `/system/message` 来自后端消息中心菜单的动态路由，组件路径必须解析到 `src/views/system/message/index.vue`；页面包含当前用户收件箱和具有 `system:message:list` 权限时的租户消息管理模式。
 - `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。
 - `/system/post` 来自后端岗位管理菜单，组件路径解析到 `src/views/system/post/index.vue`；页面使用岗位分页、详情和 CRUD 接口，并按 `system:post:list/query/add/edit/remove` 控制操作入口。
+- `/monitor/log` 来自后端日志管理菜单，组件路径解析到 `src/views/monitor/log/index.vue`；页面按 `monitor:login:list`、`monitor:operation:list`、`monitor:exception:list` 分别加载三类日志，批量删除使用 `monitor:log:remove`。
 - `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。
 - `/demo/features/form` 是认证后的表单组件演示页，菜单层级为 `demo -> features -> form`，用于展示通用 `AppForm` 的布局、自定义字段、标准校验、动态分组和规范提交；它不调用后端业务接口。
 - `/demo/features/search-form` 是认证后的搜索表单组件演示页，菜单层级为 `demo -> features -> search-form`，用于展示通用 `AppSearchForm` 的搜索布局、条件折叠、自定义字段、回车策略、重置和查询状态；它不调用后端业务接口。

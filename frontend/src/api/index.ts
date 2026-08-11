@@ -42,6 +42,7 @@ export {
   markMessageRead,
   updateMessage,
 } from './message'
+export { deleteLogs, fetchLogList } from './log'
 export {
   batchDeleteUsers,
   batchUpdateUserStatus,

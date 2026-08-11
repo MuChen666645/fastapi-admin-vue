@@ -127,6 +127,24 @@ export type {
   MyMessageQuery,
 } from './message'
 export type {
+  BatchLogIdsPayload,
+  ExceptionLogItem,
+  LogActionPermissions,
+  LogBatchActionsProps,
+  LogDetailModalProps,
+  LogListFilters,
+  LogListItem,
+  LogListQuery,
+  LogPage,
+  LogPageHeaderProps,
+  LogSearchPanelProps,
+  LogStatus,
+  LogType,
+  LoginLogItem,
+  OperationLogItem,
+  LogTableProps,
+} from './log'
+export type {
   DepartmentActionPermissions,
   DepartmentCascaderOption,
   DepartmentCreatePayload,
