@@ -5,7 +5,9 @@ import anyio
 import pytest
 
 from module_admin.dao.log_dao import LogDao
+from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.log_do import LoginLogDo
+from module_admin.entity.do.menu_do import MenuDo
 from module_admin.service.user_service import UserService
 
 
@@ -242,6 +244,143 @@ def test_user_route_tree_uses_frontend_route_shape() -> None:
             ],
         }
     ]
+
+
+def test_user_route_tree_is_independent_of_menu_input_order() -> None:
+    class Menu:
+        def __init__(self, **kwargs):
+            self.data = kwargs
+
+        def model_dump(self):
+            return self.data
+
+    routes = UserService._build_route_tree(
+        [
+            Menu(
+                menu_id=3,
+                parent_id=2,
+                menu_name="detail",
+                menu_path="detail",
+                component="system/user/detail",
+                icon=None,
+                is_hidden="0",
+                is_cache="1",
+                link_url=None,
+                menu_type="C",
+            ),
+            Menu(
+                menu_id=1,
+                parent_id=None,
+                menu_name="system",
+                menu_path="/system",
+                component="Layout",
+                icon=None,
+                is_hidden="0",
+                is_cache="0",
+                link_url=None,
+                menu_type="C",
+            ),
+            Menu(
+                menu_id=2,
+                parent_id=1,
+                menu_name="user",
+                menu_path="user",
+                component="system/user/index",
+                icon=None,
+                is_hidden="0",
+                is_cache="1",
+                link_url=None,
+                menu_type="C",
+            ),
+        ]
+    )
+
+    assert routes[0]["path"] == "/system"
+    assert routes[0]["children"][0]["path"] == "user"
+    assert routes[0]["children"][0]["children"][0]["path"] == "detail"
+
+
+def test_user_route_menus_include_enabled_ancestors(monkeypatch) -> None:
+    class ScalarResult:
+        def __init__(self, values):
+            self.values = values
+
+        def all(self):
+            return self.values
+
+    class Result:
+        def __init__(self, values):
+            self.values = values
+
+        def scalars(self):
+            return ScalarResult(self.values)
+
+    class Session:
+        def __init__(self):
+            self.responses = [
+                [
+                    MenuDo(
+                        menu_id=4,
+                        parent_id=3,
+                        menu_name="user list",
+                        menu_type="F",
+                        sort=1,
+                    )
+                ],
+                [
+                    MenuDo(
+                        menu_id=3,
+                        parent_id=2,
+                        menu_name="user",
+                        menu_path="user",
+                        component="system/user/index",
+                        sort=3,
+                    )
+                ],
+                [
+                    MenuDo(
+                        menu_id=2,
+                        parent_id=1,
+                        menu_name="system",
+                        menu_path="system",
+                        component=None,
+                        sort=2,
+                    )
+                ],
+                [
+                    MenuDo(
+                        menu_id=1,
+                        parent_id=None,
+                        menu_name="root",
+                        menu_path="/",
+                        component="Layout",
+                        sort=1,
+                    )
+                ],
+            ]
+
+        async def execute(self, _statement):
+            return Result(self.responses.pop(0))
+
+    async def get_user_by_id(_user_id, _request):
+        return SimpleNamespace(id=7)
+
+    async def get_user_roles(_user_id, _request):
+        return [SimpleNamespace(id=8, code="operator")]
+
+    async def run():
+        monkeypatch.setattr(UserDao, "get_user_by_id", get_user_by_id)
+        monkeypatch.setattr(UserDao, "get_user_roles", get_user_roles)
+        request = SimpleNamespace(state=SimpleNamespace(mysql=Session()))
+
+        menus = await UserDao.get_user_route_menus(7, request)
+        routes = UserService._build_route_tree(menus)
+
+        assert [menu.menu_id for menu in menus] == [1, 2, 3]
+        assert all(menu.menu_type != "F" for menu in menus)
+        assert routes[0]["children"][0]["children"][0]["path"] == "user"
+
+    anyio.run(run)
 
 
 def test_user_route_preserves_external_menu_type() -> None:

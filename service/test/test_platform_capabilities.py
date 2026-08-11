@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from config.env import settings
 from main import create_app
 from module_admin.entity.do.export_do import ExportTaskDo
-from module_admin.entity.dto.role_dto import CreateRoleDto
+from module_admin.entity.dto.role_dto import CreateRoleDto, RoleDetailDto, UpdataRoleDto
 from module_admin.service.export_service import ExportService
 from module_admin.service.secret_manager import SecretManager
 from module_admin.service.task_queue import TaskQueue
@@ -31,6 +31,15 @@ class HeartbeatRedis:
 def test_create_role_dto_requires_name_and_code() -> None:
     with pytest.raises(ValidationError):
         CreateRoleDto()
+
+
+def test_role_contract_uses_menu_and_department_associations() -> None:
+    assert "field_permission_codes" not in CreateRoleDto.model_fields
+    assert "field_permission_codes" not in UpdataRoleDto.model_fields
+    assert "field_permission_codes" not in RoleDetailDto.model_fields
+    assert {"menu_ids", "dept_ids"}.issubset(CreateRoleDto.model_fields)
+    assert {"menu_ids", "dept_ids"}.issubset(UpdataRoleDto.model_fields)
+    assert {"menu_ids", "dept_ids"}.issubset(RoleDetailDto.model_fields)
 
 
 def test_secret_manager_rotates_versioned_fernet_keys() -> None:

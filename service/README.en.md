@@ -625,7 +625,7 @@ When one IP reaches `LOGIN_MAX_FAILED_ATTEMPTS` consecutive password failures wi
 - Tenant members can switch tenant context through `/api/v1/tenant/switch`; missing tenant context fails closed for protected business queries.
 - Mutating requests may send `Idempotency-Key`; batch user and role changes write before/after snapshots and request transactions roll back on failure.
 - Startup synchronizes routes using `Auth.has_permission(...)` into `api_permission_catalog`.
-- Field permissions use `field:<resource>:<field>` and are bound through the role DTO's `field_permission_codes`. Sensitive user fields are hidden when the actor lacks the field permission.
+- Field permissions use `field:<resource>:<field>` and are checked through the separate `role_permission` association; the role module binds menu and button permissions through `menu_ids` and custom data scopes through `dept_ids`. Sensitive user fields are hidden when the actor lacks the field permission.
 - Role and menu permission changes are recorded in `permission_change_versions` with actor, version, and before/after snapshots.
 
 ### Files, messages, and operations

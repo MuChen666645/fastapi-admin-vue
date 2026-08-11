@@ -105,13 +105,23 @@ class UserService:
         """把扁平菜单列表组装成前端需要的路由树。"""
         routes = [UserService._menu_to_route(menu.model_dump()) for menu in menus]
         route_map = {route["id"]: route for route in routes}
+
         tree = []
         for route in routes:
-            parent = route_map.get(route.get("parent_id"))
-            if parent is None or route.get("parent_id") == route.get("id"):
+            parent_id = route.get("parent_id")
+            if (
+                parent_id in (None, 0)
+                or parent_id == route.get("id")
+                or parent_id not in route_map
+            ):
                 tree.append(route)
-            else:
+
+        for route in routes:
+            parent_id = route.get("parent_id")
+            parent = route_map.get(parent_id)
+            if parent is not None and parent_id not in (None, 0, route.get("id")):
                 parent["children"].append(route)
+
         for route in routes:
             route.pop("id", None)
             route.pop("parent_id", None)

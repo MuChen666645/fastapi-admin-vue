@@ -111,8 +111,7 @@ class RoleService:
             request,
             permission_change=bool(roles.menu_ids)
             or roles.data_scope != "5"
-            or bool(roles.dept_ids)
-            or bool(roles.field_permission_codes),
+            or bool(roles.dept_ids),
         )
         try:
             role = await RoleDao.create_role_by_role_name(roles, request)
@@ -262,8 +261,7 @@ class RoleService:
             [role_id],
             permission_change=roles.menu_ids is not None
             or roles.data_scope is not None
-            or roles.dept_ids is not None
-            or roles.field_permission_codes is not None,
+            or roles.dept_ids is not None,
         )
         try:
             role = await RoleDao.upd_role_by_id(roles, request, role_id)

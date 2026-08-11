@@ -14,13 +14,7 @@ from module_admin.dao.tenant_scope import (
 )
 from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.organization_do import DepartmentDo
-from module_admin.entity.do.permission_do import PermissionDo
-from module_admin.entity.do.role_do import (
-    RoleDeptDo,
-    RoleDo,
-    RoleMenuDo,
-    RolePermissionDo,
-)
+from module_admin.entity.do.role_do import RoleDeptDo, RoleDo, RoleMenuDo
 from module_admin.entity.dto.role_dto import CreateRoleDto, RoleListDto, UpdataRoleDto
 from utils.time_utils import now_utc8_naive
 
@@ -87,50 +81,6 @@ class RoleDao:
         return unique_menu_ids
 
     @staticmethod
-    async def _validate_field_permission_codes(
-        mysql, permission_codes: list[str]
-    ) -> list[str]:
-        """只允许绑定字段权限目录，避免角色关联任意 API 权限。"""
-        unique_codes = list(dict.fromkeys(permission_codes))
-        if not unique_codes:
-            return []
-        invalid_codes = [code for code in unique_codes if not code.startswith("field:")]
-        if invalid_codes:
-            raise ValueError(f"Invalid field permission codes: {invalid_codes}")
-        result = await mysql.execute(
-            select(PermissionDo.id, PermissionDo.code).where(
-                PermissionDo.code.in_(unique_codes),
-                PermissionDo.permission_type == "field",
-                PermissionDo.status == "1",
-            )
-        )
-        existing = {code: permission_id for permission_id, code in result.all()}
-        missing = [code for code in unique_codes if code not in existing]
-        if missing:
-            raise ValueError(f"Field permissions do not exist: {missing}")
-        return unique_codes
-
-    @staticmethod
-    async def _replace_field_permissions(
-        mysql, role_id: int, permission_codes: list[str]
-    ) -> None:
-        codes = await RoleDao._validate_field_permission_codes(mysql, permission_codes)
-        await mysql.execute(
-            delete(RolePermissionDo).where(RolePermissionDo.role_id == role_id)
-        )
-        if not codes:
-            return
-        result = await mysql.execute(
-            select(PermissionDo.id).where(PermissionDo.code.in_(codes))
-        )
-        mysql.add_all(
-            [
-                RolePermissionDo(role_id=role_id, permission_id=permission_id)
-                for permission_id in result.scalars().all()
-            ]
-        )
-
-    @staticmethod
     async def _ensure_role_code_available(
         mysql, code: str, role_id: int | None = None
     ) -> None:
@@ -159,9 +109,7 @@ class RoleDao:
             RoleDo: 角色对象.
         """
         mysql = request.state.mysql
-        role_data = roles.model_dump(
-            exclude={"menu_ids", "dept_ids", "field_permission_codes"}
-        )
+        role_data = roles.model_dump(exclude={"menu_ids", "dept_ids"})
         role_data.setdefault(
             "tenant_id",
             require_tenant_id(request),
@@ -178,9 +126,6 @@ class RoleDao:
         )
         mysql.add_all(
             [RoleDeptDo(role_id=role.id, dept_id=dept_id) for dept_id in dept_ids]
-        )
-        await RoleDao._replace_field_permissions(
-            mysql, role.id, roles.field_permission_codes
         )
         return role
 
@@ -216,20 +161,10 @@ class RoleDao:
             .where(RoleDeptDo.role_id == role_id)
             .order_by(RoleDeptDo.dept_id)
         )
-        permission_result = await mysql.execute(
-            select(PermissionDo.code)
-            .join(RolePermissionDo, RolePermissionDo.permission_id == PermissionDo.id)
-            .where(
-                RolePermissionDo.role_id == role_id,
-                PermissionDo.permission_type == "field",
-            )
-            .order_by(PermissionDo.code)
-        )
         return {
             **role.model_dump(),
             "menu_ids": list(result.scalars().all()),
             "dept_ids": list(dept_result.scalars().all()),
-            "field_permission_codes": list(permission_result.scalars().all()),
         }
 
     @staticmethod
@@ -362,7 +297,6 @@ class RoleDao:
         expected_version = role_data.pop("version", None)
         menu_ids = role_data.pop("menu_ids", None)
         dept_ids = role_data.pop("dept_ids", None)
-        field_permission_codes = role_data.pop("field_permission_codes", None)
         if roles.code is not None:
             await RoleDao._ensure_role_code_available(mysql, roles.code, role_id)
         if role_data.get("data_scope") is None:
@@ -385,10 +319,6 @@ class RoleDao:
             )
         elif role_data.get("data_scope") not in (None, "2"):
             await mysql.execute(delete(RoleDeptDo).where(RoleDeptDo.role_id == role_id))
-        if field_permission_codes is not None:
-            await RoleDao._replace_field_permissions(
-                mysql, role_id, field_permission_codes
-            )
         if expected_version is not None and role_db.version != expected_version:
             raise RoleVersionConflictError("角色版本已过期")
         role_data["version"] = RoleDo.version + 1

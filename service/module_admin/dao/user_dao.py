@@ -490,12 +490,14 @@ class UserDao:
             select(MenuDo)
             .where(
                 MenuDo.status == "1",
-                MenuDo.menu_type != "F",
                 tenant_clause(request, MenuDo),
             )
             .order_by(MenuDo.sort, MenuDo.menu_id)
         )
-        if not any(role.code == settings.ADMIN_ROLE_CODE for role in roles):
+        is_admin = any(role.code == settings.ADMIN_ROLE_CODE for role in roles)
+        if is_admin:
+            menu_query = menu_query.where(MenuDo.menu_type != "F")
+        else:
             role_ids = [role.id for role in roles]
             if not role_ids:
                 return []
@@ -504,7 +506,53 @@ class UserDao:
             ).where(RoleMenuDo.role_id.in_(role_ids))
 
         result = await mysql.execute(menu_query)
-        return list({menu.menu_id: menu for menu in result.scalars().all()}.values())
+        menus = list({menu.menu_id: menu for menu in result.scalars().all()}.values())
+        if is_admin:
+            return menus
+
+        menu_map = {
+            menu.menu_id: menu for menu in menus if menu.menu_type != "F"
+        }
+        pending_parent_ids = {
+            menu.parent_id
+            for menu in menus
+            if menu.parent_id is not None and menu.parent_id != menu.menu_id
+        }
+        while pending_parent_ids:
+            parent_ids = sorted(pending_parent_ids - menu_map.keys())
+            if not parent_ids:
+                break
+
+            ancestor_result = await mysql.execute(
+                select(MenuDo)
+                .where(
+                    MenuDo.menu_id.in_(parent_ids),
+                    MenuDo.status == "1",
+                    MenuDo.menu_type != "F",
+                    tenant_clause(request, MenuDo),
+                )
+                .order_by(MenuDo.sort, MenuDo.menu_id)
+            )
+            ancestors = ancestor_result.scalars().all()
+            if not ancestors:
+                break
+
+            for ancestor in ancestors:
+                menu_map.setdefault(ancestor.menu_id, ancestor)
+            pending_parent_ids = {
+                menu.parent_id
+                for menu in ancestors
+                if menu.parent_id is not None and menu.parent_id != menu.menu_id
+            }
+
+        return sorted(
+            menu_map.values(),
+            key=lambda menu: (
+                menu.sort is not None,
+                menu.sort or 0,
+                menu.menu_id,
+            ),
+        )
 
     @staticmethod
     async def update_user_by_id(

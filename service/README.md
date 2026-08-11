@@ -635,7 +635,7 @@ Authorization: Bearer <access_token>
 
 - 用户、角色、菜单、部门、岗位、字典、通知、文件、任务、配置和日志记录带有 `tenant_id`，查询和写入会按当前租户隔离。
 - 应用启动时自动同步带有 `Auth.has_permission(...)` 的路由到 `api_permission_catalog`。
-- 字段权限编码格式为 `field:<resource>:<field>`，通过角色 DTO 的 `field_permission_codes` 绑定；没有字段权限时，用户敏感字段会被隐藏。
+- 字段权限编码格式为 `field:<resource>:<field>`，由独立的 `role_permission` 关联表校验；角色模块通过 `menu_ids` 绑定菜单/按钮权限，通过 `dept_ids` 绑定自定义数据范围。没有字段权限时，用户敏感字段会被隐藏。
 - 角色和菜单权限变更写入 `permission_change_versions`，保存操作者、版本号以及变更前后快照。
 - 支持租户成员关系、租户切换、软删除和乐观锁；写入租户上下文缺失时默认拒绝。
 - 写请求支持 `Idempotency-Key`，批量用户/角色操作记录前后快照，业务异常会回滚事务。
