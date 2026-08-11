@@ -126,6 +126,11 @@ src/
 | `GET`  | `/message/list`                | 当前租户消息管理分页 |
 | `GET`  | `/message/{id}`                | 管理端消息详情       |
 | `GET`  | `/dict/data/type/{dict_type}`  | 当前租户可用字典数据 |
+| `GET`  | `/dept/list`                  | 按名称和状态查询当前数据范围内的部门树 |
+| `GET`  | `/dept/{dept_id}`             | 查询部门详情 |
+| `POST` | `/dept/add`                   | 新增部门 |
+| `PUT`  | `/dept/{dept_id}`             | 修改部门及其层级关系 |
+| `DELETE` | `/dept/{dept_id}`           | 删除无子部门且未分配用户的部门 |
 | `POST` | `/message/add`                 | 发布消息并创建投递任务 |
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |

@@ -1,5 +1,13 @@
 export { changeCurrentPassword, fetchCaptcha, login, logout, refreshTokens } from './auth'
-export { fetchDepartmentOptions, fetchPostOptions } from './organization'
+export {
+  createDepartment,
+  deleteDepartment,
+  fetchDepartmentDetail,
+  fetchDepartmentList,
+  fetchDepartmentOptions,
+  fetchPostOptions,
+  updateDepartment,
+} from './organization'
 export {
   createDictData,
   createDictType,

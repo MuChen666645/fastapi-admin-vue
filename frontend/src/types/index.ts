@@ -127,8 +127,23 @@ export type {
   MyMessageQuery,
 } from './message'
 export type {
+  DepartmentActionPermissions,
   DepartmentCascaderOption,
+  DepartmentCreatePayload,
+  DepartmentDetail,
+  DepartmentDetailModalProps,
+  DepartmentFormMode,
+  DepartmentFormModalProps,
+  DepartmentFormModel,
+  DepartmentListFilters,
+  DepartmentListItem,
   DepartmentOption,
+  DepartmentParentTreeOption,
+  DepartmentPageHeaderProps,
+  DepartmentSearchPanelProps,
+  DepartmentStatus,
+  DepartmentTableProps,
+  DepartmentUpdatePayload,
   PostOption,
   PostPage,
 } from './organization'
