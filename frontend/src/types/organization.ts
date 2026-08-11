@@ -1,4 +1,4 @@
-import type { PaginationResult } from './pagination'
+import type { PaginationRequest, PaginationResult } from './pagination'
 
 export type DepartmentStatus = '0' | '1'
 
@@ -118,7 +118,87 @@ export interface PostOption {
   post_id: number
   post_code: string
   post_name: string
-  status: DepartmentStatus
+  status: PostStatus
 }
 
-export type PostPage = PaginationResult<PostOption>
+export type PostStatus = DepartmentStatus
+
+export type PostFormMode = 'create' | 'edit'
+
+export interface PostListItem extends PostOption {
+  post_sort: number
+  remark: string | null
+  create_time: string
+  update_time: string
+}
+
+export type PostDetail = PostListItem
+
+export interface PostListFilters {
+  [key: string]: unknown
+  name: string
+  status: PostStatus | null
+}
+
+export type PostListQuery = PaginationRequest
+
+export interface PostCreatePayload {
+  post_code: string
+  post_name: string
+  post_sort: number
+  remark: string | null
+  status: PostStatus
+}
+
+export type PostUpdatePayload = PostCreatePayload
+
+export type PostFormModel = Record<string, unknown> & {
+  post_code: string
+  post_name: string
+  post_sort: number
+  remark: string
+  status: PostStatus
+}
+
+export interface PostActionPermissions {
+  list: boolean
+  query: boolean
+  create: boolean
+  edit: boolean
+  remove: boolean
+}
+
+export interface PostPageHeaderProps {
+  title: string
+  description: string
+  total: string
+  refreshLoading: boolean
+  permissions: PostActionPermissions
+}
+
+export interface PostSearchPanelProps {
+  model: PostListFilters
+  initialValues: PostListFilters
+  loading: boolean
+}
+
+export interface PostTableProps {
+  data: PostListItem[]
+  loading: boolean
+  permissions: PostActionPermissions
+}
+
+export interface PostDetailModalProps {
+  show: boolean
+  loading: boolean
+  item: PostDetail | null
+}
+
+export interface PostFormModalProps {
+  show: boolean
+  mode: PostFormMode
+  model: PostFormModel
+  loading: boolean
+}
+
+export type PostPage = PaginationResult<PostListItem>

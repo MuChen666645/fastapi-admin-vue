@@ -4,6 +4,8 @@ import type {
   DepartmentOption,
   DepartmentStatus,
   PaginationResult,
+  PostDetail,
+  PostListItem,
   PostOption,
 } from '@/types'
 import { isRecord, readString, requireNumber, requireString } from '@/utils/guards/api'
@@ -72,7 +74,7 @@ const toDepartmentOption = (item: DepartmentListItem): DepartmentOption => ({
   children: item.children.map(toDepartmentOption),
 })
 
-const parsePost = (value: unknown): PostOption => {
+const parsePostOption = (value: unknown): PostOption => {
   if (!isRecord(value)) {
     throw new Error('岗位数据无效')
   }
@@ -82,6 +84,20 @@ const parsePost = (value: unknown): PostOption => {
     post_code: requireString(value.post_code, 'post_code'),
     post_name: requireString(value.post_name, 'post_name'),
     status: parseStatus(value.status),
+  }
+}
+
+const parsePostListItem = (value: unknown): PostListItem => {
+  if (!isRecord(value)) {
+    throw new Error('岗位数据无效')
+  }
+
+  return {
+    ...parsePostOption(value),
+    post_sort: parseInteger(value.post_sort, 'post_sort'),
+    remark: readString(value.remark),
+    create_time: requireString(value.create_time, 'create_time'),
+    update_time: requireString(value.update_time, 'update_time'),
   }
 }
 
@@ -115,19 +131,21 @@ export const parsePostOptions = (value: unknown): PostOption[] => {
     throw new Error('岗位下拉列表响应无效')
   }
 
-  return value.map(parsePost)
+  return value.map(parsePostOption)
 }
 
-export const parsePostPage = (value: unknown): PaginationResult<PostOption> => {
+export const parsePostPage = (value: unknown): PaginationResult<PostListItem> => {
   if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error('岗位分页响应无效')
   }
 
   return {
-    items: value.items.map(parsePost),
+    items: value.items.map(parsePostListItem),
     total: parsePageNumber(value.total, 'total', 0),
     page: parsePageNumber(value.page, 'page', 1),
     size: parsePageNumber(value.size, 'size', 1),
     pages: parsePageNumber(value.pages, 'pages', 0),
   }
 }
+
+export const parsePostDetail = (value: unknown): PostDetail => parsePostListItem(value)
