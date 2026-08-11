@@ -59,6 +59,20 @@ def test_message_center_migration_replaces_notice_resources() -> None:
     assert "DELETE duplicate FROM api_permission_catalog AS duplicate" in migration
 
 
+def test_file_management_menu_cleanup_migration_is_present() -> None:
+    migration = (
+        ROOT / "alembic" / "versions" / "0027_remove_file_management_menu.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'revision = "0027_remove_file_management_menu"' in migration
+    assert 'down_revision = "0026_message_center"' in migration
+    assert "DELETE rm" in migration
+    assert "role_menu AS rm" in migration
+    assert "(350, 370, 371, 372)" in migration
+    assert "system/file/index" in migration
+    assert "DELETE FROM permissions" not in migration
+
+
 def test_application_startup_does_not_execute_legacy_sql_or_create_tables() -> None:
     main_source = (ROOT / "main.py").read_text(encoding="utf-8")
     mysql_source = (ROOT / "config" / "mysql_serve.py").read_text(encoding="utf-8")

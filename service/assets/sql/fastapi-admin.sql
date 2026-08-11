@@ -286,7 +286,6 @@ INSERT IGNORE INTO menu (
     (@seed_tenant_id, 302, 2, '字典管理', 'BookOutline', 'dict', 'system/dict/index', '0', '1', 'C', 6, NULL, 'system:dict:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '字典管理菜单'),
     (@seed_tenant_id, 201, 200, '日志管理', 'DocumentTextOutline', 'logs', 'monitor/log/index', '0', '1', 'C', 1, NULL, 'monitor:log:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '日志管理菜单'),
     (@seed_tenant_id, 202, 200, '在线用户', 'GlobeOutline', 'online', 'monitor/online/index', '0', '1', 'C', 2, NULL, 'monitor:online:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '在线用户菜单'),
-    (@seed_tenant_id, 350, 2, '文件管理', 'FolderOpenOutline', 'file', 'system/file/index', '0', '1', 'C', 7, NULL, 'system:file:upload', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '文件管理'),
     (@seed_tenant_id, 351, 2, '系统配置', 'SettingsOutline', 'config', 'system/config/index', '0', '1', 'C', 8, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统配置'),
     (@seed_tenant_id, 352, 2, '消息中心', 'NotificationsOutline', 'message', 'system/message/index', '0', '1', 'C', 9, NULL, 'system:message:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息中心'),
     (@seed_tenant_id, 360, 200, '定时任务', 'TimeOutline', 'job', 'monitor/job/index', '0', '1', 'C', 3, NULL, 'monitor:job:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '定时任务'),
@@ -327,9 +326,6 @@ INSERT IGNORE INTO menu (
     (@seed_tenant_id, 206, 201, '日志删除', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'monitor:log:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '日志删除权限'),
     (@seed_tenant_id, 207, 202, '在线用户查询', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'monitor:online:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '在线用户查询权限'),
     (@seed_tenant_id, 208, 202, '强制下线', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'monitor:online:forceLogout', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '强制下线权限'),
-    (@seed_tenant_id, 370, 350, '文件上传', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:file:upload', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '文件上传权限'),
-    (@seed_tenant_id, 371, 350, '文件下载', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:file:download', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '文件下载权限'),
-    (@seed_tenant_id, 372, 350, '文件删除', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:file:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '文件删除权限'),
     (@seed_tenant_id, 373, 351, '配置列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置列表权限'),
     (@seed_tenant_id, 374, 351, '配置查询', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:config:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置查询权限'),
     (@seed_tenant_id, 375, 351, '配置新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:config:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置新增权限'),
@@ -361,6 +357,21 @@ WHERE tenant_id IS NULL
       OR menu_id BETWEEN 350 AND 388
   );
 
+-- 清理已移除的文件管理菜单及其角色菜单关联，保留文件 API 权限目录。
+DELETE rm
+FROM role_menu AS rm
+INNER JOIN menu AS m ON m.menu_id = rm.menu_id
+WHERE m.tenant_id = @seed_tenant_id
+  AND m.menu_id IN (350, 370, 371, 372);
+
+DELETE FROM menu
+WHERE tenant_id = @seed_tenant_id
+  AND menu_id IN (370, 371, 372);
+
+DELETE FROM menu
+WHERE tenant_id = @seed_tenant_id
+  AND menu_id = 350;
+
 -- 幂等同步内置路由菜单的 Ionicons5 图标；不覆盖按钮菜单或其他租户菜单。
 UPDATE menu
 SET icon = CASE menu_id
@@ -375,14 +386,13 @@ SET icon = CASE menu_id
     WHEN 302 THEN 'BookOutline'
     WHEN 201 THEN 'DocumentTextOutline'
     WHEN 202 THEN 'GlobeOutline'
-    WHEN 350 THEN 'FolderOpenOutline'
     WHEN 351 THEN 'SettingsOutline'
     WHEN 352 THEN 'NotificationsOutline'
     WHEN 360 THEN 'TimeOutline'
 END
 WHERE tenant_id = @seed_tenant_id
   AND menu_type = 'C'
-  AND menu_id IN (1, 2, 3, 4, 5, 200, 201, 202, 300, 301, 302, 350, 351, 352, 360);
+  AND menu_id IN (1, 2, 3, 4, 5, 200, 201, 202, 300, 301, 302, 351, 352, 360);
 
 -- 超级管理员只补齐本脚本声明的内置菜单，不吸收其他租户的业务菜单。
 INSERT IGNORE INTO role_menu (role_id, menu_id)

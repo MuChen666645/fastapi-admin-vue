@@ -138,7 +138,6 @@ def test_builtin_route_menu_seed_uses_ionicons5_names() -> None:
         "BookOutline",
         "DocumentTextOutline",
         "GlobeOutline",
-        "FolderOpenOutline",
         "NotificationsOutline",
         "TimeOutline",
     }
@@ -157,6 +156,20 @@ def test_admin_menu_seed_is_scoped_to_declared_builtin_menu_ids() -> None:
     assert "m.tenant_id = @seed_tenant_id" in sql
     assert "r.tenant_id = @seed_tenant_id" in sql
     assert "INSERT IGNORE INTO role_menu (role_id, menu_id)\nSELECT 1" not in sql
+
+
+def test_file_management_route_seed_and_menu_associations_are_removed() -> None:
+    sql = SEED_SQL_PATH.read_text(encoding="utf-8")
+
+    assert "(@seed_tenant_id, 350," not in sql
+    assert "(@seed_tenant_id, 370, 350," not in sql
+    assert "(@seed_tenant_id, 371, 350," not in sql
+    assert "(@seed_tenant_id, 372, 350," not in sql
+    assert "DELETE rm\nFROM role_menu AS rm" in sql
+    assert "m.menu_id IN (350, 370, 371, 372)" in sql
+    assert "'system:file:upload'" in sql
+    assert "'system:file:download'" in sql
+    assert "'system:file:remove'" in sql
 
 
 def test_seed_and_schema_upgrade_have_separate_responsibilities() -> None:
