@@ -77,10 +77,6 @@ const dataScopeLabel = computed(() => {
             <span>{{ t('role.detail.departmentCount') }}</span>
             <strong>{{ props.item.dept_ids.length }}</strong>
           </div>
-          <div>
-            <span>{{ t('role.detail.fieldPermissions') }}</span>
-            <strong>{{ props.item.field_permission_codes.length }}</strong>
-          </div>
         </div>
       </template>
     </NSpin>
@@ -94,7 +90,7 @@ const dataScopeLabel = computed(() => {
 
 .role-detail-groups {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 16px;
 }

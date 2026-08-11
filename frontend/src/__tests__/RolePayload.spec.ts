@@ -11,18 +11,18 @@ const createFormModel = (): RoleFormModel => ({
   status: '1',
   menu_ids: [4, 5],
   dept_ids: [7],
-  field_permission_codes: ['field:user:email', 'field:user:phone'],
   version: 3,
 })
 
 describe('角色表单请求体', () => {
-  it('创建时同步字段权限编码', () => {
+  it('创建时保留菜单和部门关联', () => {
     expect(createRolePayload(createFormModel())).toMatchObject({
-      field_permission_codes: ['field:user:email', 'field:user:phone'],
+      menu_ids: [4, 5],
+      dept_ids: [7],
     })
   })
 
-  it('编辑保存时同步字段权限编码', () => {
+  it('编辑保存时保留菜单和部门关联', () => {
     expect(createRoleUpdatePayload(createFormModel())).toEqual({
       name: '运维角色',
       description: '查看敏感字段',
@@ -31,7 +31,6 @@ describe('角色表单请求体', () => {
       version: 3,
       menu_ids: [4, 5],
       dept_ids: [7],
-      field_permission_codes: ['field:user:email', 'field:user:phone'],
     })
   })
 })

@@ -63,14 +63,14 @@ describe('角色 API', () => {
       code: 'operator',
       description: null,
       data_scope: '5',
-      menu_ids: [],
-      dept_ids: [],
-      field_permission_codes: [],
+      menu_ids: [4],
+      dept_ids: [7],
     })
     await updateRole(2, {
       version: 3,
       status: '0',
-      field_permission_codes: ['field:user:email'],
+      menu_ids: [4, 5],
+      dept_ids: [7],
     })
     await batchUpdateRoleStatus({ role_ids: [2], status: '1' })
     await deleteRole(2)
@@ -92,7 +92,8 @@ describe('角色 API', () => {
         data: {
           version: 3,
           status: '0',
-          field_permission_codes: ['field:user:email'],
+          menu_ids: [4, 5],
+          dept_ids: [7],
         },
       },
       expect.any(Function),
@@ -121,13 +122,11 @@ describe('角色 API', () => {
         ...role,
         menu_ids: [4],
         dept_ids: [7],
-        field_permission_codes: ['field:user:email'],
       }),
     ).toMatchObject({
       id: 2,
       menu_ids: [4],
       dept_ids: [7],
-      field_permission_codes: ['field:user:email'],
     })
     expect(
       parseMenuList([

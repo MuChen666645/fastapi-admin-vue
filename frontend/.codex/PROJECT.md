@@ -128,7 +128,7 @@ src/
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |
 | `GET`  | `/role/list`                  | 当前租户角色分页列表 |
-| `GET`  | `/role/{id}`                  | 角色详情及菜单、部门和字段权限关联 |
+| `GET`  | `/role/{id}`                  | 角色详情及菜单、部门关联 |
 | `POST` | `/role/add`                   | 创建角色 |
 | `PUT`  | `/role/{id}`                  | 修改角色 |
 | `DELETE` | `/role/{id}`                | 删除角色 |

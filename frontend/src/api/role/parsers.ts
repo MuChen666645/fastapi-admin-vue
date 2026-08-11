@@ -72,14 +72,6 @@ const parseNumberList = (value: unknown, fieldName: string): number[] => {
   return value.map((item) => requireNumber(item, fieldName))
 }
 
-const parseStringList = (value: unknown, fieldName: string): string[] => {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new Error(`接口字段 ${fieldName} 无效`)
-  }
-
-  return value.map((item) => requireString(item, fieldName))
-}
-
 export const parseRoleOptions = (value: unknown): RoleOption[] => {
   if (!Array.isArray(value)) {
     throw new Error('角色下拉列表响应无效')
@@ -111,7 +103,6 @@ export const parseRoleDetail = (value: unknown): RoleDetail => {
     ...parseRoleListItem(value),
     menu_ids: parseNumberList(value.menu_ids, 'menu_ids'),
     dept_ids: parseNumberList(value.dept_ids, 'dept_ids'),
-    field_permission_codes: parseStringList(value.field_permission_codes, 'field_permission_codes'),
   }
 }
 

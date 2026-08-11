@@ -44,7 +44,6 @@ const createInitialFormModel = (): RoleFormModel => ({
   status: '1',
   menu_ids: [],
   dept_ids: [],
-  field_permission_codes: [],
   version: null,
 })
 
@@ -184,7 +183,6 @@ const openEdit = async (item: RoleListItem): Promise<void> => {
       ...createFormModelFromRole(detail),
       menu_ids: detail.menu_ids,
       dept_ids: detail.dept_ids,
-      field_permission_codes: detail.field_permission_codes,
     })
   } finally {
     formLoading.value = false

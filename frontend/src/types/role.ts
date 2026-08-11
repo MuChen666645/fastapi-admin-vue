@@ -29,7 +29,6 @@ export interface RoleListItem {
 export interface RoleDetail extends RoleListItem {
   menu_ids: number[]
   dept_ids: number[]
-  field_permission_codes: string[]
 }
 
 export interface RoleListFilters {
@@ -50,7 +49,6 @@ export interface RoleCreatePayload {
   data_scope: RoleDataScope
   menu_ids: number[]
   dept_ids: number[]
-  field_permission_codes: string[]
 }
 
 export interface RoleUpdatePayload {
@@ -62,7 +60,6 @@ export interface RoleUpdatePayload {
   version?: number
   menu_ids?: number[]
   dept_ids?: number[]
-  field_permission_codes: string[]
 }
 
 export interface RoleBatchStatusPayload {
@@ -89,7 +86,6 @@ export type RoleFormModel = Record<string, unknown> & {
   status: RoleStatus
   menu_ids: number[]
   dept_ids: number[]
-  field_permission_codes: string[]
   version: number | null
 }
 

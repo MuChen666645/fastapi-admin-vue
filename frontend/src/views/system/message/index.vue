@@ -343,7 +343,7 @@ onMounted(() => {
         <div class="message-page-actions">
           <NRadioGroup v-model:value="viewMode" name="message-view-mode" size="medium">
             <NRadioButton value="inbox">{{ t('message.mode.inbox') }}</NRadioButton>
-            <NRadioButton v-permission="'system:message:list'" value="manage">{{
+            <NRadioButton v-permission="'system:message:add'" value="manage">{{
               t('message.mode.manage')
             }}</NRadioButton>
           </NRadioGroup>

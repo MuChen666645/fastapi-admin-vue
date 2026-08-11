@@ -12,7 +12,6 @@ export const createRolePayload = (model: RoleFormModel): RoleCreatePayload => ({
   data_scope: model.data_scope,
   menu_ids: [...model.menu_ids],
   dept_ids: normalizeDepartmentIds(model),
-  field_permission_codes: [...model.field_permission_codes],
 })
 
 export const createRoleUpdatePayload = (model: RoleFormModel): RoleUpdatePayload => ({
@@ -23,5 +22,4 @@ export const createRoleUpdatePayload = (model: RoleFormModel): RoleUpdatePayload
   version: model.version ?? undefined,
   menu_ids: [...model.menu_ids],
   dept_ids: normalizeDepartmentIds(model),
-  field_permission_codes: [...model.field_permission_codes],
 })

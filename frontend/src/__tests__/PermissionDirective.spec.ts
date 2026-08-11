@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, ref, withDirectives } from 'vue'
 import type { Ref } from 'vue'
+import { NButton } from 'naive-ui'
 
 import { permissionDirective } from '@/directives'
 import type { PermissionDirectiveValue } from '@/directives'
@@ -14,6 +15,15 @@ const createPermissionHost = (requirement: Ref<PermissionDirectiveValue>) =>
       withDirectives(h('button', { id: 'permission-action' }, 'Action'), [
         [permissionDirective, requirement.value],
       ]),
+  })
+
+const createNaiveButtonHost = (requirement: Ref<PermissionDirectiveValue>) =>
+  defineComponent({
+    setup: () => () =>
+      withDirectives(
+        h(NButton, { id: 'permission-naive-button' }, () => 'Action'),
+        [[permissionDirective, requirement.value]],
+      ),
   })
 
 describe('permissionDirective', () => {
@@ -65,6 +75,17 @@ describe('permissionDirective', () => {
     }
     await nextTick()
     expect(button.hidden).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('hides unauthorized Naive UI buttons', () => {
+    const auth = useAuthStore()
+    auth.permissions = ['system:message:list']
+    const wrapper = mount(createNaiveButtonHost(ref('system:message:add')))
+    const button = wrapper.get('#permission-naive-button').element as HTMLButtonElement
+
+    expect(button.hidden).toBe(true)
+    expect(button.getAttribute('aria-hidden')).toBe('true')
     wrapper.unmount()
   })
 })

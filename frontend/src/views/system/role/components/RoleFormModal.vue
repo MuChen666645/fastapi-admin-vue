@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { CheckmarkDoneOutline } from '@vicons/ionicons5'
-import { NButton, NDivider, NIcon, NModal, NTag } from 'naive-ui'
+import { NButton, NIcon, NModal } from 'naive-ui'
 import type { FormItemRule, TreeSelectOption } from 'naive-ui'
 
 import AppForm from '@/components/AppForm/index.vue'
@@ -138,7 +138,6 @@ const fields = computed<ReadonlyArray<AppFormField<RoleFormModel>>>(() => [
       defaultExpandAll: true,
       filterable: true,
       multiple: true,
-      checkStrategy:'parent',
       options: departmentTreeOptions.value,
       placeholder:
         departmentTreeOptions.value.length > 0
@@ -175,7 +174,6 @@ const fields = computed<ReadonlyArray<AppFormField<RoleFormModel>>>(() => [
       filterable: true,
       multiple: true,
       options: menuTreeOptions.value,
-      checkStrategy:'parent',
       placeholder:
         menuTreeOptions.value.length > 0 ? t('role.form.menu') : t('role.form.noOptions'),
       showPath: true,
@@ -215,23 +213,6 @@ const handleSubmit = (model: RoleFormModel): void => emit('submit', model)
       }"
       @submit="handleSubmit"
     >
-      <template #after>
-        <template v-if="props.model.field_permission_codes.length > 0">
-          <NDivider />
-          <section class="role-permission-section">
-            <div class="role-section-heading">
-              <div>
-                <h3>{{ t('role.form.fieldPermissions') }}</h3>
-              </div>
-            </div>
-            <div class="role-field-permissions">
-              <NTag v-for="code in props.model.field_permission_codes" :key="code" size="small">
-                {{ code }}
-              </NTag>
-            </div>
-          </section>
-        </template>
-      </template>
       <template #actions="{ loading: actionLoading, submit }">
         <NButton attr-type="button" :disabled="actionLoading" @click="handleCancel">
           {{ t('role.form.cancel') }}
@@ -259,44 +240,11 @@ const handleSubmit = (model: RoleFormModel): void => emit('submit', model)
   width: min(820px, calc(100vw - 32px));
 }
 
-.role-permission-section {
-  padding: 8px 0 16px;
-}
-
-.role-section-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.role-section-heading h3,
-.role-section-heading p {
-  margin: 0;
-}
-
-.role-section-heading h3 {
-  font-size: 14px;
-}
-
-.role-section-heading p {
-  margin-top: 4px;
-  color: var(--app-color-text-muted);
-  font-size: 12px;
-}
-
 .role-tree-select {
   width: 100%;
 }
 
 .role-tree-select .n-base-selection {
   min-height: 40px;
-}
-
-.role-field-permissions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
 }
 </style>
