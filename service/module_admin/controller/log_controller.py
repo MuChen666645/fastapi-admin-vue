@@ -63,14 +63,13 @@ class LogController:
         status: str | None = Query(
             default=None, pattern="^[01]$", description="登录状态：0失败，1成功"
         ),
-        path: str | None = Query(default=None, description="请求路径，支持模糊查询"),
         start_time: datetime | None = Query(default=None, description="查询开始时间"),
         end_time: datetime | None = Query(default=None, description="查询结束时间"),
         params: Params = Depends(),
     ):
         """分页查询登录日志。"""
         query = LogController._build_log_query(
-            username, status, path, start_time, end_time
+            username, status, None, start_time, end_time
         )
         return await LogController._list("login", query, params, request)
 

@@ -110,6 +110,26 @@ def test_new_endpoints_publish_response_models() -> None:
         assert "schema" in response["content"]["application/json"]
 
 
+def test_login_log_list_does_not_expose_path_filter() -> None:
+    paths = app.openapi()["paths"]
+    login_parameters = {
+        parameter["name"]
+        for parameter in paths["/api/v1/log/login/list"]["get"]["parameters"]
+    }
+    operation_parameters = {
+        parameter["name"]
+        for parameter in paths["/api/v1/log/operation/list"]["get"]["parameters"]
+    }
+    exception_parameters = {
+        parameter["name"]
+        for parameter in paths["/api/v1/log/exception/list"]["get"]["parameters"]
+    }
+
+    assert "path" not in login_parameters
+    assert "path" in operation_parameters
+    assert "path" in exception_parameters
+
+
 def test_post_list_publishes_page_response_model() -> None:
     response_schema = app.openapi()["paths"]["/api/v1/post/list"]["get"]["responses"][
         "200"
