@@ -39,12 +39,15 @@ describe('permissionDirective', () => {
     const button = wrapper.get('#permission-action').element as HTMLButtonElement
 
     expect(button.hidden).toBe(true)
+    expect(button.style.getPropertyValue('display')).toBe('none')
+    expect(button.style.getPropertyPriority('display')).toBe('important')
     expect(button.getAttribute('aria-hidden')).toBe('true')
 
     auth.permissions = ['system:message:add']
     await nextTick()
 
     expect(button.hidden).toBe(false)
+    expect(button.style.getPropertyValue('display')).toBe('')
     expect(button.hasAttribute('aria-hidden')).toBe(false)
     wrapper.unmount()
   })
@@ -85,6 +88,8 @@ describe('permissionDirective', () => {
     const button = wrapper.get('#permission-naive-button').element as HTMLButtonElement
 
     expect(button.hidden).toBe(true)
+    expect(button.style.getPropertyValue('display')).toBe('none')
+    expect(button.style.getPropertyPriority('display')).toBe('important')
     expect(button.getAttribute('aria-hidden')).toBe('true')
     wrapper.unmount()
   })

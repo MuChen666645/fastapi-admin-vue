@@ -17,6 +17,8 @@ interface PermissionDirectiveState {
   value: PermissionDirectiveValue
   originalHidden: boolean
   originalAriaHidden: string | null
+  originalDisplay: string
+  originalDisplayPriority: string
   stopWatching: () => void
 }
 
@@ -63,6 +65,11 @@ const isAllowed = (
 const updateVisibility = (element: HTMLElement, state: PermissionDirectiveState): void => {
   if (isAllowed(useAuthStore().permissions, state.value)) {
     element.hidden = state.originalHidden
+    if (state.originalDisplay) {
+      element.style.setProperty('display', state.originalDisplay, state.originalDisplayPriority)
+    } else {
+      element.style.removeProperty('display')
+    }
     if (state.originalAriaHidden === null) {
       element.removeAttribute('aria-hidden')
     } else {
@@ -72,6 +79,7 @@ const updateVisibility = (element: HTMLElement, state: PermissionDirectiveState)
   }
 
   element.hidden = true
+  element.style.setProperty('display', 'none', 'important')
   element.setAttribute('aria-hidden', 'true')
 }
 
@@ -81,6 +89,8 @@ export const permissionDirective: Directive<HTMLElement, PermissionDirectiveValu
       value: binding.value,
       originalHidden: element.hidden === true,
       originalAriaHidden: element.getAttribute('aria-hidden'),
+      originalDisplay: element.style.getPropertyValue('display'),
+      originalDisplayPriority: element.style.getPropertyPriority('display'),
       stopWatching: () => undefined,
     }
 

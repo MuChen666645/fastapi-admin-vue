@@ -349,6 +349,7 @@ onMounted(() => {
           </NRadioGroup>
           <NButton
             v-if="viewMode === 'inbox'"
+            v-permission="'system:message:add'"
             type="primary"
             size="medium"
             :loading="messageStore.latestLoading"
