@@ -37,7 +37,7 @@ class JobService:
         JobService._validate_cron(data.cron_expression)
         if await JobDao.get_by_key(data.job_key, request):
             raise HTTPException(status_code=409, detail="任务标识已存在")
-        return await JobDao.create(data, request)
+        await JobDao.create(data, request)
 
     @staticmethod
     async def update(job_id: int, data, request: Request):

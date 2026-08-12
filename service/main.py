@@ -36,6 +36,7 @@ from middleware.telemetry import configure_telemetry
 from module_admin.service.export_service import ExportService
 from module_admin.service.file_service import FileService
 from module_admin.service.job_scheduler import JobScheduler, TaskHandler
+from module_admin.service.job_worker import load_task_handlers
 from module_admin.service.notification_service import NotificationService
 from module_admin.service.permission_sync_service import PermissionSyncService
 from module_admin.service.retention_service import RetentionService
@@ -215,7 +216,11 @@ def create_app(
     application.state.mysql_engine = None
     application.state.mysql_session_factory = None
     application.state.scheduler = None
-    application.state.job_tasks = job_tasks or {}
+    application.state.job_tasks = (
+        dict(job_tasks)
+        if job_tasks is not None
+        else load_task_handlers(configured_settings.TASK_HANDLER_MODULE)
+    )
     application.state.metrics = ApplicationMetrics.create()
     configure_telemetry(application, configured_settings)
     if redis_factory is not None:

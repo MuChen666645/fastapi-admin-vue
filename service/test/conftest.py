@@ -22,6 +22,7 @@ test_environment_defaults = {
     "REDIS_PASSWORD": "",
     "REDIS_USERNAME": "",
     "REDIS_DB": "0",
+    "SCHEDULER_ENABLED": "false",
     "SECRET_KEY": "test-only-secret-key-that-is-long-enough",
     "HOSTS": '["testserver", "localhost", "127.0.0.1"]',
     "ACCESS_KEY_ID": "test",
@@ -35,6 +36,7 @@ if os.getenv("RUN_INTEGRATION_TESTS") == "1":
         "DEBUG": "false",
         "MYSQL_HOST": "127.0.0.1",
         "REDIS_HOST": "127.0.0.1",
+        "SCHEDULER_ENABLED": "true",
     }
 
 for key, value in test_environment_defaults.items():

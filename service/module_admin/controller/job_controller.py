@@ -43,11 +43,11 @@ class JobController:
         "/add",
         summary="新增定时任务",
         dependencies=[Depends(Auth.has_permission("monitor:job:add"))],
-        responses={200: {"model": ApiResponseDto[ScheduledJobDto]}},
+        responses={200: {"model": ApiResponseDto[None]}},
     )
     async def create(data: ScheduledJobCreateDto, request: Request):
         """新增持久化定时任务。"""
-        return await JobService.create(data, request)
+        await JobService.create(data, request)
 
     @job.get(
         "/{job_id}",

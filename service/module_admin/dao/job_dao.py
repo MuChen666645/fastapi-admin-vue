@@ -63,6 +63,7 @@ class JobDao:
             tenant_id=require_tenant_id(request),
         )
         request.state.mysql.add(item)
+        await request.state.mysql.flush()
         return item
 
     @staticmethod

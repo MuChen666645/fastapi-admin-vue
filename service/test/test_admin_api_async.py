@@ -627,24 +627,26 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             )
 
             job_key = f"integration.job.{suffix}"
-            _assert_success(
+            create_job_result = _assert_success(
                 await client.post(
                     "/api/v1/job/add",
                     json={
                         "job_name": "集成任务",
                         "job_key": job_key,
-                        "task_name": "integration.noop",
+                        "task_name": "test_task",
                         "cron_expression": "*/5 * * * *",
                         "args_json": "{}",
                     },
                 )
             )
+            assert create_job_result is None
             job_id = await _find_id(
                 app.state.mysql_session_factory,
                 ScheduledJobDo,
                 ScheduledJobDo.job_key,
                 job_key,
             )
+            assert isinstance(job_id, int) and job_id > 0
             case.job_ids.append(job_id)
             _assert_success(
                 await client.put(
@@ -655,9 +657,10 @@ def test_real_admin_crud_and_monitoring_api() -> None:
             logs = _assert_success(await client.get(f"/api/v1/job/{job_id}/log/list"))
             assert logs["total"] == 0
             run_response = await client.post(f"/api/v1/job/{job_id}/run")
-            assert run_response.status_code in {200, 503}
-            if run_response.status_code == 200:
-                assert run_response.json()["data"]["status"] == "failed"
+            assert run_response.status_code == 200
+            run_result = run_response.json()["data"]
+            assert run_result["status"] == "success"
+            assert run_result["message"] == "测试任务执行成功"
 
             for path in (
                 "/api/v1/role/list",
