@@ -145,6 +145,16 @@ export type {
   LogTableProps,
 } from './log'
 export type {
+  ForceLogoutUserResult,
+  OnlineActionPermissions,
+  OnlineSearchPanelProps,
+  OnlineSession,
+  OnlineSessionFilters,
+  OnlineSessionListQuery,
+  OnlineSessionPage,
+  OnlineSessionTableProps,
+} from './online'
+export type {
   DepartmentActionPermissions,
   DepartmentCascaderOption,
   DepartmentCreatePayload,

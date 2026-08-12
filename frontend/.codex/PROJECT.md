@@ -141,6 +141,9 @@ src/
 | `GET`  | `/log/operation/list`         | 按用户名、路径和时间范围分页查询操作日志 |
 | `GET`  | `/log/exception/list`         | 按用户名、路径和时间范围分页查询异常日志 |
 | `DELETE` | `/log/{log_type}/batch`     | 按 `login`、`operation` 或 `exception` 批量删除日志 |
+| `GET`  | `/online/list`                | 按用户名和登录 IP 分页查询当前数据范围内的在线会话 |
+| `DELETE` | `/online/token/{token_id}` | 强制指定在线会话下线 |
+| `DELETE` | `/online/user/{user_id}`   | 强制指定用户的全部可见会话下线 |
 | `POST` | `/message/add`                 | 发布消息并创建投递任务 |
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |
@@ -167,6 +170,7 @@ src/
 - `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。
 - `/system/post` 来自后端岗位管理菜单，组件路径解析到 `src/views/system/post/index.vue`；页面使用岗位分页、详情和 CRUD 接口，并按 `system:post:list/query/add/edit/remove` 控制操作入口。
 - `/monitor/log` 来自后端日志管理菜单，组件路径解析到 `src/views/monitor/log/index.vue`；页面按 `monitor:login:list`、`monitor:operation:list`、`monitor:exception:list` 分别加载三类日志，批量删除使用 `monitor:log:remove`。
+- `/monitor/online` 来自后端在线用户菜单，组件路径解析到 `src/views/monitor/online/index.vue`；页面按 `monitor:online:list` 分页查询在线会话，按 `monitor:online:forceLogout` 提供单会话和用户全部会话强制下线操作。
 - `/demo/default-pages` 是认证后的静态侧边栏菜单树，父级为 `demo`，子级为 `default-pages`，其下包含 `default-page-forbidden`、`default-page-not-found`、`default-page-server-error` 和 `default-page-offline` 四个叶子路由，不属于后端菜单。
 - `/demo/features/form` 是认证后的表单组件演示页，菜单层级为 `demo -> features -> form`，用于展示通用 `AppForm` 的布局、自定义字段、标准校验、动态分组和规范提交；它不调用后端业务接口。
 - `/demo/features/search-form` 是认证后的搜索表单组件演示页，菜单层级为 `demo -> features -> search-form`，用于展示通用 `AppSearchForm` 的搜索布局、条件折叠、自定义字段、回车策略、重置和查询状态；它不调用后端业务接口。

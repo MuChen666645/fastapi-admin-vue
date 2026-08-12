@@ -49,6 +49,8 @@ The frontend does not use `VITE_ROUTE_MODE`. Authenticated business routes alway
 
 After login, the frontend loads `GET /api/v1/user/routes` and registers validated business routes under the `app` layout. Server `component` values are resolved through the local `src/views/**/*.vue` allowlist. Frontend menus and route guards improve the experience but never replace backend authorization.
 
+The server-provided online-users page lists active login sessions within the operator's data scope, with username and login-IP filters. The `monitor:online:forceLogout` permission enables confirmed actions to sign out one session or every visible session for a user.
+
 ## Project structure
 
 ```text

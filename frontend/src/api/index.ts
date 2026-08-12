@@ -43,6 +43,7 @@ export {
   updateMessage,
 } from './message'
 export { deleteLogs, fetchLogList } from './log'
+export { fetchOnlineSessions, forceLogoutSession, forceLogoutUser } from './online'
 export {
   batchDeleteUsers,
   batchUpdateUserStatus,
