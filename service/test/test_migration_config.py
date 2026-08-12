@@ -73,6 +73,20 @@ def test_file_management_menu_cleanup_migration_is_present() -> None:
     assert "DELETE FROM permissions" not in migration
 
 
+def test_tenant_and_system_parameter_menu_migration_is_present() -> None:
+    migration = (
+        ROOT / "alembic" / "versions" / "0028_tenant_and_system_parameter_menus.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'revision = "0028_tenant_and_system_parameter_menus"' in migration
+    assert 'down_revision = "0027_remove_file_management_menu"' in migration
+    assert "system/tenant/index" in migration
+    assert "system:tenant:member:remove" in migration
+    assert "INSERT IGNORE INTO role_menu" in migration
+    assert "TENANT_MENU_IDS" in migration
+    assert "BETWEEN :first_menu_id" not in migration
+
+
 def test_application_startup_does_not_execute_legacy_sql_or_create_tables() -> None:
     main_source = (ROOT / "main.py").read_text(encoding="utf-8")
     mysql_source = (ROOT / "config" / "mysql_serve.py").read_text(encoding="utf-8")

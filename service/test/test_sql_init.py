@@ -147,6 +147,30 @@ def test_builtin_route_menu_seed_uses_ionicons5_names() -> None:
     assert "UPDATE menu\nSET icon = CASE menu_id" in seed_sql
 
 
+def test_tenant_and_system_parameter_menus_are_seeded() -> None:
+    sql = SEED_SQL_PATH.read_text(encoding="utf-8")
+
+    assert "(@seed_tenant_id, 351, 2, '系统参数'" in sql
+    assert "(@seed_tenant_id, 353, 2, '租户管理'" in sql
+    assert "'system/tenant/index'" in sql
+    assert "SET menu_name = '系统参数'" in sql
+    assert "SET parent_id = 2" in sql
+    for permission in (
+        "system:tenant:list",
+        "system:tenant:add",
+        "system:tenant:edit",
+        "system:tenant:remove",
+        "system:tenant:member:list",
+        "system:tenant:member:add",
+        "system:tenant:member:edit",
+        "system:tenant:member:remove",
+    ):
+        assert f"'{permission}'" in sql
+
+    assert "menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)" in sql
+    assert "m.menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)" in sql
+
+
 def test_admin_menu_seed_is_scoped_to_declared_builtin_menu_ids() -> None:
     sql = SEED_SQL_PATH.read_text(encoding="utf-8")
 

@@ -286,8 +286,9 @@ INSERT IGNORE INTO menu (
     (@seed_tenant_id, 302, 2, '字典管理', 'BookOutline', 'dict', 'system/dict/index', '0', '1', 'C', 6, NULL, 'system:dict:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '字典管理菜单'),
     (@seed_tenant_id, 201, 200, '日志管理', 'DocumentTextOutline', 'logs', 'monitor/log/index', '0', '1', 'C', 1, NULL, 'monitor:log:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '日志管理菜单'),
     (@seed_tenant_id, 202, 200, '在线用户', 'GlobeOutline', 'online', 'monitor/online/index', '0', '1', 'C', 2, NULL, 'monitor:online:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '在线用户菜单'),
-    (@seed_tenant_id, 351, 2, '系统配置', 'SettingsOutline', 'config', 'system/config/index', '0', '1', 'C', 8, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统配置'),
+    (@seed_tenant_id, 351, 2, '系统参数', 'SettingsOutline', 'config', 'system/config/index', '0', '1', 'C', 8, NULL, 'system:config:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '系统参数管理菜单'),
     (@seed_tenant_id, 352, 2, '消息中心', 'NotificationsOutline', 'message', 'system/message/index', '0', '1', 'C', 9, NULL, 'system:message:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息中心'),
+    (@seed_tenant_id, 353, 2, '租户管理', 'BusinessOutline', 'tenant', 'system/tenant/index', '0', '1', 'C', 10, NULL, 'system:tenant:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户管理菜单'),
     (@seed_tenant_id, 360, 200, '定时任务', 'TimeOutline', 'job', 'monitor/job/index', '0', '1', 'C', 3, NULL, 'monitor:job:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '定时任务'),
     (@seed_tenant_id, 310, 3, '用户列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:user:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户列表权限'),
     (@seed_tenant_id, 6, 3, '用户新增', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:user:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '用户新增权限'),
@@ -331,6 +332,14 @@ INSERT IGNORE INTO menu (
     (@seed_tenant_id, 375, 351, '配置新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:config:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置新增权限'),
     (@seed_tenant_id, 376, 351, '配置编辑', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:config:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置编辑权限'),
     (@seed_tenant_id, 377, 351, '配置删除', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:config:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '配置删除权限'),
+    (@seed_tenant_id, 389, 353, '租户列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:tenant:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户列表权限'),
+    (@seed_tenant_id, 390, 353, '租户新增', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:tenant:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户新增权限'),
+    (@seed_tenant_id, 391, 353, '租户编辑', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:tenant:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户编辑权限'),
+    (@seed_tenant_id, 392, 353, '租户删除', NULL, NULL, NULL, '0', '0', 'F', 4, NULL, 'system:tenant:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户删除权限'),
+    (@seed_tenant_id, 393, 353, '租户成员列表', NULL, NULL, NULL, '0', '0', 'F', 5, NULL, 'system:tenant:member:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户成员列表权限'),
+    (@seed_tenant_id, 394, 353, '租户成员新增', NULL, NULL, NULL, '0', '0', 'F', 6, NULL, 'system:tenant:member:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户成员新增权限'),
+    (@seed_tenant_id, 395, 353, '租户成员编辑', NULL, NULL, NULL, '0', '0', 'F', 7, NULL, 'system:tenant:member:edit', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户成员编辑权限'),
+    (@seed_tenant_id, 396, 353, '租户成员删除', NULL, NULL, NULL, '0', '0', 'F', 8, NULL, 'system:tenant:member:remove', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '租户成员删除权限'),
     (@seed_tenant_id, 378, 352, '消息列表', NULL, NULL, NULL, '0', '0', 'F', 1, NULL, 'system:message:list', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息列表权限'),
     (@seed_tenant_id, 379, 352, '消息查询', NULL, NULL, NULL, '0', '0', 'F', 2, NULL, 'system:message:query', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息查询权限'),
     (@seed_tenant_id, 380, 352, '消息新增', NULL, NULL, NULL, '0', '0', 'F', 3, NULL, 'system:message:add', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '消息新增权限'),
@@ -354,8 +363,38 @@ WHERE tenant_id IS NULL
           300, 301, 302, 310, 311, 320, 321, 322, 323, 324,
           330, 331, 332, 333, 334, 340, 341, 342, 343, 344
       )
-      OR menu_id BETWEEN 350 AND 388
+      OR menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)
   );
+
+-- 同步内置路由菜单，兼容已存在但仍使用旧名称或旧组件路径的默认租户记录。
+UPDATE menu
+SET menu_name = '系统参数',
+    menu_path = 'config',
+    component = 'system/config/index',
+    perms = 'system:config:list',
+    status = '1',
+    remark = '系统参数管理菜单',
+    update_time = CURRENT_TIMESTAMP
+WHERE tenant_id = @seed_tenant_id
+  AND menu_id = 351;
+
+UPDATE menu
+SET parent_id = 2,
+    menu_name = '租户管理',
+    icon = 'BusinessOutline',
+    menu_path = 'tenant',
+    component = 'system/tenant/index',
+    is_hidden = '0',
+    is_cache = '1',
+    menu_type = 'C',
+    sort = 10,
+    link_url = NULL,
+    perms = 'system:tenant:list',
+    status = '1',
+    remark = '租户管理菜单',
+    update_time = CURRENT_TIMESTAMP
+WHERE tenant_id = @seed_tenant_id
+  AND menu_id = 353;
 
 -- 清理已移除的文件管理菜单及其角色菜单关联，保留文件 API 权限目录。
 DELETE rm
@@ -388,11 +427,12 @@ SET icon = CASE menu_id
     WHEN 202 THEN 'GlobeOutline'
     WHEN 351 THEN 'SettingsOutline'
     WHEN 352 THEN 'NotificationsOutline'
+    WHEN 353 THEN 'BusinessOutline'
     WHEN 360 THEN 'TimeOutline'
 END
 WHERE tenant_id = @seed_tenant_id
   AND menu_type = 'C'
-  AND menu_id IN (1, 2, 3, 4, 5, 200, 201, 202, 300, 301, 302, 351, 352, 360);
+  AND menu_id IN (1, 2, 3, 4, 5, 200, 201, 202, 300, 301, 302, 351, 352, 353, 360);
 
 -- 超级管理员只补齐本脚本声明的内置菜单，不吸收其他租户的业务菜单。
 INSERT IGNORE INTO role_menu (role_id, menu_id)
@@ -407,7 +447,7 @@ JOIN menu AS m
           300, 301, 302, 310, 311, 320, 321, 322, 323, 324,
           330, 331, 332, 333, 334, 340, 341, 342, 343, 344
       )
-      OR m.menu_id BETWEEN 350 AND 388
+      OR m.menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)
  )
 WHERE r.code = @seed_admin_role_code
   AND r.tenant_id = @seed_tenant_id;
