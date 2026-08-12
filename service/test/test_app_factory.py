@@ -41,11 +41,36 @@ def test_create_app_keeps_configuration_and_runtime_state_isolated() -> None:
     assert second_app.state.redis is None
 
 
+def test_create_app_loads_configured_job_handlers_by_default(monkeypatch) -> None:
+    def handler(_args):
+        return "ok"
+
+    configured_settings = settings.model_copy(
+        update={"TASK_HANDLER_MODULE": "custom.task_handlers"}
+    )
+    loaded_modules: list[str] = []
+
+    def load_handlers(module_name: str):
+        loaded_modules.append(module_name)
+        return {"custom.task": handler}
+
+    monkeypatch.setattr("main.load_task_handlers", load_handlers)
+
+    default_application = create_app(configured_settings)
+    injected_application = create_app(configured_settings, job_tasks={})
+
+    assert default_application.state.job_tasks == {"custom.task": handler}
+    assert injected_application.state.job_tasks == {}
+    assert loaded_modules == ["custom.task_handlers"]
+
+
 def test_create_app_injects_runtime_factories_and_startup_hook() -> None:
     redis = FakeRedis()
     engine = FakeEngine()
     session_factory = object()
-    configured_settings = settings.model_copy(update={"TITLE": "Isolated Admin"})
+    configured_settings = settings.model_copy(
+        update={"TITLE": "Isolated Admin", "SCHEDULER_ENABLED": False}
+    )
     calls: list[str] = []
 
     async def redis_factory(app_settings):
