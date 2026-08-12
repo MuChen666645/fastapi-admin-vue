@@ -34,6 +34,9 @@
   --app-radius-md: 8px;
   --app-radius-lg: 10px;
   --app-radius-xl: 12px;
+  --app-layout-header-height: 64px;
+  --app-layout-tabs-height: 44px;
+  --app-layout-footer-height: 40px;
   font-family: Lato, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--app-color-text);
   background: var(--app-color-page);
@@ -264,14 +267,16 @@ select {
 }
 
 .basic-layout--sticky-nav .app-tabs {
-  top: 64px;
+  top: var(--app-layout-header-height);
 }
 
 .app-header {
   position: relative;
   z-index: 2;
   display: flex;
-  min-height: 64px;
+  height: var(--app-layout-header-height);
+  min-height: var(--app-layout-header-height);
+  flex: 0 0 var(--app-layout-header-height);
   align-items: center;
   justify-content: space-between;
   gap: 24px;
@@ -514,8 +519,8 @@ select {
 
 .app-tabs {
   display: flex;
-  height: 44px;
-  flex: 0 0 44px;
+  height: var(--app-layout-tabs-height);
+  flex: 0 0 var(--app-layout-tabs-height);
   align-items: center;
   gap: 4px;
   padding: 0 12px;
@@ -883,7 +888,8 @@ select {
 
 .app-footer {
   display: flex;
-  height: 40px;
+  height: var(--app-layout-footer-height);
+  flex: 0 0 var(--app-layout-footer-height);
   align-items: center;
   justify-content: center;
   padding: 0 16px;

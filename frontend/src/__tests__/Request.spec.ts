@@ -187,4 +187,22 @@ describe('request transport', () => {
       expect.objectContaining({ method: 'GET' }),
     )
   })
+
+  it('applies a request-specific timeout without changing the global default', async () => {
+    const requestState: { signal: AbortSignal | null } = { signal: null }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+        requestState.signal = init?.signal ?? null
+        return new Promise<Response>((_resolve, reject) => {
+          requestState.signal?.addEventListener('abort', () => reject(new DOMException('aborted')))
+        })
+      }),
+    )
+
+    await expect(
+      requestJson('/slow-resource', { timeout: 10, showMessage: false }, (value) => value),
+    ).rejects.toMatchObject({ status: 0 })
+    expect(requestState.signal?.aborted).toBe(true)
+  })
 })

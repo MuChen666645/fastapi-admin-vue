@@ -26,6 +26,10 @@ const layoutClasses = computed(() => ({
   'basic-layout--workspace-scroll': layoutSettings.scrollMode === 'workspace',
   'basic-layout--sticky-nav': layoutSettings.scrollMode === 'sticky',
 }))
+const mainLayoutShellClasses = computed(() => ({
+  'main-layout-shell--without-tabs': !layoutSettings.showTabs,
+  'main-layout-shell--without-footer': !layoutSettings.showFooter,
+}))
 
 const syncSidebarForViewport = (): void => {
   if (typeof window.matchMedia !== 'function') {
@@ -52,41 +56,73 @@ const refreshRouteView = (): void => {
 <template>
   <NLayout has-sider class="basic-layout" :class="layoutClasses">
     <AppSidebar v-if="layoutSettings.showSidebar" v-model:collapsed="sidebarCollapsed" />
-    <NLayout class="main-layout">
-      <AppHeader
-        v-model:sidebar-collapsed="sidebarCollapsed"
-        :show-breadcrumb="layoutSettings.showBreadcrumb"
-      />
-      <AppTabs v-if="layoutSettings.showTabs" @refresh="refreshRouteView" />
-      <NLayoutContent class="layout-content" :native-scrollbar="false">
-        <div class="layout-content__body">
-          <ContentLoading />
-          <main
-            class="content-container mx-auto w-full"
-            :class="{ 'content-container--centered': layoutSettings.contentWidth === 'centered' }"
-          >
-            <RouterView v-slot="{ Component, route: viewRoute }">
-              <Transition name="layout-page" mode="out-in" :duration="layoutTransitionDuration">
-                <KeepAlive :include="cachedComponentNames">
-                  <component
-                    v-if="Component"
-                    :is="getCachedRouteComponent(Component, viewRoute)"
-                    :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
-                  />
-                </KeepAlive>
-              </Transition>
-            </RouterView>
-          </main>
-        </div>
-      </NLayoutContent>
-      <AppFooter v-if="layoutSettings.showFooter" />
-    </NLayout>
+    <div class="main-layout-shell" :class="mainLayoutShellClasses">
+      <NLayout class="main-layout">
+        <AppHeader
+          v-model:sidebar-collapsed="sidebarCollapsed"
+          :show-breadcrumb="layoutSettings.showBreadcrumb"
+        />
+        <AppTabs v-if="layoutSettings.showTabs" @refresh="refreshRouteView" />
+        <NLayoutContent class="layout-content" :native-scrollbar="false">
+          <div class="layout-content__body">
+            <main
+              class="content-container mx-auto w-full"
+              :class="{ 'content-container--centered': layoutSettings.contentWidth === 'centered' }"
+            >
+              <RouterView v-slot="{ Component, route: viewRoute }">
+                <Transition name="layout-page" mode="out-in" :duration="layoutTransitionDuration">
+                  <KeepAlive :include="cachedComponentNames">
+                    <component
+                      v-if="Component"
+                      :is="getCachedRouteComponent(Component, viewRoute)"
+                      :key="`${getRouteKey(viewRoute)}:${routeViewKey}`"
+                    />
+                  </KeepAlive>
+                </Transition>
+              </RouterView>
+            </main>
+          </div>
+        </NLayoutContent>
+        <AppFooter v-if="layoutSettings.showFooter" />
+      </NLayout>
+      <div class="content-loading-viewport" data-testid="content-loading-viewport">
+        <ContentLoading />
+      </div>
+    </div>
   </NLayout>
 </template>
 
 <style lang="scss" scoped>
-.layout-content__body {
+.main-layout-shell {
+  --layout-loading-top: calc(var(--app-layout-header-height) + var(--app-layout-tabs-height));
+  --layout-loading-bottom: var(--app-layout-footer-height);
+
   position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.main-layout-shell--without-tabs {
+  --layout-loading-top: var(--app-layout-header-height);
+}
+
+.main-layout-shell--without-footer {
+  --layout-loading-bottom: 0px;
+}
+
+.content-loading-viewport {
+  position: absolute;
+  z-index: 20;
+  inset: var(--layout-loading-top) 0 var(--layout-loading-bottom);
+  pointer-events: none;
+}
+
+.layout-content__body {
   min-height: 100%;
 }
 </style>

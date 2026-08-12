@@ -107,7 +107,7 @@ const sendRequest = async <TParameters extends object>(
     data: options.data,
     params: options.params ? { ...options.params } : undefined,
     headers: options.headers,
-    timeout: requestTimeout,
+    timeout: options.timeout ?? requestTimeout,
     cacheFor: 0,
   })
 

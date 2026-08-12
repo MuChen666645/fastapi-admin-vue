@@ -120,6 +120,13 @@ describe('BasicLayout', () => {
 
     expect(wrapper.find('.basic-layout').exists()).toBe(true)
     expect(wrapper.find('.app-sidebar').exists()).toBe(true)
+    const loadingViewports = wrapper.findAll('[data-testid="content-loading-viewport"]')
+    expect(loadingViewports.length).toBeGreaterThan(0)
+    expect(
+      loadingViewports.every((viewport) =>
+        viewport.element.parentElement?.classList.contains('main-layout-shell'),
+      ),
+    ).toBe(true)
     expect(wrapper.find('.app-sidebar .n-layout-sider-scroll-container').exists()).toBe(true)
     expect(wrapper.get('.sidebar-brand').text()).toContain('FastAPI Admin')
     expect(wrapper.find('.sidebar-brand__icon').exists()).toBe(true)
@@ -283,6 +290,21 @@ describe('BasicLayout', () => {
     expect(wrapper.find('.header-breadcrumb').exists()).toBe(false)
     expect(wrapper.find('.app-footer').exists()).toBe(false)
     expect(wrapper.find('.content-container--centered').exists()).toBe(true)
+    expect(wrapper.find('.main-layout-shell--without-tabs').exists()).toBe(true)
+    expect(wrapper.find('.main-layout-shell--without-footer').exists()).toBe(true)
+
+    layoutSettings.scrollMode = 'content'
+    await nextTick()
+    expect(wrapper.find('.basic-layout--content-scroll').exists()).toBe(true)
+    const loadingViewportCount = wrapper.findAll('[data-testid="content-loading-viewport"]').length
+    expect(loadingViewportCount).toBeGreaterThan(0)
+
+    layoutSettings.scrollMode = 'workspace'
+    await nextTick()
+    expect(wrapper.find('.basic-layout--workspace-scroll').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="content-loading-viewport"]')).toHaveLength(
+      loadingViewportCount,
+    )
 
     wrapper.unmount()
   })

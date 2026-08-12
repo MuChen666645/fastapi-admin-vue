@@ -1,190 +1,260 @@
-# FastAPI Admin Vue 前端
+# FastAPI Admin Vue
 
-这是 FastAPI Admin 的 Vue 3 管理前端，负责登录态、后端菜单路由、管理页面、标签页、主题和路由 Loading 交互。认证、授权、租户、数据范围和业务状态由 FastAPI 服务端最终决定。
+FastAPI Admin Vue 是 FastAPI Admin 的企业级管理前端，基于 Vue 3、TypeScript、Vite 和 Naive UI 构建。项目提供统一的认证会话、动态路由、权限菜单、管理工作台、主题偏好、国际化和导航反馈能力，并通过版本化 HTTP API 与 FastAPI 服务协作。
 
-English documentation: [README.en.md](./README.en.md).
+> 前端负责交互体验和权限展示，FastAPI 服务端始终是认证、授权、租户隔离、数据范围、业务状态和数据一致性的最终权威。
 
-## 技术栈
+English documentation: [README.en.md](./README.en.md)
 
-- Vue 3 + `<script setup lang="ts">` + TypeScript strict
-- Vite + Vue Router + Pinia
-- Alova fetch adapter + Naive UI
-- UnoCSS reset、Sass、Ionicons 5
-- Lottie Web、Vitest、Vue Test Utils、ESLint、Stylelint、Prettier
+## 1. 项目定位
 
-包管理器为 pnpm，Node 版本以 `package.json` 的 `engines` 为准。
+本项目面向企业后台、内部运营平台和多租户管理系统，重点关注以下工程目标：
 
-## 快速开始
+- **契约明确**：所有业务调用通过领域 API 模块和独立 TypeScript 类型完成，不在页面中直接调用传输客户端。
+- **权限闭环**：服务端下发路由和权限码，前端负责菜单、路由和操作可见性，后端负责最终鉴权。
+- **体验一致**：统一布局、标签页、面包屑、搜索表单、数据表格、反馈、主题和 Loading 行为。
+- **边界清晰**：页面、公共组件、Hook、Store、API 和工具函数各自承担单一职责。
+- **可验证交付**：严格执行类型检查、代码规范、样式规范、格式检查、单元测试和生产构建。
+
+## 2. 功能能力
+
+| 领域           | 已实现能力                                                                      |
+| -------------- | ------------------------------------------------------------------------------- |
+| 认证与会话     | 用户名登录、图形验证码、Token 刷新、退出登录、修改密码、会话失效处理            |
+| 路由与权限     | 服务端动态路由、本地组件白名单解析、认证守卫、权限码控制、静态与动态菜单合并    |
+| 组织与权限管理 | 用户、角色、菜单、部门、岗位管理，角色菜单权限和数据范围配置                    |
+| 基础数据       | 字典类型、字典数据、导入导出和字典展示组件                                      |
+| 消息中心       | 消息管理、用户消息、未读统计、标记已读和顶部消息入口                            |
+| 系统监控       | 登录日志、操作日志、异常日志、在线会话和强制下线                                |
+| 定时任务       | 任务分页、详情、新增、修改、删除、立即执行和执行日志                            |
+| 应用体验       | 多标签页、KeepAlive、主题与布局偏好、中英文、时区、水印、更新检测和路由 Loading |
+| 公共能力       | 标准表单、搜索表单、文件选择与上传交互、分页、ECharts、Lottie 和通用工具函数    |
+
+业务页面是否可见取决于服务端返回的菜单、当前用户权限和实际部署的后端能力。定时任务的 `task_name` 必须对应服务端已注册的任务处理器，前端不提供任意代码执行入口。
+
+## 3. 技术栈
+
+| 分类         | 技术                                                            |
+| ------------ | --------------------------------------------------------------- |
+| 核心框架     | Vue 3、`<script setup lang="ts">`、TypeScript Strict Mode       |
+| 工程化       | Vite、pnpm、Sass、UnoCSS                                        |
+| 路由与状态   | Vue Router、Pinia、`pinia-plugin-persistedstate`                |
+| UI 与图标    | Naive UI、Ionicons 5、SVG Icon                                  |
+| HTTP         | Alova Fetch Adapter                                             |
+| 可视化与动画 | ECharts、Lottie Web                                             |
+| 质量工具     | Vitest、Vue Test Utils、ESLint、Stylelint、Prettier、Commitlint |
+
+Node.js 支持范围以 `package.json` 为准，当前为 `^22.18.0 || >=24.12.0`。项目统一使用 pnpm。
+
+## 4. 架构概览
+
+```text
+View / Layout / Component
+           │
+           ├── Hook / Pinia Store
+           │
+           └── Domain API ── Response Parser
+                              │
+                         Request Transport
+                              │
+                         /api/v1 (FastAPI)
+```
+
+主要运行链路：
+
+1. 登录成功后，认证 Store 获取当前用户和 `GET /api/v1/user/routes`。
+2. 动态路由转换器校验路径、名称、元数据和本地组件映射。
+3. 合法路由注册到 `app` 布局，侧边栏根据服务端路由和静态菜单生成。
+4. 页面通过 `src/api/<domain>/` 调用后端，响应解析器从 `unknown` 校验为领域类型。
+5. 传输层统一处理响应结构、401 刷新、会话版本、错误反馈和文件响应。
+
+### 目录结构
+
+```text
+src/
+├── api/                    # 领域 API、请求参数和响应解析
+├── assets/                 # 全局样式、Lottie 等静态资源
+├── components/             # 跨页面公共组件和应用壳层组件
+├── hooks/                  # Vue、Router、Pinia、DOM 和第三方实例编排
+├── layouts/BasicLayout/    # 侧边栏、头部、标签页、内容区和页脚
+├── router/                 # 静态路由、守卫、动态路由和缓存规则
+├── stores/modules/         # 认证、标签页、偏好和路由 Loading 状态
+├── types/                  # API、路由、Store、传输和组件类型
+├── utils/                  # 纯工具、传输边界、运行时守卫和基础设施
+├── views/                  # 路由级业务页面
+└── __tests__/              # Vitest 单元测试和组件测试
+```
+
+## 5. 本地开发
+
+### 环境要求
+
+- Node.js `^22.18.0 || >=24.12.0`
+- pnpm
+- 可访问的 FastAPI Admin 服务，默认开发地址为 `http://127.0.0.1:3000`
+
+### 启动步骤
 
 ```sh
 pnpm install
 pnpm dev
 ```
 
-默认开发服务为 `http://127.0.0.1:5173`。`pnpm dev` 会先执行 `pnpm run check`，检查通过后才启动 Vite。
+默认访问地址为 `http://127.0.0.1:5173`。`pnpm dev` 会先执行完整静态检查，检查通过后再启动 Vite。
 
-开发环境默认将 `/api` 代理到 `http://127.0.0.1:3000`。如果 FastAPI 服务地址不同，复制 `.env.example` 为 `.env.local` 后修改 `VITE_API_PROXY_TARGET`，不要把密钥、Token 或内部凭据写入环境文件。
+开发环境默认把 `/api` 代理到 `http://127.0.0.1:3000`。需要覆盖本机配置时，从 `.env.example` 创建 `.env.local` 并只填写公开配置。所有 `VITE_*` 变量都会进入浏览器构建产物，禁止写入密码、Token、密钥或内部凭据。
 
-## 环境变量
+### 环境变量
 
-| 变量                                              | 用途                      | 示例                         |
-| ------------------------------------------------- | ------------------------- | ---------------------------- |
-| `VITE_APP_TITLE`                                  | HTML 标题和页脚名称       | `FastAPI Admin`              |
-| `VITE_API_BASE_URL`                               | 浏览器请求的 API 基础路径 | `/api/v1`                    |
-| `VITE_API_PROXY_TARGET`                           | 开发代理目标              | `http://127.0.0.1:3000`      |
-| `VITE_API_PROXY_ENABLED`                          | 是否启用 `/api` 代理      | `true`/`false`               |
-| `VITE_DEV_HOST`、`VITE_DEV_PORT`、`VITE_DEV_OPEN` | 开发服务配置              | `127.0.0.1`、`5173`、`false` |
-| `VITE_PREVIEW_HOST`、`VITE_PREVIEW_PORT`          | preview 服务配置          | `127.0.0.1`、`4173`          |
-| `VITE_BASE_PATH`                                  | 部署基础路径              | `/`                          |
-| `VITE_SOURCEMAP`                                  | 是否生成 sourcemap        | `false`                      |
+| 变量                     | 说明                      | 默认示例                |
+| ------------------------ | ------------------------- | ----------------------- |
+| `VITE_APP_TITLE`         | 应用标题和页脚名称        | `FastAPI Admin`         |
+| `VITE_API_BASE_URL`      | 浏览器请求的 API 基础路径 | `/api/v1`               |
+| `VITE_API_PROXY_TARGET`  | 开发代理目标              | `http://127.0.0.1:3000` |
+| `VITE_API_PROXY_ENABLED` | 是否启用 `/api` 开发代理  | `true`                  |
+| `VITE_DEV_HOST`          | 开发服务监听地址          | `127.0.0.1`             |
+| `VITE_DEV_PORT`          | 开发服务端口              | `5173`                  |
+| `VITE_DEV_OPEN`          | 启动后是否自动打开浏览器  | `false`                 |
+| `VITE_PREVIEW_HOST`      | Preview 监听地址          | `127.0.0.1`             |
+| `VITE_PREVIEW_PORT`      | Preview 端口              | `4173`                  |
+| `VITE_BASE_PATH`         | 部署基础路径              | `/`                     |
+| `VITE_SOURCEMAP`         | 是否生成 Source Map       | `false`                 |
 
-项目不使用 `VITE_ROUTE_MODE`。登录后业务路由始终通过后端 `/api/v1/user/routes` 获取。
+项目不使用 `VITE_ROUTE_MODE`。认证后的业务路由始终以后端接口为准。
 
-## 路由和权限
+## 6. API 与会话规范
 
-静态路由位于 `src/router/modules/`：
+业务接口统一从 `@/api` 或具体领域 API 模块导入。页面和公共组件不得直接创建 Alova 或 Fetch 请求。
 
-- `/login`：公开登录页。
-- `/change-password`：认证后的密码修改页。
-- `/`：`BasicLayout` 应用布局。
-- `/system/settings`：统一系统设置入口，路由名为 `system-settings`，不作为后端菜单显示。
-- `/demo/default-pages`：认证后的静态菜单，层级为“演示 / 缺省页 / 403、404、500、网络离线”，显示在前端侧边栏中。
-- `/403`、`/500`、`/offline` 和 not-found：缺省页，统一提供刷新页面和返回首页操作。
+常规响应结构为：
 
-登录后，前端调用 `GET /api/v1/user/routes`，将服务端返回的业务路由注册到 `app` 布局下。后端 `component` 会映射到本地 `src/views/**/*.vue`，支持以下形式：
-
-```text
-home/index
-@/views/home/index.vue
-../views/home/index.vue
-./views/home/index.vue
-/views/home/index.vue
+```ts
+interface ApiResponse<T> {
+  code: number
+  error_code?: string | null
+  message: string
+  data: T
+}
 ```
 
-路径和路由名称会先经过运行时校验。找不到本地组件的路由会被过滤，并在控制台输出一次警告；前端不把路由菜单当作后端授权替代品。
+传输层约定：
 
-在线用户页面由后端动态菜单注册，按数据权限分页展示活跃登录会话，支持用户名和登录 IP 筛选。`monitor:online:forceLogout` 权限提供单会话下线和指定用户全部可见会话下线，两种操作都会二次确认。
+- API 基础路径默认为 `/api/v1`。
+- 领域响应先按 `unknown` 接收，再由 Parser 完成运行时校验。
+- 401 响应使用共享刷新请求重试一次，刷新失败后清理当前会话。
+- 普通请求错误通过全局 Message 桥展示；登录和退出使用 Notification。
+- 文件下载使用独立 Blob 响应路径，不强制套用 JSON 响应结构。
+- 新增接口时必须同步请求类型、响应类型、解析器、页面调用方和针对性测试。
 
-## 目录结构
+## 7. 路由、权限与缓存
 
-```text
-src/
-├── api/                 # 领域 API 和响应解析
-├── components/          # 公共表单、Loading、请求 Message 桥、面包屑和路由反馈组件
-├── hooks/               # 主题、语言、标题、Lottie、ECharts 和路由缓存等可复用行为
-├── layouts/BasicLayout/ # 侧边栏、头部、标签页、内容区和页脚
-├── router/              # 静态路由、认证守卫、动态路由转换
-├── stores/modules/      # auth、tabs、route-loading、preferences
-├── types/               # API、路由、Store、传输和 Lottie 类型
-├── utils/               # 公共工具包、传输边界、运行时守卫和 Lottie 基础封装
-├── views/               # 路由级页面
-└── __tests__/           # Vitest 单元与组件测试
-```
+静态路由位于 `src/router/modules/`，主要包括登录、修改密码、系统设置、组件演示和缺省错误页。登录后的业务路由通过 `GET /api/v1/user/routes` 获取，并注册到 `BasicLayout` 下。
 
-缺省页演示使用 `src/router/modules/protected.ts` 中的嵌套路由，四个叶子节点直接复用 `src/views/error/` 下的 403、404、500 和离线页面。
+服务端 `component` 只允许映射到本地 `src/views/**/*.vue` 白名单。找不到组件、路径无效或名称冲突的路由会被拒绝，不能根据服务端字符串执行任意动态导入。
 
-大页面的业务区域放在页面目录的 `components/` 中，例如 `src/views/system/config/components/`。公共组件才放入 `src/components/`。所有 `type`、`interface`、`enum` 声明统一放在 `src/types/`，通过 `@/types` 导入；新增普通样式优先使用 UnoCSS utility class。`src/views/` 下目录使用能表达业务域和页面职责的语义化名称。
+权限原则：
 
-## 组件、工具函数和 Hooks 开发约定
+- 路由守卫负责登录态和页面访问体验。
+- `v-permission`、权限 Hook 和操作按钮负责前端可见性。
+- 服务端必须再次校验用户、租户、权限码和数据范围。
+- 前端隐藏按钮不构成安全边界。
 
-按依赖选择代码位置：
+`meta.noCache === false` 的页面允许 KeepAlive，缓存名称为 `RouteTab_<route-key>`。标签页状态存储在 `sessionStorage`，标签列表和组件缓存分别维护。
 
-| 需求                | 目录                                    | 主要职责                                              | 不应承担                                     |
-| ------------------- | --------------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
-| 跨页面 UI           | `src/components/`                       | 展示、交互、Props/Emits、插槽和局部校验               | 领域 API、业务列表、Token 和跨页面业务状态   |
-| 页面专属 UI         | `src/views/<domain>/<page>/components/` | 当前页面的展示和交互编排                              | 被无关页面直接依赖，或重复实现公共组件       |
-| 生命周期/上下文行为 | `src/hooks/use*.ts`                     | Vue 生命周期、Router、Pinia、DOM Ref 和第三方实例编排 | 领域 API、后端响应解析和业务提交             |
-| 无生命周期逻辑      | `src/utils/`                            | 纯计算、格式化、解析、转换和安全校验                  | 隐式全局状态、页面副作用和未经说明的业务修改 |
-| 跨页面业务状态      | `src/stores/modules/`                   | 会话、标签页、偏好和 Loading 状态                     | DOM、页面组件和后端授权替代                  |
+## 8. 布局、主题与 Loading
 
-组件通过 Props、Emits、`v-model` 或插槽交付数据和状态；提交表单或搜索时，组件先完成局部校验，再由页面或 Store 调用已核实的 `@/api`。新增公共组件必须维护组件目录 README 和 `src/__tests__/` 测试，记录 Props、Emits、Slots、暴露方法、校验/Loading 状态和最小示例。
+`BasicLayout` 由侧边栏、头部、标签栏、内容区和页脚组成，支持三种滚动模式：
 
-Hook 统一使用 `use` 命名，只在需要 Vue/Router/Pinia/DOM 上下文时使用；所有监听器、订阅、观察器、定时器和第三方实例都必须在卸载时清理。工具函数默认保持无生命周期和明确输入输出，公共函数从 `@/utils` 导出；请求传输、响应守卫、存储和反馈桥等基础设施使用具体模块入口。
+| 模式        | 行为                                       |
+| ----------- | ------------------------------------------ |
+| `content`   | 头部、标签栏和侧边栏固定，仅内容区内部滚动 |
+| `workspace` | 右侧工作区整体滚动                         |
+| `sticky`    | 头部和标签栏吸顶，右侧其余区域滚动         |
 
-详细索引：[`src/components/README.md`](./src/components/README.md)、[`src/hooks/README.md`](./src/hooks/README.md)、[`src/utils/README.md`](./src/utils/README.md)。Codex 强制规则、架构边界和验证流程见 [`.codex/README.md`](./.codex/README.md)。
+系统设置统一管理浅色、深色或跟随系统主题、主题色、圆角、字体大小、色弱、灰度、内容宽度、布局可见性、中英文、时区、水印和导航反馈，并持久化到 `localStorage`。
 
-## 偏好配置与双语模式 / Preferences and bilingual mode
+路由 Loading 分为两层：
 
-系统设置入口为 `/system/settings`，配置由 `usePreferencesStore` 统一管理，并通过 `localStorage` 持久化。设置包括：
+- `GlobalLoading`：用于初始导航和布局外页面切换，覆盖整个浏览器视口。
+- `ContentLoading`：用于 `BasicLayout` 内部导航，覆盖稳定的右侧工作区视口；遮罩尺寸与业务页面内容高度解耦，不会因长页面或空页面拉伸、收缩。
+- `RouterLoadingBar`：提供顶部导航进度反馈。
 
-- 外观：浅色、深色或跟随系统主题，主题色，圆角，字体大小，色弱和灰度模式。
-- 布局：全屏或居中内容，侧边栏、标签页、面包屑、页脚，以及内容区固定方式。
-- 通用：`zh-CN` / `en-US`、时区、动态标题、水印、更新检查开关和页面 Loading 开关。
+`pageTransition` 控制顶部进度条，`loadingAnimation` 控制 Lottie 遮罩。关闭动画只隐藏视觉反馈，不改变路由状态完成逻辑。
 
-内容区固定方式有三种：`content` 让顶部栏、标签栏和侧边栏固定、仅内容区内部滚动；`workspace` 让右侧工作区整体滚动；`sticky` 仅固定顶部栏和标签栏，其余右侧内容滚动。语言切换即时影响设置页和公共壳层，动态后端菜单标题在没有词典映射时保留服务端原文。
+生产构建会生成同源 `version.json`。启用更新检查后，应用定时比较构建 ID，发现新版本时显示刷新提示，由用户确认后执行整页刷新。
 
-顶部栏和登录页顶部工具区提供语言切换按钮，可在不进入系统设置的情况下直接切换 `zh-CN` / `en-US`；首页统计、图表和活动文案会随偏好语言同步更新。
+## 9. 开发规范
 
-The `/system/settings` page is backed by one `usePreferencesStore` and persists preferences in `localStorage`. It covers appearance, layout, language, timezone, dynamic titles, watermark, update checking, and loading feedback. The three scroll modes are `content`, `workspace`, and `sticky`, matching the behavior described above. The bilingual UI supports `zh-CN` and `en-US`; static shell titles are translated and unknown backend titles are preserved.
+### 模块职责
 
-The app header and login-page toolbar include a language toggle, so users can switch between `zh-CN` and `en-US` without opening system settings. Dashboard cards, charts, and activity copy follow the selected preference.
+| 类型        | 目录                                    | 职责                                              |
+| ----------- | --------------------------------------- | ------------------------------------------------- |
+| 公共 UI     | `src/components/`                       | 展示、交互、Props、Emits、Slots 和局部校验        |
+| 页面专属 UI | `src/views/<domain>/<page>/components/` | 单一业务页面的展示与交互编排                      |
+| Hook        | `src/hooks/use*.ts`                     | Vue 生命周期、Router、Pinia、DOM 和第三方实例管理 |
+| Store       | `src/stores/modules/`                   | 跨页面会话、标签页、偏好和共享状态                |
+| Domain API  | `src/api/<domain>/`                     | 后端调用、参数转换和响应解析                      |
+| Utility     | `src/utils/`                            | 无生命周期、输入输出明确的纯逻辑和基础设施        |
 
-“定时检查更新”控制应用壳层对同源 `version.json` 的轮询。正式构建会生成唯一构建 ID，发现版本变化后显示更新提示；用户点击“立即刷新”才会执行整页刷新。该清单属于前端部署元数据，不依赖后端业务接口。复制偏好设置只包含本地 UI 配置，不包含 Token、密码或用户会话凭据。
+公共组件通过 Props、Emits、`v-model` 或 Slots 通信，不直接调用领域 API。所有监听器、订阅、观察器、定时器和第三方实例都必须提供清理路径。
 
-The update-check switch controls polling of the same-origin `version.json` file used by the application shell. Production builds generate a unique build ID; when it changes, the app shows an update prompt, and a full reload occurs only after the user clicks “Refresh now”. This deployment metadata does not depend on a business API. Copying preferences exports UI settings only and never session credentials.
+详细规范：
 
-## 认证与 API
+- [公共组件约定](./src/components/README.md)
+- [Hook 使用规范](./src/hooks/README.md)
+- [工具函数规范](./src/utils/README.md)
+- [前端工程规则](./.codex/README.md)
 
-API 调用统一经过 `src/api/<domain>/index.ts` 和 `src/utils/request.ts`。当前认证相关接口包括：
-
-```text
-POST /user/login/username
-POST /user/login/phone
-GET  /captcha/image
-POST /user/token/refresh
-POST /user/logout
-PUT  /user/me/password
-GET  /user/info
-GET  /user/routes
-```
-
-统一响应通常为 `{ code, error_code?, message, data }`。API parser 从 `unknown` 校验字段后才交给 Store 或页面。401 会由传输层使用共享刷新请求重试一次，失败后清理会话；普通请求异常通过 Naive UI Message 提示，登录和退出使用 Notification 提示。
-
-## Loading、标签页和缓存
-
-- 初始导航和布局外页面使用 `GlobalLoading` 全屏 Lottie 动画。
-- `BasicLayout` 内部页面切换使用 `ContentLoading`，只覆盖内容区，不遮挡侧边栏、顶部栏和标签页。
-- `RouterLoadingBar` 使用 Naive UI 顶部进度条。
-- 通用设置中的 `pageTransition` 控制顶部进度条，`loadingAnimation` 控制全屏和内容区 Lottie；关闭后导航状态仍正常完成，只隐藏对应反馈。
-- `meta.noCache === false` 的页面允许 KeepAlive 缓存，缓存名为 `RouteTab_<route-key>`。
-- tabs 列表由 `useTabsStore` 使用 `sessionStorage` 持久化；组件缓存和标签列表是两个独立状态。
-
-公共组件说明见 [`src/components/README.md`](./src/components/README.md)，Hook 使用说明见 [`src/hooks/README.md`](./src/hooks/README.md)，工具包说明见 [`src/utils/README.md`](./src/utils/README.md)。Lottie 基础函数位于 `src/utils/lottie.ts`，生命周期封装位于 `src/hooks/useLottie.ts`，动画数据位于 `src/assets/lottie/car-loading3-data.json`。
-
-## 常用命令
+## 10. 质量门禁
 
 ```sh
-pnpm run check             # 类型、ESLint、Stylelint、Prettier
-pnpm run test:run          # 检查后运行全部 Vitest
-pnpm run build             # 检查后构建 production 到 dist/
-pnpm run build:staging     # 构建 staging 到 dist-staging/
-pnpm run preview           # 检查后预览 production 构建
-git diff --check           # 检查差异中的空白错误
+pnpm run type-check       # TypeScript 和 Vue 类型检查
+pnpm run lint             # ESLint
+pnpm run lint:style       # Stylelint
+pnpm run format:check     # Prettier
+pnpm run test:run         # 完整静态检查和 Vitest
+pnpm run build            # 完整静态检查和生产构建
+git diff --check          # 差异空白检查
 ```
 
 定向测试示例：
 
 ```sh
-pnpm exec vitest run src/__tests__/DynamicRouter.spec.ts
-pnpm exec vitest run src/__tests__/Lottie.spec.ts
-pnpm exec vitest run src/__tests__/SystemConfig.spec.ts
+pnpm exec vitest run src/__tests__/BasicLayout.spec.ts src/__tests__/Lottie.spec.ts
 ```
 
-Windows 下如果 Vite/Vitest 报 `spawn EPERM`，需要在允许子进程的环境重试，并分别报告静态检查和运行时测试结果。
+Windows 环境中如果 Vite 或 Vitest 报 `spawn EPERM`，应在允许创建子进程的终端重试，并分别报告静态检查、测试和构建结果。
 
-## 安全注意事项
+## 11. 构建与部署
 
-- 不把 Token、密码、验证码、MFA、密码重置令牌和生产数据写入日志、URL、源码、截图或测试输出。
-- 服务端路由组件只允许映射到本地 View 白名单，不允许根据服务端字符串任意导入组件。
-- 当前用户主动选择记住登录时，`src/utils/loginPreferences.ts` 会将账号和密码写入 `localStorage`，这是已知风险；新功能不得扩大该行为，后续应单独进行安全整改。
+| 命令                         | 模式        | 输出目录            |
+| ---------------------------- | ----------- | ------------------- |
+| `pnpm run build:development` | development | `dist-development/` |
+| `pnpm run build:staging`     | staging     | `dist-staging/`     |
+| `pnpm run build`             | production  | `dist/`             |
 
-## Codex 文档
+部署要求：
 
-前端规则和事实文档位于 `.codex/`：
+- Web 服务器必须支持 SPA History 回退，将未知前端路径返回 `index.html`。
+- `/api` 应反向代理到 FastAPI 服务，或通过 `VITE_API_BASE_URL` 指向可访问地址。
+- `VITE_BASE_PATH` 必须与实际部署子路径一致。
+- `version.json` 应使用禁止缓存或短缓存策略，静态哈希资源可使用长期缓存。
+- 生产环境默认关闭 Source Map；如需开启，应评估源码暴露风险。
 
-- `AGENTS.md`：强制实现规则。
+## 12. 安全边界
+
+- 禁止在源码、环境文件、日志、URL、截图和测试夹具中写入密码、Token、验证码、MFA、密钥或生产数据。
+- 所有服务端数据均视为不可信输入，必须经过类型和运行时校验。
+- 菜单、按钮和路由守卫只改善体验，不能替代后端授权。
+- 服务端路由只能解析到本地 View 白名单。
+- 用户主动启用“记住登录”时，现有实现会把登录凭据写入 `localStorage`，这是已知安全风险；新功能不得扩大该行为，应在独立安全整改中替换。
+
+## 13. 工程文档
+
+仓库内工程事实和执行规则位于 `.codex/`：
+
+- `AGENTS.md`：前端强制实现规则。
 - `PROJECT.md`：当前项目事实、脚本、环境和接口。
-- `ARCHITECTURE.md`：模块职责、路由、会话、缓存和 Loading 数据流。
+- `ARCHITECTURE.md`：模块职责和运行时数据流。
 - `BOUNDARY.md`：修改范围、安全边界和禁止事项。
-- `WORKFLOW.md`：任务分析、实现、验证和交付流程。
-- `PROMPTS/feature.md`、`PROMPTS/bugfix.md`：任务输入和交付模板。
+- `WORKFLOW.md`：分析、实现、验证和交付流程。

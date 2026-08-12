@@ -32,6 +32,7 @@ export interface RequestOptions<TParameters extends object = object> {
   data?: RequestBody
   params?: TParameters
   headers?: Record<string, string>
+  timeout?: number
   auth?: boolean
   skipAuthRefresh?: boolean
   showMessage?: boolean

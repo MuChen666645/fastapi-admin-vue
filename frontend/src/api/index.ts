@@ -45,6 +45,15 @@ export {
 export { deleteLogs, fetchLogList } from './log'
 export { fetchOnlineSessions, forceLogoutSession, forceLogoutUser } from './online'
 export {
+  createScheduledJob,
+  deleteScheduledJob,
+  fetchScheduledJobDetail,
+  fetchScheduledJobLogs,
+  fetchScheduledJobs,
+  runScheduledJob,
+  updateScheduledJob,
+} from './job'
+export {
   batchDeleteUsers,
   batchUpdateUserStatus,
   bindUserRoles,

@@ -54,11 +54,11 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .content-loading {
   position: absolute;
-  z-index: 20;
   inset: 0;
   display: grid;
   place-items: center;
   background: var(--app-color-page);
+  pointer-events: auto;
 }
 
 .content-loading__animation {

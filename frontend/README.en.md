@@ -1,173 +1,260 @@
-# FastAPI Admin Vue Frontend
+# FastAPI Admin Vue
 
-This is the Vue 3 administration frontend for FastAPI Admin. It owns the session experience, server-provided menu routes, management pages, tabs, theme, preferences, and route-loading feedback. FastAPI remains the authority for authentication, authorization, tenancy, data scope, and business state.
+FastAPI Admin Vue is the enterprise administration frontend for FastAPI Admin. Built with Vue 3, TypeScript, Vite, and Naive UI, it provides a consistent session, dynamic routing, permission menu, administration workspace, preference, internationalization, and navigation-feedback layer over versioned FastAPI HTTP APIs.
 
-Chinese documentation: [README.md](./README.md).
+> The frontend owns interaction and permission presentation. FastAPI remains the authority for authentication, authorization, tenancy, data scope, business state, and data consistency.
 
-## Stack
+中文文档：[README.md](./README.md)
 
-- Vue 3 with `<script setup lang="ts">` and strict TypeScript
-- Vite, Vue Router, and Pinia
-- Alova fetch adapter and Naive UI
-- UnoCSS reset, Sass, and Ionicons 5
-- Lottie Web, Vitest, Vue Test Utils, ESLint, Stylelint, and Prettier
+## 1. Project Scope
 
-Use pnpm. The supported Node range is declared in `package.json`.
+The project targets enterprise back offices, internal operations platforms, and multi-tenant administration systems. Its engineering priorities are:
 
-## Quick start
+- **Explicit contracts**: business requests use domain API modules and dedicated TypeScript types; views do not call the transport client directly.
+- **Complete permission flow**: the server supplies routes and permission codes, the frontend controls presentation, and the backend performs final authorization.
+- **Consistent experience**: layout, tabs, breadcrumbs, search forms, tables, feedback, themes, and loading behavior follow shared conventions.
+- **Clear ownership**: views, shared components, hooks, stores, APIs, and utilities have distinct responsibilities.
+- **Verifiable delivery**: type checking, code linting, style linting, formatting, tests, and production builds are mandatory quality gates.
+
+## 2. Capabilities
+
+| Domain                     | Implemented capabilities                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Authentication and session | Username login, CAPTCHA, token refresh, sign-out, password change, and expired-session handling                            |
+| Routing and permissions    | Server routes, local component allowlist, authentication guards, permission-code controls, and merged static/dynamic menus |
+| Identity and organization  | Users, roles, menus, departments, posts, role-menu permissions, and data-scope configuration                               |
+| Reference data             | Dictionary types, dictionary data, import/export, and dictionary display components                                        |
+| Message center             | Message administration, user inbox, unread counts, read state, and header entry point                                      |
+| Monitoring                 | Login, operation, and exception logs; online sessions and forced sign-out                                                  |
+| Scheduled jobs             | Pagination, details, create, update, delete, run now, and execution logs                                                   |
+| Application experience     | Tabs, KeepAlive, theme and layout preferences, Chinese/English, timezone, watermark, update detection, and route loading   |
+| Shared foundation          | Standard forms, search forms, file-selection/upload interaction, pagination, ECharts, Lottie, and utilities                |
+
+Page availability depends on server-provided menus, current permissions, and the backend capabilities deployed in the target environment. A scheduled job `task_name` must match a handler registered by the backend; the UI does not expose arbitrary code execution.
+
+## 3. Technology Stack
+
+| Category                 | Technology                                                      |
+| ------------------------ | --------------------------------------------------------------- |
+| Core                     | Vue 3, `<script setup lang="ts">`, TypeScript Strict Mode       |
+| Tooling                  | Vite, pnpm, Sass, UnoCSS                                        |
+| Routing and state        | Vue Router, Pinia, `pinia-plugin-persistedstate`                |
+| UI and icons             | Naive UI, Ionicons 5, SVG icons                                 |
+| HTTP                     | Alova Fetch Adapter                                             |
+| Visualization and motion | ECharts, Lottie Web                                             |
+| Quality                  | Vitest, Vue Test Utils, ESLint, Stylelint, Prettier, Commitlint |
+
+The supported Node.js range is declared in `package.json` and is currently `^22.18.0 || >=24.12.0`. The project uses pnpm.
+
+## 4. Architecture
+
+```text
+View / Layout / Component
+           │
+           ├── Hook / Pinia Store
+           │
+           └── Domain API ── Response Parser
+                              │
+                         Request Transport
+                              │
+                         /api/v1 (FastAPI)
+```
+
+Primary runtime flow:
+
+1. After login, the authentication store loads the current user and `GET /api/v1/user/routes`.
+2. The dynamic-route converter validates paths, names, metadata, and local component mappings.
+3. Valid routes are registered under the `app` layout; the sidebar combines server routes with static menus.
+4. Views call the backend through `src/api/<domain>/`; parsers validate `unknown` response data into domain types.
+5. The transport layer owns common responses, 401 refresh, session versions, error feedback, and file responses.
+
+### Directory Structure
+
+```text
+src/
+├── api/                    # Domain APIs, request parameters, and response parsers
+├── assets/                 # Global styles and static assets such as Lottie data
+├── components/             # Cross-page components and application-shell components
+├── hooks/                  # Vue, Router, Pinia, DOM, and third-party orchestration
+├── layouts/BasicLayout/    # Sidebar, header, tabs, content, and footer
+├── router/                 # Static routes, guards, dynamic routes, and cache rules
+├── stores/modules/         # Authentication, tabs, preferences, and route loading
+├── types/                  # API, route, store, transport, and component types
+├── utils/                  # Pure utilities, transport boundary, guards, and infrastructure
+├── views/                  # Route-level business views
+└── __tests__/              # Vitest unit and component tests
+```
+
+## 5. Local Development
+
+### Prerequisites
+
+- Node.js `^22.18.0 || >=24.12.0`
+- pnpm
+- A reachable FastAPI Admin service, defaulting to `http://127.0.0.1:3000` in development
+
+### Start the Application
 
 ```sh
 pnpm install
 pnpm dev
 ```
 
-The default development URL is `http://127.0.0.1:5173`. `pnpm dev` runs `pnpm run check` before starting Vite. In development, `/api` is proxied to `http://127.0.0.1:3000`. Copy `.env.example` to `.env.local` when the FastAPI service uses another address. Never put secrets, tokens, or internal credentials in frontend environment files.
+The default URL is `http://127.0.0.1:5173`. `pnpm dev` runs the complete static check before starting Vite.
 
-## Environment
+Development requests under `/api` are proxied to `http://127.0.0.1:3000` by default. Create `.env.local` from `.env.example` to override local public configuration. Every `VITE_*` value is included in the browser bundle; never store passwords, tokens, secrets, or internal credentials in these files.
 
-| Variable                                          | Purpose                    | Example                      |
-| ------------------------------------------------- | -------------------------- | ---------------------------- |
-| `VITE_APP_TITLE`                                  | HTML title and footer name | `FastAPI Admin`              |
-| `VITE_API_BASE_URL`                               | Browser API base path      | `/api/v1`                    |
-| `VITE_API_PROXY_TARGET`                           | Development proxy target   | `http://127.0.0.1:3000`      |
-| `VITE_API_PROXY_ENABLED`                          | Enable the `/api` proxy    | `true` / `false`             |
-| `VITE_DEV_HOST`, `VITE_DEV_PORT`, `VITE_DEV_OPEN` | Development server options | `127.0.0.1`, `5173`, `false` |
-| `VITE_PREVIEW_HOST`, `VITE_PREVIEW_PORT`          | Preview server options     | `127.0.0.1`, `4173`          |
-| `VITE_BASE_PATH`                                  | Deployment base path       | `/`                          |
-| `VITE_SOURCEMAP`                                  | Generate source maps       | `false`                      |
+### Environment Variables
 
-The frontend does not use `VITE_ROUTE_MODE`. Authenticated business routes always come from `GET /api/v1/user/routes`.
+| Variable                 | Description                         | Default example         |
+| ------------------------ | ----------------------------------- | ----------------------- |
+| `VITE_APP_TITLE`         | Application title and footer name   | `FastAPI Admin`         |
+| `VITE_API_BASE_URL`      | Browser API base path               | `/api/v1`               |
+| `VITE_API_PROXY_TARGET`  | Development proxy target            | `http://127.0.0.1:3000` |
+| `VITE_API_PROXY_ENABLED` | Enable the `/api` development proxy | `true`                  |
+| `VITE_DEV_HOST`          | Development server host             | `127.0.0.1`             |
+| `VITE_DEV_PORT`          | Development server port             | `5173`                  |
+| `VITE_DEV_OPEN`          | Open a browser after startup        | `false`                 |
+| `VITE_PREVIEW_HOST`      | Preview server host                 | `127.0.0.1`             |
+| `VITE_PREVIEW_PORT`      | Preview server port                 | `4173`                  |
+| `VITE_BASE_PATH`         | Deployment base path                | `/`                     |
+| `VITE_SOURCEMAP`         | Generate source maps                | `false`                 |
 
-## Routes and permissions
+The project does not use `VITE_ROUTE_MODE`. Authenticated business routes always come from the backend.
 
-- `/login` is public.
-- `/change-password` is the authenticated password-change page.
-- `/` mounts `BasicLayout`.
-- `/system/settings` is the static system preferences entry, named `system-settings` and hidden from the server menu.
-- `/demo/default-pages` is an authenticated static menu tree: `Demo / Default pages / 403, 404, 500, Offline`. It is shown in the frontend sidebar.
-- `/403`, `/500`, `/offline`, and the not-found route provide default error pages with refresh and home actions.
+## 6. API and Session Contract
 
-After login, the frontend loads `GET /api/v1/user/routes` and registers validated business routes under the `app` layout. Server `component` values are resolved through the local `src/views/**/*.vue` allowlist. Frontend menus and route guards improve the experience but never replace backend authorization.
+Business APIs are imported from `@/api` or a specific domain API module. Views and shared components must not create Alova or Fetch requests directly.
 
-The server-provided online-users page lists active login sessions within the operator's data scope, with username and login-IP filters. The `monitor:online:forceLogout` permission enables confirmed actions to sign out one session or every visible session for a user.
+The common response shape is:
 
-## Project structure
-
-```text
-src/
-├── api/                 # Domain API functions and response parsers
-├── components/          # Shared forms, loading, request Message bridge, breadcrumbs, and overlays
-├── hooks/               # Theme, locale, title, Lottie, ECharts, and route cache behavior
-├── layouts/BasicLayout/ # Sidebar, header, tabs, content, and footer
-├── router/              # Static routes, guards, and dynamic route conversion
-├── stores/modules/      # Auth, tabs, route loading, and preferences
-├── types/               # API, route, store, transport, and preference types
-├── utils/               # Public toolkit, request boundary, locale dictionary, and Lottie helpers
-├── views/               # Route-level pages
-└── __tests__/           # Vitest component and unit tests
+```ts
+interface ApiResponse<T> {
+  code: number
+  error_code?: string | null
+  message: string
+  data: T
+}
 ```
 
-Page-specific areas belong under the page directory, such as `src/views/system/config/components/`. Shared components belong under `src/components/`. Keep all TypeScript declarations in `src/types/` and import them through `@/types`.
+Transport rules:
 
-Component documentation is indexed in [`src/components/README.md`](./src/components/README.md). Hook usage is documented in [`src/hooks/README.md`](./src/hooks/README.md), and the public utility toolkit is documented in [`src/utils/README.md`](./src/utils/README.md).
+- The default API base path is `/api/v1`.
+- Domain responses enter the boundary as `unknown` and are validated by parsers.
+- A 401 response uses one shared refresh attempt; a failed refresh clears the active session.
+- General failures use the global Message bridge; login and sign-out use Notification.
+- File downloads use a dedicated Blob path and do not require the JSON envelope.
+- A new endpoint requires synchronized request types, response types, parser, caller, and focused tests.
 
-The default-pages demo is a nested route tree in `src/router/modules/protected.ts`; its four leaf routes reuse the 403, 404, 500, and offline views under `src/views/error/`.
+## 7. Routing, Permissions, and Cache
 
-## Components, Utilities, and Hooks
+Static routes live in `src/router/modules/` and cover login, password change, system settings, component demos, and default error pages. Authenticated business routes are loaded from `GET /api/v1/user/routes` and registered under `BasicLayout`.
 
-Choose the location by dependency:
+Server `component` values can only resolve through the local `src/views/**/*.vue` allowlist. Routes with missing components, invalid paths, or conflicting names are rejected; server strings never trigger unrestricted dynamic imports.
 
-| Need                       | Directory                               | Owns                                                                 | Must not own                                                                  |
-| -------------------------- | --------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Shared UI                  | `src/components/`                       | Rendering, interaction, Props/Emits, slots, and local validation     | Domain API calls, business lists, tokens, or cross-page business state        |
-| Page-specific UI           | `src/views/<domain>/<page>/components/` | Display and interaction for one page                                 | Direct reuse by unrelated pages or duplicate shared primitives                |
-| Lifecycle/context behavior | `src/hooks/use*.ts`                     | Vue lifecycle, Router, Pinia, DOM refs, and third-party instances    | Domain API calls, response parsing, or business submission                    |
-| Lifecycle-free logic       | `src/utils/`                            | Pure calculation, formatting, parsing, conversion, and safety checks | Hidden global state, page effects, or undocumented business mutations         |
-| Cross-page business state  | `src/stores/modules/`                   | Session, tabs, preferences, and loading state                        | DOM access, page-component dependencies, or backend authorization replacement |
+Permission principles:
 
-Components communicate through Props, Emits, `v-model`, or slots. A form or search component validates locally first, then the page or Store calls a verified API from `@/api`. Every shared component needs a directory README and public-behavior tests covering its contract, validation, loading, duplicate-submission handling, and cleanup behavior.
+- Route guards own session-aware navigation behavior.
+- `v-permission`, permission hooks, and action controls own frontend visibility.
+- The backend must validate the user, tenant, permission code, and data scope again.
+- A hidden frontend control is not a security boundary.
 
-Hooks use the `use` naming convention and are reserved for Vue, Router, Pinia, DOM, or lifecycle context. Every listener, subscription, observer, timer, and third-party instance must have a cleanup path. Utilities should have explicit inputs, outputs, errors, and side effects; reusable functions are exported from `@/utils`, while request transport, response guards, storage, and feedback bridges keep their specific module entry points.
+Routes with `meta.noCache === false` may use KeepAlive under `RouteTab_<route-key>`. Tab state is persisted in `sessionStorage`; the tab list and component cache remain separate states.
 
-See the detailed [component conventions](./src/components/README.md), [Hook guide](./src/hooks/README.md), [utility guide](./src/utils/README.md), and [Codex documentation index](./.codex/README.md).
+## 8. Layout, Theme, and Loading
 
-## Preferences and bilingual mode
+`BasicLayout` contains the sidebar, header, tabs, content area, and footer. It supports three scroll modes:
 
-The `/system/settings` page uses one `usePreferencesStore` persisted in `localStorage`.
+| Mode        | Behavior                                                                    |
+| ----------- | --------------------------------------------------------------------------- |
+| `content`   | Header, tabs, and sidebar stay fixed; only content scrolls internally       |
+| `workspace` | The complete right workspace scrolls                                        |
+| `sticky`    | Header and tabs remain sticky while the rest of the right workspace scrolls |
 
-- Appearance: light, dark, or system theme; accent color; corner radius; font size; color-weak and grayscale modes.
-- Layout: full-width or centered content; sidebar, tabs, breadcrumbs, footer; and content scroll behavior.
-- General: `zh-CN` / `en-US`, timezone, dynamic document titles, watermark, update-check intent, and loading feedback.
+System settings centrally manage light, dark, or system theme; accent color; radius; font size; color-weak and grayscale modes; content width; layout visibility; Chinese/English; timezone; watermark; and navigation feedback. Preferences are persisted in `localStorage`.
 
-The content scroll modes are:
+Route loading has two overlay scopes:
 
-- `content`: header, tabs, and sidebar stay fixed while the content area scrolls internally.
-- `workspace`: the entire right workspace scrolls with the page.
+- `GlobalLoading` covers initial navigation and navigation outside the application layout.
+- `ContentLoading` covers the stable right-workspace viewport for navigation within `BasicLayout`. Its size is independent of business-page height, so long and empty pages cannot stretch or collapse the overlay.
+- `RouterLoadingBar` provides top-level progress feedback.
 
-The app header and login-page toolbar include a language toggle, so users can switch between `zh-CN` and `en-US` without opening system settings. Dashboard cards, charts, and activity copy follow the selected preference.
+`pageTransition` controls the loading bar, while `loadingAnimation` controls Lottie overlays. Disabling animation hides visual feedback without changing navigation completion state.
 
-- `sticky`: only the header and tabs stay fixed while the remaining right-side content scrolls.
+Production builds emit a same-origin `version.json`. When update checks are enabled, the application compares build IDs and presents a refresh prompt after detecting a new version; a full reload occurs only after user confirmation.
 
-Language changes apply immediately to the settings page and shared shell. Static route titles use the local dictionary; unknown server-provided titles remain unchanged. The update-check switch currently stores user intent only. A real update manifest URL, version format, and error contract must be supplied before update requests are added. Copying preferences exports UI settings only and never session credentials.
+## 9. Development Conventions
 
-## API and session
+### Module Ownership
 
-API calls go through `src/api/<domain>/index.ts` and `src/utils/request.ts`. Current auth endpoints are:
+| Type       | Directory                               | Responsibility                                                         |
+| ---------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Shared UI  | `src/components/`                       | Rendering, interaction, Props, Emits, Slots, and local validation      |
+| Page UI    | `src/views/<domain>/<page>/components/` | Presentation and interaction for one business page                     |
+| Hook       | `src/hooks/use*.ts`                     | Vue lifecycle, Router, Pinia, DOM, and third-party instance management |
+| Store      | `src/stores/modules/`                   | Cross-page sessions, tabs, preferences, and shared state               |
+| Domain API | `src/api/<domain>/`                     | Backend calls, parameter conversion, and response parsing              |
+| Utility    | `src/utils/`                            | Lifecycle-free pure logic and explicit infrastructure boundaries       |
 
-```text
-POST /user/login/username
-POST /user/login/phone
-GET  /captcha/image
-POST /user/token/refresh
-POST /user/logout
-PUT  /user/me/password
-GET  /user/info
-GET  /user/routes
-```
+Shared components communicate through Props, Emits, `v-model`, or Slots and do not call domain APIs. Every listener, subscription, observer, timer, and third-party instance must have a cleanup path.
 
-The transport validates the common `{ code, error_code?, message, data }` response, handles authorization, and performs one shared refresh attempt for 401 responses with session-version protection. General request failures are shown through Naive UI Message, while login and sign-out use Notification. Parsers validate unknown response data before it reaches a Store or page.
+Detailed conventions:
 
-## Loading, tabs, and cache
+- [Shared component conventions](./src/components/README.md)
+- [Hook guide](./src/hooks/README.md)
+- [Utility guide](./src/utils/README.md)
+- [Frontend engineering rules](./.codex/README.md)
 
-- `GlobalLoading` covers initial and layout-external navigation.
-- `ContentLoading` covers content-only navigation inside `BasicLayout`.
-- `RouterLoadingBar` shows the Naive UI top progress bar.
-- `pageTransition` controls the top progress bar, while `loadingAnimation` controls both Lottie overlays.
-- `meta.noCache === false` enables KeepAlive with a `RouteTab_<route-key>` cache name.
-- `useTabsStore` persists tab state in `sessionStorage`; tab state and component cache are separate concerns.
-
-## Commands
+## 10. Quality Gates
 
 ```sh
-pnpm run check
-pnpm run test:run
-pnpm run build
-pnpm run build:staging
-pnpm run preview
-git diff --check
+pnpm run type-check       # TypeScript and Vue type checking
+pnpm run lint             # ESLint
+pnpm run lint:style       # Stylelint
+pnpm run format:check     # Prettier
+pnpm run test:run         # Full static checks and Vitest
+pnpm run build            # Full static checks and production build
+git diff --check          # Whitespace validation
 ```
 
-For a focused test:
+Focused test example:
 
 ```sh
-pnpm exec vitest run src/__tests__/SystemConfig.spec.ts
+pnpm exec vitest run src/__tests__/BasicLayout.spec.ts src/__tests__/Lottie.spec.ts
 ```
 
-On Windows, Vite or Vitest may report `spawn EPERM`. Retry the runtime command in an environment that permits child processes and report static checks separately from runtime tests.
+On Windows, Vite or Vitest may report `spawn EPERM`. Retry the runtime command in a terminal that allows child processes and report static checks, tests, and builds separately.
 
-## Security boundaries
+## 11. Build and Deployment
 
-- Never write tokens, passwords, CAPTCHA values, MFA values, reset tokens, or production data to logs, URLs, source files, screenshots, or test output.
-- Server routes are resolved only through the local component allowlist.
-- Backend authorization remains authoritative.
-- The existing “remember login” flow stores credentials in `localStorage` when explicitly enabled; this is a known risk and new features must not expand it.
+| Command                      | Mode        | Output              |
+| ---------------------------- | ----------- | ------------------- |
+| `pnpm run build:development` | development | `dist-development/` |
+| `pnpm run build:staging`     | staging     | `dist-staging/`     |
+| `pnpm run build`             | production  | `dist/`             |
 
-## Codex documentation
+Deployment requirements:
 
-Frontend-specific rules and facts are in `.codex/`:
+- The web server must support SPA History fallback and return `index.html` for unknown frontend paths.
+- Reverse-proxy `/api` to FastAPI, or configure `VITE_API_BASE_URL` to a reachable address.
+- `VITE_BASE_PATH` must match the deployed subpath.
+- Serve `version.json` with no caching or a short cache lifetime; hashed static assets can use long-lived caching.
+- Production source maps are disabled by default. Evaluate source-exposure risk before enabling them.
 
-- `AGENTS.md`: implementation rules.
-- `PROJECT.md`: verified project facts, scripts, environment, and API.
-- `ARCHITECTURE.md`: module responsibilities and runtime data flow.
-- `BOUNDARY.md`: scope, security, and forbidden responsibilities.
-- `WORKFLOW.md`: analysis, implementation, verification, and delivery flow.
+## 12. Security Boundaries
+
+- Never store passwords, tokens, CAPTCHA values, MFA values, secrets, or production data in source code, environment files, logs, URLs, screenshots, or test fixtures.
+- Treat all server data as untrusted and validate it through types and runtime guards.
+- Menus, buttons, and route guards improve the experience but never replace backend authorization.
+- Server routes can resolve only to the local View allowlist.
+- When users explicitly enable “remember login,” the existing implementation stores credentials in `localStorage`. This is a known security risk; new features must not expand it, and replacement belongs in a dedicated security change.
+
+## 13. Engineering Documentation
+
+Repository facts and execution rules are maintained under `.codex/`:
+
+- `AGENTS.md`: mandatory frontend implementation rules.
+- `PROJECT.md`: current project facts, scripts, environment, and APIs.
+- `ARCHITECTURE.md`: module ownership and runtime data flow.
+- `BOUNDARY.md`: scope, security constraints, and forbidden responsibilities.
+- `WORKFLOW.md`: analysis, implementation, verification, and delivery workflow.
