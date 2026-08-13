@@ -2,7 +2,6 @@ import { RouterView } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 import BasicLayout from '@/layouts/BasicLayout/index.vue'
-import ChangePasswordView from '@/views/change-password/index.vue'
 import ForbiddenView from '@/views/error/403.vue'
 import NotFoundView from '@/views/error/404.vue'
 import OfflineView from '@/views/error/offline.vue'
@@ -14,18 +13,6 @@ import DictionaryDataView from '@/views/system/dict/data.vue'
 import UtilsDemoView from '@/views/demo/utils/index.vue'
 
 export const protectedRoutes: RouteRecordRaw[] = [
-  {
-    path: '/change-password',
-    name: 'change-password',
-    component: ChangePasswordView,
-    meta: {
-      title: '修改密码',
-      menu: false,
-      hideBreadcrumb: true,
-      requiresAuth: true,
-      allowPasswordChange: true,
-    },
-  },
   {
     path: '/',
     name: 'app',
