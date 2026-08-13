@@ -99,6 +99,25 @@ export type {
   SystemConfigUpdatePayload,
 } from './system-parameter'
 export type {
+  Tenant,
+  TenantActionPermissions,
+  TenantCreatePayload,
+  TenantDetailModalProps,
+  TenantFilters,
+  TenantFormModalProps,
+  TenantFormMode,
+  TenantFormModel,
+  TenantMember,
+  TenantMemberAddFormModel,
+  TenantMemberAddPayload,
+  TenantMemberModalProps,
+  TenantMemberUpdatePayload,
+  TenantSearchPanelProps,
+  TenantStatus,
+  TenantTableProps,
+  TenantUpdatePayload,
+} from './tenant'
+export type {
   AuthSessionExpiredHandler,
   AuthTransportHandlers,
   RequestFileResponse,

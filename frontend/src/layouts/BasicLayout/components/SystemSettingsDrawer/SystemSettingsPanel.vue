@@ -75,7 +75,14 @@ const copyPreferences = async (): Promise<void> => {
   min-height: 100%;
   flex-direction: column;
   overflow: auto;
+  -ms-overflow-style: none;
   color: var(--app-color-text);
+  scrollbar-width: none;
+}
+
+.preferences-page::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .settings-content {

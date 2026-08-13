@@ -38,6 +38,7 @@ describe('SystemSettingsDrawer', () => {
 
     expect(naiveDrawer.props('placement')).toBe('right')
     expect(naiveDrawer.props('width')).toMatch(/^min\(\d+px, 100vw\)$/)
+    expect(document.body.querySelector('.system-settings-drawer')).not.toBeNull()
     expect(document.body.querySelector('.preferences-page')).not.toBeNull()
     expect(document.body.querySelectorAll('[role="tab"]')).toHaveLength(3)
 

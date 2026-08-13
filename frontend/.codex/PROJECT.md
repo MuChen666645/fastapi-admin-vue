@@ -144,6 +144,14 @@ src/
 | `GET`  | `/online/list`                | 按用户名和登录 IP 分页查询当前数据范围内的在线会话 |
 | `DELETE` | `/online/token/{token_id}` | 强制指定在线会话下线 |
 | `DELETE` | `/online/user/{user_id}`   | 强制指定用户的全部可见会话下线 |
+| `GET` | `/tenant/list/all` | 平台管理员查询全部未删除租户 |
+| `POST` | `/tenant/add` | 平台管理员创建租户并将当前用户添加为默认成员 |
+| `PUT` | `/tenant/{tenant_id}` | 按 `version` 乐观锁更新租户名称、描述和状态 |
+| `DELETE` | `/tenant/{tenant_id}?version=...` | 按版本软删除租户；默认租户不可删除 |
+| `GET` | `/tenant/{tenant_id}/members` | 查询启用租户的成员关系 |
+| `POST` | `/tenant/{tenant_id}/members` | 以用户 ID 添加或恢复成员关系 |
+| `PUT` | `/tenant/{tenant_id}/members/{user_id}` | 按 `version` 更新成员状态或默认租户标识 |
+| `DELETE` | `/tenant/{tenant_id}/members/{user_id}?version=...` | 按版本移除成员关系 |
 | `GET` | `/config/list` | 按参数名称、参数键名分页查询当前租户的系统参数 |
 | `GET` | `/config/{config_id}` | 查询系统参数详情；敏感类型的参数值由服务端脱敏 |
 | `POST` | `/config/add` | 新增系统参数 |
@@ -172,6 +180,7 @@ src/
 - 系统设置由顶栏用户菜单打开 `BasicLayout` 内的右侧 `SystemSettingsDrawer`，不注册 `/system/settings` 路由，也不创建标签页。
 - `/system/dict/data` 的路由名为 `system-dict-data`，是认证后的隐藏静态字典数据页，仅由字典类型页携带 `dict_type` 查询参数跳转，不显示在菜单中；守卫要求当前用户具有 `system:dict:list`。
 - `/system/message` 来自后端消息中心菜单的动态路由，组件路径必须解析到 `src/views/system/message/index.vue`；页面包含当前用户收件箱和具有 `system:message:list` 权限时的租户消息管理模式。
+- `/system/tenant` 来自后端租户管理菜单，组件路径解析到 `src/views/system/tenant/index.vue`；页面调用平台租户、成员和乐观锁维护接口，入口由 `system:tenant:*` 权限控制，后端仍额外要求平台管理员身份。
 - `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。
 - `/system/post` 来自后端岗位管理菜单，组件路径解析到 `src/views/system/post/index.vue`；页面使用岗位分页、详情和 CRUD 接口，并按 `system:post:list/query/add/edit/remove` 控制操作入口。
 - `/monitor/log` 来自后端日志管理菜单，组件路径解析到 `src/views/monitor/log/index.vue`；页面按 `monitor:login:list`、`monitor:operation:list`、`monitor:exception:list` 分别加载三类日志，批量删除使用 `monitor:log:remove`。

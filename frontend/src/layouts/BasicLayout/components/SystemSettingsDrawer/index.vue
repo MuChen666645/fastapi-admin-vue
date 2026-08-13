@@ -23,8 +23,20 @@ const drawerVisible = computed({
 
 <template>
   <NDrawer v-model:show="drawerVisible" placement="right" width="min(500px, 100vw)">
-    <NDrawerContent :title="t('app.user.settings')" closable>
+    <NDrawerContent class="system-settings-drawer" :title="t('app.user.settings')" closable>
       <SystemSettingsPanel />
     </NDrawerContent>
   </NDrawer>
 </template>
+
+<style lang="scss">
+.n-drawer-content.system-settings-drawer .n-drawer-content__main {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.n-drawer-content.system-settings-drawer .n-drawer-content__main::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+</style>

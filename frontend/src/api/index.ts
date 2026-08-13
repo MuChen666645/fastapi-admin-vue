@@ -50,6 +50,16 @@ export {
   fetchSystemConfigs,
   updateSystemConfig,
 } from './system-config'
+export {
+  addTenantMember,
+  createTenant,
+  deleteTenant,
+  fetchTenantMembers,
+  fetchTenants,
+  removeTenantMember,
+  updateTenant,
+  updateTenantMember,
+} from './tenant'
 export { fetchOnlineSessions, forceLogoutSession, forceLogoutUser } from './online'
 export {
   createScheduledJob,
