@@ -26,11 +26,13 @@ from module_admin.entity.do.menu_do import MenuDo
 from module_admin.entity.do.permission_do import PermissionDo
 from module_admin.entity.do.role_do import RoleDo
 from module_admin.entity.do.user_do import UserDo
+from module_admin.entity.dto.tenant_dto import TenantMemberUpdateDto
 from module_admin.service.external_identity_service import ExternalIdentityService
 from module_admin.service.file_service import FileService
 from module_admin.service.mfa_service import MfaService
 from module_admin.service.notification_service import NotificationService
 from module_admin.service.permission_sync_service import PermissionSyncService
+from module_admin.service.tenant_service import TenantService
 
 
 class Result:
@@ -78,6 +80,38 @@ def test_tenant_dao_get_rejects_disabled_tenants() -> None:
 
         assert tenant is None
         assert "tenants.status" in str(statements[0])
+
+    anyio.run(run)
+
+
+def test_tenant_member_update_rejects_protected_admin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        update_called = False
+
+        async def get_admin_user_ids(user_ids, _request):
+            assert user_ids == [1]
+            return {1}
+
+        async def update_member(*_args, **_kwargs):
+            nonlocal update_called
+            update_called = True
+            return True
+
+        monkeypatch.setattr(UserDao, "get_admin_user_ids", get_admin_user_ids)
+        monkeypatch.setattr(TenantDao, "update_member", update_member)
+
+        with pytest.raises(HTTPException, match="禁止操作超级管理员用户") as error:
+            await TenantService.update_member(
+                1,
+                1,
+                TenantMemberUpdateDto(status="0", is_default=False, version=1),
+                _request(),
+            )
+
+        assert error.value.status_code == 403
+        assert update_called is False
 
     anyio.run(run)
 

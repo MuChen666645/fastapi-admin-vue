@@ -6,12 +6,24 @@ from sqlmodel import select
 from config.env import settings
 from module_admin.auth.authorization import Auth
 from module_admin.dao.tenant_dao import TenantDao
+from module_admin.dao.user_dao import UserDao
 from module_admin.entity.do.tenant_do import TenantDo
 from module_admin.entity.do.user_do import UserDo
 
 
 class TenantService:
     """执行租户生命周期和成员关系的业务校验。"""
+
+    ADMIN_MEMBER_PROTECTION_MESSAGE = "禁止操作超级管理员用户"
+
+    @staticmethod
+    async def _ensure_member_can_be_managed(user_id: int, request: Request) -> None:
+        """拒绝修改保留 admin 账户和超级管理员成员关系。"""
+        if await UserDao.get_admin_user_ids([user_id], request):
+            raise HTTPException(
+                status_code=403,
+                detail=TenantService.ADMIN_MEMBER_PROTECTION_MESSAGE,
+            )
 
     @staticmethod
     async def list_current_user(request: Request):
@@ -136,6 +148,7 @@ class TenantService:
     @staticmethod
     async def update_member(tenant_id: int, user_id: int, data, request: Request):
         """按版本号更新成员状态。"""
+        await TenantService._ensure_member_can_be_managed(user_id, request)
         if not await TenantDao.update_member(
             tenant_id,
             user_id,
