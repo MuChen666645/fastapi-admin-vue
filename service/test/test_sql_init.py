@@ -156,6 +156,11 @@ def test_tenant_and_system_parameter_menus_are_seeded() -> None:
     assert "SET menu_name = '系统参数'" in sql
     assert "SET parent_id = 2" in sql
     for permission in (
+        "system:config:list",
+        "system:config:query",
+        "system:config:add",
+        "system:config:edit",
+        "system:config:remove",
         "system:tenant:list",
         "system:tenant:add",
         "system:tenant:edit",
@@ -168,7 +173,7 @@ def test_tenant_and_system_parameter_menus_are_seeded() -> None:
         assert f"'{permission}'" in sql
 
     assert "menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)" in sql
-    assert "m.menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)" in sql
+    assert "m.menu_id IN (351, 373, 374, 375, 376, 377)" in sql
 
 
 def test_admin_menu_seed_is_scoped_to_declared_builtin_menu_ids() -> None:

@@ -514,6 +514,48 @@ def test_system_config_standard_crud_paths(monkeypatch: pytest.MonkeyPatch) -> N
     anyio.run(run)
 
 
+def test_system_config_builtin_delete_requires_admin_role(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        item = SystemConfigDo(
+            id=2,
+            config_name="内置参数",
+            config_key="system.builtin",
+            config_value="value",
+            is_builtin=True,
+        )
+        deleted_ids = []
+
+        async def get_by_id(*_args, **_kwargs):
+            return item
+
+        async def delete(config_id, _request):
+            deleted_ids.append(config_id)
+            return item
+
+        async def common_roles(_request):
+            return [SimpleNamespace(code="common")]
+
+        async def admin_roles(_request):
+            return [SimpleNamespace(code=settings.ADMIN_ROLE_CODE)]
+
+        monkeypatch.setattr(SystemConfigDao, "get_by_id", get_by_id)
+        monkeypatch.setattr(SystemConfigDao, "delete", delete)
+        monkeypatch.setattr(Auth, "get_actor_roles", common_roles)
+
+        with pytest.raises(HTTPException) as error:
+            await SystemConfigService.delete(2, _request())
+        assert error.value.status_code == 403
+        assert not deleted_ids
+
+        monkeypatch.setattr(Auth, "get_actor_roles", admin_roles)
+        await SystemConfigService.delete(2, _request())
+        assert deleted_ids == [2]
+
+    anyio.run(run)
+
+
 def test_external_login_verifies_mfa_before_token_creation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

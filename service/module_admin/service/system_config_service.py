@@ -4,6 +4,7 @@ from fastapi import HTTPException, Request
 from fastapi_pagination import Params
 from sqlmodel import select
 
+from module_admin.auth.authorization import Auth
 from module_admin.dao.system_config_dao import SystemConfigDao
 from module_admin.entity.do.system_config_do import SystemConfigDo
 from module_admin.service.secret_manager import SecretManager
@@ -122,10 +123,14 @@ class SystemConfigService:
 
     @classmethod
     async def delete(cls, config_id: int, request: Request):
-        """删除非内置系统参数。"""
+        """删除系统参数，内置参数仅允许超级管理员删除。"""
         item = await SystemConfigDao.get_by_id(config_id, request)
         if item is None:
             raise HTTPException(status_code=404, detail="系统参数不存在")
-        if item.is_builtin:
-            raise HTTPException(status_code=400, detail="内置系统参数不能删除")
+        if item.is_builtin and not Auth.has_admin_role(
+            await Auth.get_actor_roles(request)
+        ):
+            raise HTTPException(
+                status_code=403, detail="仅超级管理员可删除内置系统参数"
+            )
         await SystemConfigDao.delete(item.id, request)

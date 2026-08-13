@@ -447,8 +447,18 @@ JOIN menu AS m
           300, 301, 302, 310, 311, 320, 321, 322, 323, 324,
           330, 331, 332, 333, 334, 340, 341, 342, 343, 344
       )
-      OR m.menu_id IN (351, 352, 353, 360, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)
+      OR m.menu_id IN (352, 353, 360, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396)
  )
+WHERE r.code = @seed_admin_role_code
+  AND r.tenant_id = @seed_tenant_id;
+
+-- 为内置 admin 用户关联的超级管理员角色补齐系统参数菜单和全部操作权限。
+INSERT IGNORE INTO role_menu (role_id, menu_id)
+SELECT r.id, m.menu_id
+FROM roles AS r
+JOIN menu AS m
+  ON m.tenant_id = @seed_tenant_id
+ AND m.menu_id IN (351, 373, 374, 375, 376, 377)
 WHERE r.code = @seed_admin_role_code
   AND r.tenant_id = @seed_tenant_id;
 
