@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     ADMIN_ROLE_CODE: str = Field(min_length=1)
     DEFAULT_TENANT_ID: int = Field(default=1, gt=0)
     # 该值必须跟随迁移头，不能由部署配置覆盖。
-    DATABASE_SCHEMA_VERSION: str = "0025_security_consistency"
+    DATABASE_SCHEMA_VERSION: str = "0028_tenant_and_system_parameter_menus"
 
     # 限流、验证码和登录失败锁定策略。
     RATE_LIMIT_DEFAULT: str = Field(min_length=1)

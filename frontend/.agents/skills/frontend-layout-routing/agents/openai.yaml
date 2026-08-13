@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Frontend Layout and Routing'
+  short_description: 'Maintain routes, layout, tabs, and loading behavior'
+  default_prompt: 'Use $frontend-layout-routing to implement a scoped frontend routing or layout change.'

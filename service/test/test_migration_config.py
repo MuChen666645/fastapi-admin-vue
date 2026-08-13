@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from config.env import settings
+
 ROOT = Path(__file__).parents[1]
 
 
@@ -85,6 +87,10 @@ def test_tenant_and_system_parameter_menu_migration_is_present() -> None:
     assert "INSERT IGNORE INTO role_menu" in migration
     assert "TENANT_MENU_IDS" in migration
     assert "BETWEEN :first_menu_id" not in migration
+
+
+def test_configured_schema_version_matches_the_current_migration_head() -> None:
+    assert settings.DATABASE_SCHEMA_VERSION == "0028_tenant_and_system_parameter_menus"
 
 
 def test_application_startup_does_not_execute_legacy_sql_or_create_tables() -> None:

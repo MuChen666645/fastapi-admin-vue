@@ -16,6 +16,20 @@
 - 路径别名 `@` 指向 `src/`；图标统一使用 `@vicons/ionicons5`。
 - 业务菜单统一从后端 `GET /api/v1/user/routes` 获取；项目不再使用 `VITE_ROUTE_MODE`，仅保留不显示菜单、用于字典类型页跳转的静态 `system-dict-data` 路由。
 
+## 项目技能
+
+项目级可复用技能位于 `.agents/skills/`。根据任务按需读取对应 `SKILL.md`，不要一次性加载全部技能：
+
+- `frontend-api-change`：领域 API、Parser、共享类型、分页、上传下载和前后端 API 契约。
+- `frontend-auth-rbac`：登录、令牌刷新、会话、路由守卫、权限指令、租户 UI 和安全存储。
+- `frontend-layout-routing`：静态/动态路由、BasicLayout、标签、缓存、Loading 和系统设置抽屉。
+- `frontend-test-validation`：聚焦测试、静态检查、构建、失败诊断和验证边界。
+- `frontend-production-readiness`：Vite 构建、资源、配置、部署与发布风险。
+- `frontend-code-review`：只读缺陷评审、契约回归、权限体验和发布风险。
+
+技能只按职责组织，不按开发、测试、预发或生产环境划分；它们不能覆盖本文件、仓库规则或
+后端的最终授权与数据约束。
+
 ## 分层约束
 
 ### API 与传输

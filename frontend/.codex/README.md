@@ -1,51 +1,40 @@
-# 前端 Codex 文档入口
+# 前端 Codex 规范
 
-`frontend/.codex/` 保存前端专属的规则、事实、架构、边界、工作流和任务模板。文档只服务于当前前端项目，不处理后端实现；需要确认接口时可以只读核对后端 Controller、DTO、配置和测试。
-
-User-facing documentation is bilingual: see [`../README.md`](../README.md) and [`../README.en.md`](../README.en.md). Preference and locale changes must keep those two guides aligned with the verified source behavior.
+本目录保存 `frontend/` 的可执行规范。源码、测试、包配置和已核验的后端
+契约优先于本文档；本文档只说明如何基于这些事实安全地开展工作。
 
 ## 阅读顺序
 
-修改 `frontend/` 前按以下顺序阅读：
+1. 仓库根目录 `AGENTS.md`
+2. `frontend/AGENTS.md`
+3. `.codex/AGENTS.md`
+4. `.codex/PROJECT.md`、`.codex/ARCHITECTURE.md`、`.codex/BOUNDARY.md`
+5. `.codex/WORKFLOW.md` 与适用的任务模板
+6. 受影响源码、测试、API DTO 和后端 Controller 契约
 
-1. 仓库根目录 `AGENTS.md`：仓库范围、规则优先级和安全边界。
-2. `frontend/AGENTS.md`：前端入口规则和当前实现摘要。
-3. `.codex/AGENTS.md`：强制实现约束。
-4. `.codex/PROJECT.md`：当前目录、脚本、环境和接口事实。
-5. `.codex/ARCHITECTURE.md`：数据流、路由、Store、缓存和 Loading 架构。
-6. `.codex/BOUNDARY.md`：文件范围、数据边界和安全禁止事项。
-7. `.codex/WORKFLOW.md`：任务分析、实现、验证和交付流程。
-8. `PROMPTS/feature.md` 或 `PROMPTS/bugfix.md`：功能开发或缺陷修复模板。
+## 文档职责
 
-## 文件职责
+| 文档 | 职责 | 更新时机 |
+| --- | --- | --- |
+| `AGENTS.md` | 强制实现规则 | 架构或强制约束变化 |
+| `PROJECT.md` | 已核验的项目事实和命令 | 依赖、脚本、路由、接口或目录变化 |
+| `ARCHITECTURE.md` | 运行时职责和数据流 | 分层、状态、路由或 Loading 变化 |
+| `BOUNDARY.md` | 安全和修改边界 | 信任、授权、持久化或依赖边界变化 |
+| `WORKFLOW.md` | 交付和验证流程 | 评审或验证流程变化 |
 
-| 文件              | 内容                   | 维护时机                               |
-| ----------------- | ---------------------- | -------------------------------------- |
-| `AGENTS.md`       | 强制规则和当前关键事实 | 规则、技术栈或核心边界变化             |
-| `PROJECT.md`      | 可核对的项目事实       | 目录、依赖、脚本、环境或接口变化       |
-| `ARCHITECTURE.md` | 模块职责和运行时数据流 | 分层、路由、Store、缓存或 Loading 变化 |
-| `BOUNDARY.md`     | 安全与修改边界         | 权限、敏感数据、依赖或跨项目边界变化   |
-| `WORKFLOW.md`     | 执行和验证流程         | 工具链、测试命令或交付流程变化         |
-| `PROMPTS/*.md`    | 可复用任务模板         | 任务输入、验收或报告结构变化           |
+只记录简洁、可验证的当前事实。不得写入历史任务记录、未核验接口字段、凭据、
+生产数据、生成物或已废弃兼容路径。
 
-## 文档维护原则
+## 项目 Skill
 
-- 源码、测试、`package.json`、环境文件和构建配置优先于历史文档。
-- 用当前文件路径和真实脚本，不记录已经删除的兼容入口。
-- 文档中区分“当前事实”“强制规则”“目标方向”和“已知风险”，不能把目标结构写成已完成事实。
-- 不在文档中写入密码、Token、密钥、生产数据、内部日志或不可公开的凭据。
-- 文档变更完成后检查死路径、死命令、旧环境变量、重复规则和 `git diff --check`。
+项目级 Skill 位于 `frontend/.agents/skills/`，按任务只读取一个或少量相关 Skill：
 
-## 三条前端约束
+- `frontend-api-change`：领域 API、Parser、共享类型、分页、上传下载和前后端契约。
+- `frontend-auth-rbac`：登录、刷新、会话、守卫、权限指令、租户相关 UI 与安全存储。
+- `frontend-layout-routing`：静态/动态路由、BasicLayout、标签、缓存、Loading 和系统设置抽屉。
+- `frontend-test-validation`：聚焦测试、静态检查、构建、失败诊断与验证边界。
+- `frontend-production-readiness`：Vite 构建、静态资源、运行配置、发布审计和部署风险。
+- `frontend-code-review`：只读缺陷评审、契约回归、权限体验和发布风险。
 
-- CSS 优先使用 UnoCSS utility class；`<style scoped>` 仅用于复杂的组件专属样式。
-- 所有 `type`、`interface`、`enum` 声明集中到 `src/types/`，通过 `@/types` 统一导入。
-- `src/views/` 下目录必须语义化并与后端 `component` 路径一致，页面私有组件放在页面自己的 `components/`。
-
-## 公共代码文档
-
-- [组件组使用约定](../src/components/README.md)：公共组件索引、页面提交边界和组件组文档入口。
-- [Hooks 使用文档](../src/hooks/README.md)：Hook 的调用上下文、返回合同和生命周期清理要求。
-- [工具包使用文档](../src/utils/README.md)：公共工具出口、API/路由守卫、存储和 Lottie 基础函数边界。
-
-选择实现位置时，先判断是否需要 Vue 生命周期、Router、Pinia、DOM Ref 或组件上下文：不需要则放 `utils`，需要则放 `hooks`；跨页面 UI 放 `components`，跨页面业务状态放 Store，领域请求和响应解析放 `api`。
+Skill 以职责组织，不按开发、测试、预发或生产环境划分。它们不替代源码核验、后端授权或
+本目录中的项目边界。

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Frontend Auth and RBAC'
+  short_description: 'Harden frontend session and permission flows'
+  default_prompt: 'Use $frontend-auth-rbac to trace and harden a frontend authorization flow.'

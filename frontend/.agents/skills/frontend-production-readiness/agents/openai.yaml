@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Frontend Production Readiness'
+  short_description: 'Review frontend build and release readiness'
+  default_prompt: 'Use $frontend-production-readiness to review frontend release readiness and residual risks.'

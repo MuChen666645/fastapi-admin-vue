@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Frontend Test Validation'
+  short_description: 'Run focused frontend verification and report gaps'
+  default_prompt: 'Use $frontend-test-validation to choose and run the right frontend verification.'

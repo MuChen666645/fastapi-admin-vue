@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Frontend Code Review'
+  short_description: 'Review frontend defects and release risks'
+  default_prompt: 'Use $frontend-code-review to review the frontend for concrete defects and release risks.'

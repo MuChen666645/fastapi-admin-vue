@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Frontend API Change'
+  short_description: 'Implement verified frontend API contracts'
+  default_prompt: 'Use $frontend-api-change to implement a verified frontend API change.'

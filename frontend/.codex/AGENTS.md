@@ -1,96 +1,50 @@
-# 前端 Codex 核心规则
+# 前端工程规则
 
-本文件是 `frontend/.codex/` 的强制实现规则。它约束代码组织、安全边界和验证方式，不替代当前源码、测试、构建配置或后端接口契约。
+## 技术栈
 
-## 规则加载
+- 使用 Vue 3 Composition API、`<script setup lang="ts">`、TypeScript、Vue
+  Router、Pinia、Alova、Naive UI 和 UnoCSS。
+- 默认使用 `const`；非重载函数默认使用箭头函数。
+- 领域类型统一位于 `src/types/`，通过 `@/types` 导入。不得在页面、组件、
+  Store、路由、Hook、工具或测试中内联声明领域类型。
 
-修改前端文件前按以下顺序读取：
+## 分层
 
-1. 仓库根目录 `AGENTS.md`。
-2. `frontend/AGENTS.md`。
-3. 本文件。
-4. `PROJECT.md`、`ARCHITECTURE.md`、`BOUNDARY.md`、`WORKFLOW.md`。
-5. 与任务对应的 `PROMPTS/feature.md` 或 `PROMPTS/bugfix.md`。
+```text
+页面或布局 -> Store 或页面编排 -> @/api -> 请求传输层
+```
 
-## 必须遵守
+- 页面负责展示、路由状态、权限和领域动作编排。
+- 可复用 UI 通过类型化 Props 接收数据、通过事件交付用户意图；不得调用 API
+  或持有跨页面业务状态。
+- Store 管理跨页面状态和动作；不得访问 DOM。
+- API 模块调用 `requestJson`，Parser 校验 `unknown` 响应后再返回类型化数据。
+  页面、组件、Hook 和 Store 不得直接调用 Alova、`fetch`、Axios 或后端 URL。
+- 依赖生命周期、Router 或 Pinia 的复用逻辑放在 `src/hooks/`；纯转换和校验
+  放在 `src/utils/`。
 
-- 使用 Vue 3 Composition API、`<script setup lang="ts">`、TypeScript strict、Pinia、Vue Router、Alova 和 Naive UI；不在未评审时引入同类框架或 HTTP 客户端。
-- 所有请求经过 `src/api/<domain>/index.ts` 和 `src/utils/request.ts`。页面和 Store 不得直接访问 Alova、`fetch`、Axios 或服务端 URL。
-- API 响应先由 `parsers.ts` 接收 `unknown` 并校验，再交给业务层；禁止用类型断言绕过校验。
-- 所有 production 和 test 中的 `type`、`interface`、`enum` 声明都放在 `src/types/` 的语义化领域文件中，并通过 `@/types` 统一出口导出；页面、组件、Hook、Store、Router 和工具文件只允许导入类型，不允许声明类型。
-- 编写样式时优先使用 UnoCSS utility class。`<style scoped>` 仅用于组件专属复杂选择器、伪元素、关键帧、CSS 变量和第三方样式覆盖；不要为普通布局、间距、颜色和响应式规则新增重复 CSS。
-- `src/views/` 下的目录名必须语义化并描述业务域或页面职责，使用现有的小写 kebab-case 约定；禁止 `page`、`view`、`temp`、`common`、`misc`、数字和无意义缩写。页面业务组件放到对应页面的 `components/`，跨页面复用组件放到 `src/components/`。
-- 路由模块只声明路由，守卫处理认证、安全重定向和显式静态路由权限校验，动态路由只从本地 View 白名单解析；`meta.permission` 可声明单项或全量匹配的权限列表。
-- Store 只管理跨页面状态和动作，不访问 DOM、不依赖页面组件、不保存服务端密钥。
-- 功能图标统一从 `@vicons/ionicons5` 静态导入；按钮必须有可访问名称，装饰图标必须 `aria-hidden`。
-- 不写入真实密钥、Token、密码、验证码、MFA、生产数据、临时日志或生成物。
-- 不用假数据、静默 Mock、`any`、`@ts-ignore`、无检查断言或放宽权限来掩盖问题。
-- 可复用组件或组件组必须在所属目录维护 `README.md`；文档至少说明用途边界、Props、Emits、Slots、暴露方法、校验/状态约定和最小使用示例，并与源码和测试同步更新。
-- 组件文档中的提交示例必须通过页面的 `@submit` 调用 `@/api`，组件本身只负责展示、交互和校验，不得把业务请求写入通用组件。
+## 路由与权限
 
-## 组件、工具函数和 Hooks 规范
+- 静态路由位于 `src/router/modules/`；守卫负责认证、安全重定向和静态路由权限。
+- 服务端动态路由只能通过 `route-utils.ts` 的本地视图白名单解析。路由记录、
+  链接和查询参数均视为不可信输入。
+- 每个业务操作必须绑定已核验的权限码。可见性和 handler 使用同一判定；前端
+  仅改善体验，后端仍是最终授权边界。
 
-### 组件
+## UI 与安全
 
-- 跨页面复用的组件放在 `src/components/<ComponentName>/`，页面专属组件放在对应页面的 `src/views/<domain>/<page>/components/`；不能因为暂时只有一个调用方就把业务组件提升为全局组件。
-- 组件只负责展示、用户交互、局部状态和局部校验。组件不直接调用 `@/api`、Alova、`fetch` 或 Axios，不读取业务接口原始响应，不保存 Token、密码、业务列表和跨页面业务状态。
-- 通用组件通过 Props 接收数据和配置，通过 Emits 或 `v-model` 交付变化；提交表单时先完成组件内校验，再由页面或领域 Store 调用已核实的 `@/api`。
-- 组件公开的 Props、Emits、Slots、`defineExpose` 方法和校验/Loading 状态必须有稳定类型，并在所属目录 README 中记录；类型声明统一从 `@/types` 导入。
-- 应用壳层组件可以使用明确指定的 Router、Pinia Store 或基础工具（例如路由 Loading、Message 桥和水印），但必须只挂载一个实例，并在卸载时清理监听器、回调、观察器和动画实例。
-- 组件测试放在 `src/__tests__/`，优先验证公开渲染、事件、校验、Loading、防重复提交和卸载清理行为；不要为了测试内部变量而暴露额外 API。
+- 优先使用 UnoCSS utility；仅在复杂组件选择器、伪元素、关键帧、CSS 变量或
+  第三方样式覆盖时使用 scoped CSS。
+- 功能图标使用静态导入的 `@vicons/ionicons5`，图标按钮必须有可访问名称。
+- 禁止 `any`、`@ts-ignore`、未校验类型断言、`v-html`、原始 `innerHTML`、
+  任意 iframe、不安全外链、生产 Mock 数据和猜测的 API 契约。
+- 不得持久化或记录 Token、密码、验证码、MFA、重置令牌或敏感服务端数据。新增
+  浏览器持久化属于安全变更。
 
-### 工具函数
+## 测试与文档
 
-- 无 Vue 生命周期、Router、Pinia 或组件上下文依赖的纯计算、格式化、解析、转换和存储逻辑放在 `src/utils/`，公共工具通过 `src/utils/index.ts` 和 `@/utils` 导出。
-- 工具函数应保持输入、输出和失败行为明确；处理 `unknown`、外部响应、路由、外链和浏览器存储时必须先校验，不能用 `any`、无检查断言或静默成功掩盖异常。
-- `request.ts`、`request-feedback.ts`、`guards/api.ts`、`guards/route.ts` 属于工具目录中的基础设施边界，必须保留各自职责；页面和 Store 不得因此直接绕过 `@/api` 调用传输层。
-- 工具函数不得创建隐式全局可变状态、修改业务 Store 或依赖组件生命周期。需要生命周期、Router 或 Pinia 上下文时，应改为 Hook 或 Store。
-- 浏览器存储工具必须安全处理 SSR、不可用存储和解析失败，不得新增或扩大敏感数据持久化；Lottie 基础函数只管理实例动作，生命周期销毁由 `useLottie` 或所属组件负责。
-- 新增公共工具必须补充 `src/utils/README.md`、`src/utils/index.ts`（基础设施例外需说明具体入口）和针对边界行为的单元测试。
-
-### Hooks
-
-- 依赖 Vue 生命周期、Router、Pinia、DOM Ref 或组件上下文的可复用行为放在 `src/hooks/use*.ts`，统一使用 `use` 命名；项目不新增第二套 `composables` 目录。
-- Hook 只封装可复用的交互和生命周期编排，不直接调用领域 API、不提交业务表单、不解析后端响应；领域请求由页面、Store 或 API 层负责。
-- Hook 可以读取或更新明确的 Pinia UI 状态，也可以使用 Router，但不得通过模块级可变变量共享跨页面业务状态，不得把 Token、密码或业务数据写入 Hook 私有缓存。
-- Hook 创建的监听器、订阅、ResizeObserver、Router 回调、定时器和第三方实例必须在卸载或停止时清理；重复调用不能产生重复监听或泄漏。
-- 返回值应优先使用响应式 Ref、Computed 或明确动作函数，调用方只依赖公开返回合同；Hook 中的类型从 `@/types` 导入，不在文件内声明领域类型。
-- 新增或修改 Hook 必须同步 `src/hooks/README.md` 和 `src/hooks/index.ts`，并用组件测试或单元测试覆盖初始化、更新、清理和无 DOM/无 Pinia 的安全降级行为。
-
-## 当前路由事实
-
-- `src/router/index.ts` 创建 Router、注册静态路由和认证守卫，并暴露动态路由注册/清理能力。
-- `src/router/modules/public.ts` 提供双语登录页，`protected.ts` 提供认证入口、修改密码页、不显示菜单的 `system-dict-data` 字典数据跳转页，以及“演示 / 功能 / 表单、搜索表单、Hooks、工具函数、缺省页 / 403、404、500、网络离线”静态菜单树；系统设置由 `BasicLayout` 的右侧抽屉提供，不注册页面路由，`error.ts` 提供 403、404、500 和离线页面。
-- 认证后通过 `GET /api/v1/user/routes` 获取业务路由，并将通过校验的路由添加到 `app` 布局下。
-- 项目不再使用 `VITE_ROUTE_MODE`；业务菜单仍由后端提供，但保留不显示菜单、用于字典类型页跳转的静态 `system-dict-data` 路由。
-
-## 当前状态事实
-
-- `auth` Store 管理 Token、当前用户、权限、后端路由和初始化状态；仅持久化刷新 Token 与记住的用户名。
-- `dictionary` Store 管理当前会话内的业务字典缓存，`useDict` 缓存优先加载，Vue 插件全局注册 `DictTag` 并注入 `$dict`/`useDict`；退出登录时清空缓存。
-- `tabs` Store 使用 `sessionStorage` 持久化标签页；`route-loading` Store 管理 `screen`/`content` 两种 Loading 范围，并保持最短可见时间。
-- `BasicLayout` 将内容区 Loading、标签页、面包屑、KeepAlive 和路由页面组合在一起。
-- Lottie 封装位于 `src/utils/lottie.ts` 和 `src/hooks/useLottie.ts`，动画组件使用 `src/assets/lottie/car-loading3-data.json`。
-
-## 页面文件规模
-
-- `src/views/**/*.vue` 页面文件的源代码行数上限为 600 行，统计范围包括 `<script>`、`<template>`、`<style>`、注释和空行；`dist/`、缓存和其他生成文件不计入。
-- 新建或修改页面时，若文件超过 600 行，必须在同一任务中完成原因分析和拆分，禁止通过删除空行、压缩代码、合并不相关职责或关闭检查规避限制。
-- 页面文件只保留路由入口、页面级状态编排、查询/分页协调、权限分支和领域 API 调度；列表、表单、详情、弹窗、复杂表格列和重复交互应拆到当前页面的 `components/`，无生命周期的解析/格式化逻辑放到 `src/utils/`，跨页面组件才提升到 `src/components/`。
-- 业务组件拆分后必须保持原有路由、API 契约、权限控制、校验、Loading、错误反馈和提交行为；组件通过 Props、Emits 或 `v-model` 与页面交互，不得把领域 API 写入通用或展示组件。
-- 存量超限页面要在后续修改该业务时优先完成拆分和代码优化；本次未涉及的存量超限页面必须在交付说明中明确记录，不得把超限作为长期例外。
-
-## 按钮级权限
-
-- 业务页面及页面专属组件中的新增、编辑、删除、导出、导入、发布、重置、授权、启用/停用、标记状态等操作入口，必须绑定后端已核实的权限码；没有真实权限码和接口依据的操作入口不得添加。
-- 页面必须通过 `usePermission` 的 `hasPermission`、`hasAnyPermission` 或 `hasAllPermissions` 计算权限，并通过类型明确的 Props 传给页面专属组件；组件不得自行读取 `auth` Store 或猜测权限码。
-- 按钮可见性统一优先使用全局 `v-permission` 指令；渲染函数中的按钮使用 `permissionDirective` 配合 `withDirectives`。复杂交互仍可通过 Props 控制 Loading/禁用状态，但不得用重复的权限匹配逻辑替代指令。
-- 按钮的可见性或禁用状态与操作 handler 必须使用同一权限判断。点击、提交、确认回调和批量操作在调用 API 前必须再次校验权限并提前返回，不能只依赖 `v-if` 隐藏按钮。静态业务跳转页还必须在路由 `meta.permission` 中声明所需权限，由守卫拒绝无权限访问。
-- 权限至少按查询/详情、新增、编辑、删除、导入/导出、重置、授权/角色绑定和状态变更等后端操作拆分；涉及多个权限码的操作必须使用 `hasAllPermissions`，不能只检查其中一个。
-- 前端权限控制只改善用户体验，后端仍是认证、授权和数据范围的最终边界；新增或调整按钮权限时必须核对 Controller 的权限依赖、API 方法/路径和对应测试。
-
-## 维护规则
-
-当确认了 API、路由、权限、依赖、目录职责、缓存或构建脚本变化时，必须同步更新 `PROJECT.md`、`ARCHITECTURE.md`、`BOUNDARY.md` 或 `WORKFLOW.md` 中受影响的事实。文档不得保留已经删除的路径、变量、脚本或兼容分支。
-
-新增可复用组件时，必须同时检查组件目录的 `README.md`、`src/types/` 类型出口、组件级测试和必要的静态演示路由；仅新增源码而没有使用文档或验证用例不视为完整交付。
+- 为行为、契约、校验、权限、Loading 和错误路径增加或更新聚焦测试；避免只断言
+  静态文案、实现细节或演示页面结构的低价值测试。
+- 页面不超过 600 行；将表单、表格、弹窗和复杂交互拆到路由局部 `components/`。
+- 仅当已核验事实变化时更新 `.codex`；组件、Hook 或工具的公开契约变化时同步
+  更新对应 README。
