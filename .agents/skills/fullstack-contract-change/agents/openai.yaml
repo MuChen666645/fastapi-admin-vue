@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fullstack Contract Change"
+  short_description: "Align verified API changes across frontend and service"
+  default_prompt: "Use $fullstack-contract-change to implement a verified frontend and service API contract change."

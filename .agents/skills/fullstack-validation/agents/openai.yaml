@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fullstack Validation"
+  short_description: "Run layered frontend and service verification"
+  default_prompt: "Use $fullstack-validation to choose and run validation for a cross-project change."

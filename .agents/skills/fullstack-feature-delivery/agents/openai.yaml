@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fullstack Feature Delivery"
+  short_description: "Deliver scoped frontend and service business features"
+  default_prompt: "Use $fullstack-feature-delivery to deliver a scoped fullstack feature in this repository."

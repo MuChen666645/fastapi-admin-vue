@@ -12,11 +12,19 @@
 修改任何文件前，必须按以下顺序读取：
 
 1. 本文件，确认仓库范围、安全规则和项目归属。
-2. 目标项目的入口文件：前端读取 `frontend/AGENTS.md`，后端读取 `service/AGENTS.md`。
-3. 目标项目 `.codex/` 中的项目事实、架构、边界、工作流和任务模板。
-4. 与任务直接相关的源码、配置、DTO、类型声明和测试。
+2. 根目录 `.codex/README.md`、适用的仓库级规则和根级 Skill。
+3. 目标项目的入口文件：前端读取 `frontend/AGENTS.md`，后端读取 `service/AGENTS.md`。
+4. 目标项目 `.codex/` 中的项目事实、架构、边界、工作流和任务模板。
+5. 与任务直接相关的源码、配置、DTO、类型声明和测试。
 
-根目录 `.agents/` 当前没有规则内容，不得把它当作规范来源。文档只负责指导工作，不自动证明接口或运行能力存在。
+根目录 `.agents/skills/` 保存跨前后端的项目级 Skill；根据任务按需读取对应 `SKILL.md`，不一次性加载全部技能。
+根目录 `.codex/` 保存仓库级事实、架构、边界、工作流和任务模板。文档只负责指导工作，不自动证明接口或运行能力存在。
+
+## 仓库级开发入口
+
+- 开发协作说明：[DEVELOPMENT.md](DEVELOPMENT.md)
+- Codex 规范入口：[.codex/README.md](.codex/README.md)
+- 跨项目 Skill：`.agents/skills/`
 
 ## 信息权威
 

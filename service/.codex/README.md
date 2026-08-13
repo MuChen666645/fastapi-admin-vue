@@ -5,7 +5,7 @@
 
 ## 阅读顺序
 
-1. 仓库根目录 `AGENTS.md`
+1. 仓库根目录 `AGENTS.md`、`.codex/README.md` 和适用的根级 Skill
 2. `service/AGENTS.md`
 3. `PROJECT.md`、`ARCHITECTURE.md`、`BOUNDARY.md`、`WORKFLOW.md`
 4. `service/.agents/skills/` 下适用的项目 Skill
