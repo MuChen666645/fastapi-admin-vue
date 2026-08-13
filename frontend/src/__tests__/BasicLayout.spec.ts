@@ -4,10 +4,11 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { NEllipsis, NMenu, NMessageProvider, NNotificationProvider } from 'naive-ui'
+import { NDropdown, NEllipsis, NMenu, NMessageProvider, NNotificationProvider } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 
 import BasicLayout from '../layouts/BasicLayout/index.vue'
+import AppHeader from '../layouts/BasicLayout/components/AppHeader/index.vue'
 import { useLayoutSettingsStore, usePreferencesStore } from '../stores'
 
 const LayoutPage = defineComponent({
@@ -214,6 +215,37 @@ describe('BasicLayout', () => {
 
     expect(runtimeErrors).toEqual([])
     expect(wrapper.find('[data-testid="layout-page"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('opens system settings in a right-side drawer without changing the current route', async () => {
+    const router = createLayoutRouter()
+    const pinia = createPinia()
+
+    await router.push('/home')
+    await router.isReady()
+
+    const wrapper = mount(LayoutTestHost, {
+      attachTo: document.body,
+      global: {
+        plugins: [router, pinia],
+      },
+    })
+
+    await flushPromises()
+
+    const header = wrapper.findComponent(AppHeader)
+    const userMenu = header.findComponent(NDropdown)
+    expect(document.body.querySelector('.preferences-page')).toBeNull()
+
+    userMenu.vm.$emit('select', 'settings')
+    await flushPromises()
+    await nextTick()
+
+    expect(header.emitted('open-system-settings')).toEqual([[]])
+    expect(document.body.querySelector('.preferences-page')).not.toBeNull()
+    expect(router.currentRoute.value.name).toBe('layout-home')
 
     wrapper.unmount()
   })

@@ -8,7 +8,7 @@ import { usePreferencesStore } from '@/stores'
 
 import type { LayoutScrollMode } from '@/types'
 
-defineOptions({ name: 'LayoutSettings' })
+defineOptions({ name: 'SystemSettingsLayoutPanel' })
 
 const props = defineProps<{ resetKey: number }>()
 const preferences = usePreferencesStore()

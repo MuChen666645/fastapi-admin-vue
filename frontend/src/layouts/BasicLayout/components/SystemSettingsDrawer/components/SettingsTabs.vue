@@ -6,7 +6,7 @@ import { useLocale } from '@/hooks'
 
 import type { SettingsTab, TranslationKey } from '@/types'
 
-defineOptions({ name: 'SystemSettingsTabs' })
+defineOptions({ name: 'SystemSettingsDrawerTabs' })
 
 const props = defineProps<{ modelValue: SettingsTab }>()
 const emit = defineEmits<{ 'update:modelValue': [value: SettingsTab] }>()

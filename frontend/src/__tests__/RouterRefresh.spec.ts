@@ -13,7 +13,7 @@ const authorizedRoute: UserRoute = {
   redirect: null,
   hidden: false,
   meta: {
-    title: '系统设置',
+    title: '系统参数',
     menuType: 'C',
     icon: null,
     noCache: false,

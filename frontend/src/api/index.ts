@@ -43,6 +43,13 @@ export {
   updateMessage,
 } from './message'
 export { deleteLogs, fetchLogList } from './log'
+export {
+  createSystemConfig,
+  deleteSystemConfig,
+  fetchSystemConfigDetail,
+  fetchSystemConfigs,
+  updateSystemConfig,
+} from './system-config'
 export { fetchOnlineSessions, forceLogoutSession, forceLogoutUser } from './online'
 export {
   createScheduledJob,

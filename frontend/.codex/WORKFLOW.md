@@ -105,7 +105,7 @@ git status --short
 ```text
 pnpm exec vitest run src/__tests__/DynamicRouter.spec.ts
 pnpm exec vitest run src/__tests__/Lottie.spec.ts
-pnpm exec vitest run src/__tests__/SystemConfig.spec.ts
+pnpm exec vitest run src/__tests__/SystemSettingsDrawer.spec.ts
 pnpm exec prettier --check "*.md" ".codex/**/*.md"
 ```
 

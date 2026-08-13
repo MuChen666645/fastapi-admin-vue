@@ -84,6 +84,21 @@ export type {
   TranslationKey,
 } from './system-config'
 export type {
+  SystemConfig,
+  SystemConfigActionPermissions,
+  SystemConfigCreatePayload,
+  SystemConfigDetailModalProps,
+  SystemConfigFilters,
+  SystemConfigFormModalProps,
+  SystemConfigFormMode,
+  SystemConfigFormModel,
+  SystemConfigListQuery,
+  SystemConfigPage,
+  SystemConfigSearchPanelProps,
+  SystemConfigTableProps,
+  SystemConfigUpdatePayload,
+} from './system-parameter'
+export type {
   AuthSessionExpiredHandler,
   AuthTransportHandlers,
   RequestFileResponse,

@@ -32,14 +32,10 @@ describe('dynamic routes', () => {
     ])
   })
 
-  it('keeps system settings available as a static authenticated child route', () => {
+  it('does not register system settings as a static page route', () => {
     const appRoute = protectedRoutes.find((route) => route.name === 'app')
-    const settingsRoute = appRoute?.children?.find((route) => route.name === 'system-settings')
 
-    expect(settingsRoute?.path).toBe('system/settings')
-    expect(settingsRoute?.meta?.requiresAuth).toBe(true)
-    expect(settingsRoute?.meta?.permission).toBeUndefined()
-    expect(settingsRoute?.meta?.menu).toBe(false)
+    expect(appRoute?.children?.some((route) => route.name === 'system-settings')).toBe(false)
   })
 
   it('keeps dictionary data available as a hidden static authenticated child route', () => {

@@ -37,6 +37,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   'update:sidebarCollapsed': [value: boolean]
+  'open-system-settings': []
 }>()
 
 const router = useRouter()
@@ -122,12 +123,7 @@ const handleUserMenu = async (key: string | number): Promise<void> => {
   }
 
   if (menuKey === 'settings') {
-    if (router.hasRoute('system-settings')) {
-      await router.push({ name: 'system-settings' })
-      return
-    }
-
-    message.info(t('app.message.settingsUnavailable'))
+    emit('open-system-settings')
     return
   }
 

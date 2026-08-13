@@ -9,12 +9,14 @@ import AppFooter from './components/AppFooter/index.vue'
 import AppHeader from './components/AppHeader/index.vue'
 import AppSidebar from './components/AppSidebar/index.vue'
 import AppTabs from './components/AppTabs/index.vue'
+import SystemSettingsDrawer from './components/SystemSettingsDrawer/index.vue'
 import { useRouteCache } from '@/hooks/useRouteCache'
 
 defineOptions({ name: 'BasicLayout' })
 
 const sidebarCollapsed = ref(false)
 const routeViewKey = ref(0)
+const systemSettingsVisible = ref(false)
 const layoutSettings = useLayoutSettingsStore()
 const { cachedComponentNames, getCachedRouteComponent, getRouteKey } = useRouteCache()
 const layoutTransitionDuration = {
@@ -51,6 +53,10 @@ onBeforeUnmount(() => {
 const refreshRouteView = (): void => {
   routeViewKey.value += 1
 }
+
+const openSystemSettings = (): void => {
+  systemSettingsVisible.value = true
+}
 </script>
 
 <template>
@@ -61,6 +67,7 @@ const refreshRouteView = (): void => {
         <AppHeader
           v-model:sidebar-collapsed="sidebarCollapsed"
           :show-breadcrumb="layoutSettings.showBreadcrumb"
+          @open-system-settings="openSystemSettings"
         />
         <AppTabs v-if="layoutSettings.showTabs" @refresh="refreshRouteView" />
         <NLayoutContent class="layout-content" :native-scrollbar="false">
@@ -88,6 +95,7 @@ const refreshRouteView = (): void => {
       <div class="content-loading-viewport" data-testid="content-loading-viewport">
         <ContentLoading />
       </div>
+      <SystemSettingsDrawer v-model:show="systemSettingsVisible" />
     </div>
   </NLayout>
 </template>

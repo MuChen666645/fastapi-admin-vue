@@ -28,7 +28,7 @@
 ### 路由
 
 - 静态路由位于 `src/router/modules/`，当前分为 `public.ts`、`protected.ts`、`error.ts`。
-- `protected.ts` 提供登录后的 `app` 布局、修改密码页、`system-settings` 系统设置入口和隐藏的 `system-dict-data` 字典数据页；后端业务路由由 `registerAuthenticatedRoutes()` 添加到 `app` 下。
+- `protected.ts` 提供登录后的 `app` 布局、修改密码页和隐藏的 `system-dict-data` 字典数据页；系统设置由 `BasicLayout` 内的右侧抽屉提供，不产生路由或标签页；后端业务路由由 `registerAuthenticatedRoutes()` 添加到 `app` 下。
 - 动态路由的 `component` 只能经过 `src/router/route-utils.ts` 的本地 `import.meta.glob('../views/**/*.vue')` 白名单解析。路径不安全或组件不存在时过滤该路由并输出一次警告。
 - 路由守卫位于 `src/router/guards/auth.ts`，负责会话初始化、密码变更重定向、动态路由注册、安全导航，以及对静态路由 `meta.permission` 的前端访问校验；该字段可为权限字符串或权限列表，列表要求全部满足；当前权限包含超级权限 `*:*:*` 时匹配任意权限码；后端仍是业务授权的最终权威。
 
@@ -36,7 +36,7 @@
 
 - Pinia Store 位于 `src/stores/modules/`，分别管理会话、标签页和路由 Loading 状态；Store 不访问 DOM、不依赖页面组件、不保存服务端密钥。
 - 页面负责展示、交互和页面级编排。跨页面状态放 Store，可复用行为放 `src/hooks/` 或 `src/utils/`，领域请求放 API 层。
-- 系统设置页面的业务面板放在 `src/views/system/config/components/`，父页面只负责标签切换和统一重置。
+- 系统设置抽屉及其外观、布局、通用偏好面板只位于 `src/layouts/BasicLayout/components/SystemSettingsDrawer/`，不得依赖或放入 `src/views/`；`src/views/system/config/` 仅承载后端动态菜单对应的系统参数业务页。
 
 ### Loading 与缓存
 

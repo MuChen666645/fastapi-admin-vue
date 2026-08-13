@@ -6,7 +6,7 @@ import { NIcon, NSelect, NSwitch } from 'naive-ui'
 import { useLocale } from '@/hooks'
 import { usePreferencesStore } from '@/stores'
 
-defineOptions({ name: 'GeneralSettings' })
+defineOptions({ name: 'SystemSettingsGeneralPanel' })
 
 const props = defineProps<{ resetKey: number }>()
 const preferences = usePreferencesStore()

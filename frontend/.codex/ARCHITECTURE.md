@@ -133,7 +133,7 @@ Utils     -/-> 页面、组件、Router 实例和领域 Store
 `src/router/modules/index.ts` 汇总：
 
 - `public.ts`：`/login`。
-- `protected.ts`：`/change-password` 和 `app` 布局；`app` 下包含认证后的 `/system/settings` 系统设置入口、隐藏的 `/system/dict/data` 字典数据跳转页，以及“演示 / 缺省页 / 403、404、500、网络离线”静态菜单树。
+- `protected.ts`：`/change-password` 和 `app` 布局；`app` 下包含隐藏的 `/system/dict/data` 字典数据跳转页，以及“演示 / 缺省页 / 403、404、500、网络离线”静态菜单树。本地系统设置由 `BasicLayout` 挂载的右侧 `SystemSettingsDrawer` 提供，不注册页面路由；后端菜单 `system/config/index` 解析为系统参数业务页。
 - `error.ts`：`/403`、`/500`、`/offline` 和通配 not-found。
 
 项目不再有 `VITE_ROUTE_MODE`。认证后业务菜单和页面始终来自后端 `/user/routes`，仅隐藏的 `/system/dict/data` 作为前端静态跳转页保留。

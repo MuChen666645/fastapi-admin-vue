@@ -10,7 +10,6 @@ import ServerErrorView from '@/views/error/500.vue'
 import FormDemoView from '@/views/demo/form/index.vue'
 import HooksDemoView from '@/views/demo/hooks/index.vue'
 import SearchFormDemoView from '@/views/demo/search-form/index.vue'
-import SystemConfigView from '@/views/system/config/index.vue'
 import DictionaryDataView from '@/views/system/dict/data.vue'
 import UtilsDemoView from '@/views/demo/utils/index.vue'
 
@@ -38,21 +37,6 @@ export const protectedRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
     },
     children: [
-      {
-        path: 'system/settings',
-        name: 'system-settings',
-        component: SystemConfigView,
-        meta: {
-          title: '系统设置',
-          menu: false,
-          hideBreadcrumb: false,
-          requiresAuth: true,
-          noCache: false,
-          icon: 'SettingsOutline',
-          menuType: 'C',
-          link: null,
-        },
-      },
       {
         path: 'system/dict/data',
         name: 'system-dict-data',

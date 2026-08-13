@@ -148,7 +148,7 @@ interface ApiResponse<T> {
 
 ## 7. 路由、权限与缓存
 
-静态路由位于 `src/router/modules/`，主要包括登录、修改密码、系统设置、组件演示和缺省错误页。登录后的业务路由通过 `GET /api/v1/user/routes` 获取，并注册到 `BasicLayout` 下。
+静态路由位于 `src/router/modules/`，主要包括登录、修改密码、组件演示和缺省错误页。登录后的业务路由通过 `GET /api/v1/user/routes` 获取，并注册到 `BasicLayout` 下；系统设置通过顶栏用户菜单在右侧抽屉中打开，不创建页面路由或标签页。
 
 服务端 `component` 只允许映射到本地 `src/views/**/*.vue` 白名单。找不到组件、路径无效或名称冲突的路由会被拒绝，不能根据服务端字符串执行任意动态导入。
 

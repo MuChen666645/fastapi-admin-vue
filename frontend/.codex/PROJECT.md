@@ -51,7 +51,7 @@ src/
 └── __tests__/
 ```
 
-`src/views/system/config/` 是系统设置页面，外观、布局、通用设置和标签切换组件位于该页面目录的 `components/` 下；`src/views/system/dict/data.vue` 是不显示菜单、由字典类型页跳转的认证静态页面；`src/views/system/message/` 是后端消息中心动态路由的收件箱和消息管理页面；顶栏 `useMessagePopover` 每 30 秒轮询最新消息并对新增未读站内信显示 `Notification`；类型声明统一位于 `src/types/` 的语义化领域文件中。
+`src/layouts/BasicLayout/components/SystemSettingsDrawer/` 保存本地界面偏好的外观、布局、通用设置和标签切换面板，并由顶栏右侧抽屉挂载；`src/views/system/config/` 是后端动态菜单 `system/config/index` 对应的系统参数业务页；`src/views/system/dict/data.vue` 是不显示菜单、由字典类型页跳转的认证静态页面；`src/views/system/message/` 是后端消息中心动态路由的收件箱和消息管理页面；顶栏 `useMessagePopover` 每 30 秒轮询最新消息并对新增未读站内信显示 `Notification`；类型声明统一位于 `src/types/` 的语义化领域文件中。
 
 公共代码文档与源码保持同目录维护：`src/components/README.md` 记录公共组件索引和提交边界，组件组 README 记录各自公开 API；`src/hooks/README.md` 记录 Hook 的上下文依赖、返回值和清理行为；`src/utils/README.md` 记录公共工具入口、基础设施边界和安全校验。新增或迁移代码时，目录、公共出口、类型、测试和 README 必须同步。
 
@@ -144,6 +144,11 @@ src/
 | `GET`  | `/online/list`                | 按用户名和登录 IP 分页查询当前数据范围内的在线会话 |
 | `DELETE` | `/online/token/{token_id}` | 强制指定在线会话下线 |
 | `DELETE` | `/online/user/{user_id}`   | 强制指定用户的全部可见会话下线 |
+| `GET` | `/config/list` | 按参数名称、参数键名分页查询当前租户的系统参数 |
+| `GET` | `/config/{config_id}` | 查询系统参数详情；敏感类型的参数值由服务端脱敏 |
+| `POST` | `/config/add` | 新增系统参数 |
+| `PUT` | `/config/{config_id}` | 修改系统参数 |
+| `DELETE` | `/config/{config_id}` | 删除系统参数；内置参数仅超级管理员可删除 |
 | `POST` | `/message/add`                 | 发布消息并创建投递任务 |
 | `PUT`  | `/message/{id}`                | 修改当前租户消息     |
 | `DELETE` | `/message/{id}`              | 删除当前租户消息     |
@@ -164,7 +169,7 @@ src/
 - `/login` 是公开路由。
 - `/change-password` 需要认证，并允许密码变更状态访问。
 - `/` 对应 `app` 和 `BasicLayout`，认证后会注册后端业务路由。
-- `/system/settings` 的路由名为 `system-settings`，是认证后的静态系统设置入口，不显示在后端菜单中。
+- 系统设置由顶栏用户菜单打开 `BasicLayout` 内的右侧 `SystemSettingsDrawer`，不注册 `/system/settings` 路由，也不创建标签页。
 - `/system/dict/data` 的路由名为 `system-dict-data`，是认证后的隐藏静态字典数据页，仅由字典类型页携带 `dict_type` 查询参数跳转，不显示在菜单中；守卫要求当前用户具有 `system:dict:list`。
 - `/system/message` 来自后端消息中心菜单的动态路由，组件路径必须解析到 `src/views/system/message/index.vue`；页面包含当前用户收件箱和具有 `system:message:list` 权限时的租户消息管理模式。
 - `/system/role` 来自后端角色管理菜单，组件路径解析到 `src/views/system/role/index.vue`；页面使用角色列表、详情和菜单/部门授权接口，并对角色写操作使用按钮权限指令。

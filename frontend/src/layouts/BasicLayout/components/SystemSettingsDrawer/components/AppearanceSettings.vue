@@ -15,7 +15,7 @@ import { accentColorOptions, radiusOptions } from '@/utils'
 
 import type { ThemeMode } from '@/types'
 
-defineOptions({ name: 'AppearanceSettings' })
+defineOptions({ name: 'SystemSettingsAppearancePanel' })
 
 const props = defineProps<{ resetKey: number }>()
 const preferences = usePreferencesStore()
